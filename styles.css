@@ -1,0 +1,65 @@
+:root { color-scheme: light; font-family: "Segoe UI", Arial, sans-serif; color: #303840; background: #f3f4f5; }
+* { box-sizing: border-box; }
+body { margin: 0; font-size: 14px; line-height: 1.5; }
+[hidden] { display: none !important; }
+.container { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+header { background: #263b4b; color: white; border-bottom: 4px solid #2b8ac6; }
+.header-content { display: flex; justify-content: space-between; align-items: center; min-height: 64px; gap: 16px; }
+header strong { font-size: 20px; font-weight: 600; }
+header span { color: #c4d0da; }
+h1 { font-size: 28px; line-height: 1.25; font-weight: 400; margin: 32px 0 12px; }
+.intro { font-size: 16px; margin: 0 0 22px; max-width: 800px; color: #52616d; }
+a { color: #176b9f; }
+.source-bar { display: flex; flex-wrap: wrap; gap: 8px 24px; border: 1px solid #d3d9de; background: #e9edf0; padding: 12px 16px; color: #52616d; }
+.summary-bar { display: flex; align-items: center; gap: 28px; padding: 24px 0; }
+.summary-bar div { display: flex; flex-direction: column; }
+.summary-bar strong { font-size: 28px; font-weight: 400; line-height: 1.1; }
+.summary-bar span { color: #586774; margin-top: 5px; }
+.summary-bar button { margin-left: auto; }
+button, input, select { font: inherit; border-radius: 0; }
+button { padding: 9px 16px; color: #34434f; background: #e7ebee; border: 1px solid #b8c2ca; cursor: pointer; }
+button:hover:not(:disabled) { background: #d9e1e7; }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { color: white; background: #237ead; border-color: #19678f; font-weight: 600; padding: 12px 22px; }
+button.primary:hover { background: #19678f; }
+:focus-visible { outline: 2px solid #176b9f; outline-offset: 3px; }
+.notice { background: #fff8df; border-left: 4px solid #d6af3e; padding: 12px 16px; margin-bottom: 24px; }
+.toolbar { display: flex; gap: 16px; align-items: flex-end; }
+.search-field { flex: 1; }
+label { display: block; margin-bottom: 6px; font-weight: 600; }
+input[type="search"], select { width: 100%; height: 40px; background: white; border: 1px solid #b8c2ca; padding: 8px 10px; }
+.results { color: #63727d; margin: 16px 0 10px; }
+.list-heading { display: flex; justify-content: space-between; background: #e3e8ec; border: 1px solid #cbd3d9; padding: 10px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+.tool { border: 1px solid #d3d9de; border-top: 0; background: white; padding: 12px 16px; }
+.tool.excluded { background: #eef6fa; border-left: 4px solid #237ead; padding-left: 13px; }
+.tool-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.tool-top > div { min-width: 0; }
+.tool-title { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.rule-count { color: #697782; font-size: 12px; margin-top: 2px; }
+.exclude-label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0; font-weight: 400; cursor: pointer; flex-shrink: 0; }
+input[type="checkbox"] { width: 17px; height: 17px; accent-color: #237ead; margin: 0; }
+details { margin-top: 8px; }
+summary { cursor: pointer; font-size: 12px; color: #176b9f; width: fit-content; }
+.rule-list { margin: 8px 0; padding-left: 20px; }
+.rule-list li { margin: 8px 0; overflow-wrap: anywhere; }
+.rule-list code { font-size: 12px; }
+.rule-meta { display: block; font-size: 11px; color: #687682; }
+.shared-warning, .unclassified-warning { color: #765719; font-size: 12px; margin: 6px 0 0; }
+.export-note { border-top: 1px solid #cbd3d9; margin-top: 24px; padding-top: 12px; color: #52616d; }
+#export-summary { font-weight: 600; color: #34434f; }
+.error { padding: 16px; background: #fbecea; border: 1px solid #cc7069; margin: 20px 0; color: #923b33; }
+footer { color: #6d7982; font-size: 12px; padding-top: 24px !important; padding-bottom: 24px !important; }
+@media (max-width: 640px) {
+  .container { padding: 0 16px; }
+  header span { display: none; }
+  h1 { font-size: 24px; }
+  .summary-bar { flex-wrap: wrap; gap: 18px; }
+  .summary-bar strong { font-size: 24px; }
+  .summary-bar span { font-size: 12px; }
+  .summary-bar button { width: 100%; margin-left: 0; }
+  .toolbar { flex-wrap: wrap; }
+  .search-field { flex-basis: 100%; }
+  .filter-field { flex: 1; }
+  .tool-top { align-items: flex-start; }
+  .exclude-label { max-width: 120px; }
+}

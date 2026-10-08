@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Customize the bundled WDAC remote management block list locally and download your XML policy.">
+  <title>RMM Block List Editor</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <strong>RMM Block List Editor</strong>
+      <span>WDAC policy utility</span>
+    </div>
+  </header>
+  <main class="container">
+    <h1>Keep the block list. Exclude the tools you use.</h1>
+    <p class="intro">Select your trusted tools below to remove their block rules from the bundled policy. Everything else stays blocked by this list.</p>
+    <div class="source-bar">
+      <span>Source: <a href="./Blocking_RMMsv4.xml" download>Blocking_RMMsv4.xml</a></span>
+      <span id="policy-version"></span>
+      <span>Processed locally in your browser</span>
+    </div>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="loading" role="status">Loading the bundled policy...</p>
+    <section id="editor" hidden aria-label="Policy editor">
+      <div class="summary-bar">
+        <div><strong id="remaining-count">0</strong><span>block rules retained</span></div>
+        <div><strong id="excluded-count">0</strong><span>tools excluded</span></div>
+        <div><strong id="removed-count">0</strong><span>block rules removed</span></div>
+        <button id="download" class="primary" type="button">Download XML</button>
+      </div>
+      <div class="notice">
+        <strong>Checked means excluded from this block list.</strong>
+        This does not add an allow rule or guarantee the tool can run under other policies.
+        Shared vendor folders can cover several products; review any shared-rule warning before downloading.
+      </div>
+      <p id="catalog-note" class="results"></p>
+      <div class="toolbar">
+        <div class="search-field">
+          <label for="search">Search tools, filenames or folders</label>
+          <input id="search" type="search" placeholder="e.g. TeamViewer, AnyDesk, rustdesk.exe" autocomplete="off">
+        </div>
+        <div class="filter-field">
+          <label for="filter">Show</label>
+          <select id="filter">
+            <option value="all">All tools</option>
+            <option value="excluded">Excluded tools</option>
+            <option value="blocked">Still blocked</option>
+          </select>
+        </div>
+        <button id="reset" type="button" disabled>Reset exclusions</button>
+      </div>
+      <p id="results" class="results" role="status" aria-live="polite"></p>
+      <div class="list-heading"><span>Tool / matching rules</span><span>Policy action</span></div>
+      <div id="tools"></div>
+      <p id="empty" hidden>No tools match your search or filter.</p>
+      <div class="export-note">
+        <p id="export-summary" aria-live="polite"></p>
+        <p>The download removes each selected tool's filename and folder deny rules, plus every matching <code>FileRuleRef</code>. Policy settings, IDs, allow rules and unselected deny rules are preserved.</p>
+        <p><strong>Before deployment:</strong> review the XML and validate it with your normal WDAC tooling. Test on a non-production device first. The source list may not cover every version or installation path.</p>
+      </div>
+    </section>
+    <noscript><p class="error">Enable JavaScript to edit and download this policy.</p></noscript>
+  </main>
+  <footer class="container">Static site. No accounts, telemetry, uploads or external dependencies.</footer>
+</body>
+</html>
