@@ -115,7 +115,7 @@ byId("download").addEventListener("click", () => {
     const url = URL.createObjectURL(new Blob([xml], { type: "application/xml;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = excluded.size ? "Blocking_RMMsv4_custom.xml" : "Blocking_RMMsv4.xml";
+    link.download = excluded.size ? "Blocking_RMMsv5_custom.xml" : "Blocking_RMMsv5.xml";
     document.body.append(link);
     link.click();
     link.remove();
@@ -128,7 +128,7 @@ byId("download").addEventListener("click", () => {
 
 async function initialize() {
   try {
-    const response = await fetch("./Blocking_RMMsv4.xml");
+    const response = await fetch("./Blocking_RMMsv5.xml");
     if (!response.ok) throw new Error(`Unable to load the bundled XML (HTTP ${response.status}).`);
     policy = parsePolicy(await response.text());
     if (!policy.rules.length) throw new Error("The bundled policy does not contain any deny rules.");

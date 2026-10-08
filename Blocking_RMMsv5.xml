@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.7</VersionEx>
+  <VersionEx>1.0.0.8</VersionEx>
   <PolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</PolicyID>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
@@ -162,14 +162,11 @@
     <Deny ID="ID_DENY_A_EC5A9076C2DEF449985135D729456C9D" FriendlyName="WildCard File Path Rule Type" FilePath="*\SensoService*.exe" />
     <Deny ID="ID_DENY_A_92FBB81612ECD0EBDB4946DBDD02DE0A" FriendlyName="WildCard File Path Rule Type" FilePath="*\Cloud.Backup.Scheduler*.exe" />
     <Deny ID="ID_DENY_A_858F4B7D956141E3DAD5601EDA108CE7" FriendlyName="WildCard File Path Rule Type" FilePath="*\winagent*.exe" />
-    <Deny ID="ID_DENY_A_48E45B0D5575B187FFF379EEE781234E" FriendlyName="WildCard File Path Rule Type" FilePath="*\agent32*.exe" />
     <Deny ID="ID_DENY_A_9F25DAD59E7E1EF21DDB53E795EA0737" FriendlyName="WildCard File Path Rule Type" FilePath="*\FixMeit Expert Setup*.exe" />
     <Deny ID="ID_DENY_A_E6EA933C899C4480125DFEDFB55E60E0" FriendlyName="WildCard File Path Rule Type" FilePath="*\nldrw32*.exe" />
     <Deny ID="ID_DENY_A_4F2925044A74EA9D83E408A2F6613306" FriendlyName="WildCard File Path Rule Type" FilePath="*\litemanager*.exe" />
     <Deny ID="ID_DENY_A_39C60A2EAED645D4D8A8521D2A3D5A5B" FriendlyName="WildCard File Path Rule Type" FilePath="*\ateraagent*.exe" />
     <Deny ID="ID_DENY_A_ADC981310D14BC9C92CB30390B7AE66D" FriendlyName="WildCard File Path Rule Type" FilePath="*\mikogo-service*.exe" />
-    <Deny ID="ID_DENY_A_7C68C726D9E81378EEC82FA3923E2AFE" FriendlyName="WildCard File Path Rule Type" FilePath="*\spsrv*.exe" />
-    <Deny ID="ID_DENY_A_0ADD956EC28D20F4C033864AA9B3DDF0" FriendlyName="WildCard File Path Rule Type" FilePath="*\pstlaunch*.exe" />
     <Deny ID="ID_DENY_A_04D4395CDB3765A1121A67240AECB7D8" FriendlyName="WildCard File Path Rule Type" FilePath="*\rapid7_endpoint_broker*.exe" />
     <Deny ID="ID_DENY_A_98303CA835081A77ED9109B0625771BF" FriendlyName="WildCard File Path Rule Type" FilePath="*\ltsvcmon*.exe" />
     <Deny ID="ID_DENY_A_8AFE2DFF1550971FA97F0C6C30E32AFB" FriendlyName="WildCard File Path Rule Type" FilePath="*\ITarianRemoteAccessSetup*.exe" />
@@ -192,7 +189,6 @@
     <Deny ID="ID_DENY_A_428642FD9D187CFF0D2EE1693A5FFE8E" FriendlyName="WildCard File Path Rule Type" FilePath="*\Zohours*.exe" />
     <Deny ID="ID_DENY_A_B38EE0F34E517BCA6ADEB46D40CF7385" FriendlyName="WildCard File Path Rule Type" FilePath="*\iadmin*.exe" />
     <Deny ID="ID_DENY_A_BA3F9FDC0DAF1B70EC5F8AC59F6F2789" FriendlyName="WildCard File Path Rule Type" FilePath="*\teamviewer_service*.exe" />
-    <Deny ID="ID_DENY_A_9FDBF9A1D8C38FDDD1106E87D521B178" FriendlyName="WildCard File Path Rule Type" FilePath="*\serverproxyservice*.exe" />
     <Deny ID="ID_DENY_A_BAF995C98E070C1A4E4C1287B29326CE" FriendlyName="WildCard File Path Rule Type" FilePath="*\BASupTSHelper*.exe" />
     <Deny ID="ID_DENY_A_C9EC2498588A2AEA0355E682E98CB23A" FriendlyName="WildCard File Path Rule Type" FilePath="*\AweSun*.exe" />
     <Deny ID="ID_DENY_A_DE04FEBB3105905C95FE068B443FD2D7" FriendlyName="WildCard File Path Rule Type" FilePath="*\zohotray*.exe" />
@@ -209,8 +205,6 @@
     <Deny ID="ID_DENY_A_3C986A42D868C54E9DC2CE81479B72A1" FriendlyName="WildCard File Path Rule Type" FilePath="*\rutview*.exe" />
     <Deny ID="ID_DENY_A_E0A1DC2020EBCCD24B60973F1B6007C1" FriendlyName="WildCard File Path Rule Type" FilePath="*\rpwhostscr*.exe" />
     <Deny ID="ID_DENY_A_A09433AB88029CBE522E6FE0D93A6290" FriendlyName="WildCard File Path Rule Type" FilePath="*\ZA_Access*.exe" />
-    <Deny ID="ID_DENY_A_95FF320B36EAB134FB50237406174E0E" FriendlyName="WildCard File Path Rule Type" FilePath="*\rmserverconsolemediator*.exe" />
-    <Deny ID="ID_DENY_A_BF094E8FBF909A65EF072B592A52DE91" FriendlyName="WildCard File Path Rule Type" FilePath="*\raautoup*.exe" />
     <Deny ID="ID_DENY_A_982358EEFA446D2114B20C9C9299274D" FriendlyName="WildCard File Path Rule Type" FilePath="*\GovAgentx64*.exe" />
     <Deny ID="ID_DENY_A_36DC1FC3E1CB0A58E33ECC7784CB21B0" FriendlyName="WildCard File Path Rule Type" FilePath="*\jumpconnect*.exe" />
     <Deny ID="ID_DENY_A_45E610E81A48AD289E0FAE03B9A9560F" FriendlyName="WildCard File Path Rule Type" FilePath="*\awrem32*.exe" />
@@ -239,10 +233,8 @@
     <Deny ID="ID_DENY_A_454A632D3CBCBA25DC7BD38C909C948F" FriendlyName="WildCard File Path Rule Type" FilePath="*\Site24x7PluginAgent*.exe" />
     <Deny ID="ID_DENY_A_FF4A11B45A6920838AF714CBA7D93F31" FriendlyName="WildCard File Path Rule Type" FilePath="*\ISLLight*.exe" />
     <Deny ID="ID_DENY_A_BDEB8448EB71025C94E35C609CD78169" FriendlyName="WildCard File Path Rule Type" FilePath="*\simplehelpcustomer*.exe" />
-    <Deny ID="ID_DENY_A_43E80E7A30D6A1B358F24B20467234E2" FriendlyName="WildCard File Path Rule Type" FilePath="*\pcstarter*.exe" />
     <Deny ID="ID_DENY_A_0B08ADA986B257F53CF0DE7E2E05E014" FriendlyName="WildCard File Path Rule Type" FilePath="*\AcronisCyberProtectConnectAgent*.exe" />
     <Deny ID="ID_DENY_A_FE42289152BF7D0B57585847C10DFD34" FriendlyName="WildCard File Path Rule Type" FilePath="*\goverlan*.exe" />
-    <Deny ID="ID_DENY_A_01A11AD07D2673E987C337FF40347521" FriendlyName="WildCard File Path Rule Type" FilePath="*\InstallShield Setup.exe" />
     <Deny ID="ID_DENY_A_607256F4D9B4BD24D44EDB8C83E8F172" FriendlyName="WildCard File Path Rule Type" FilePath="*\distant-desktop*.exe" />
     <Deny ID="ID_DENY_A_1C783EC5BFDF846E162879821134F99F" FriendlyName="WildCard File Path Rule Type" FilePath="*\ZMAgent*.exe" />
     <Deny ID="ID_DENY_A_C81C725B1C29686E24AEBF29EFB691EB" FriendlyName="WildCard File Path Rule Type" FilePath="*\ImperoInit*.exe" />
@@ -251,19 +243,14 @@
     <Deny ID="ID_DENY_A_30938E7FF0E0328E26DDB141C6FC60E1" FriendlyName="WildCard File Path Rule Type" FilePath="*\basupsrvcupdate*.exe" />
     <Deny ID="ID_DENY_A_1B6DC4EE7A85996C2C8B8BDEAA07429E" FriendlyName="WildCard File Path Rule Type" FilePath="*\ROMFUSClient*.exe" />
     <Deny ID="ID_DENY_A_AE1B469E604F442EBE048C5B2EF1F0E6" FriendlyName="WildCard File Path Rule Type" FilePath="*\LANDeskPortalManager*.exe" />
-    <Deny ID="ID_DENY_A_00FB690B772997F00E341D126A6CDD45" FriendlyName="WildCard File Path Rule Type" FilePath="*\saazapsc*.exe" />
     <Deny ID="ID_DENY_A_5701C1B31DAEA65A69CFBC12BA9B1BD3" FriendlyName="WildCard File Path Rule Type" FilePath="*\basupclphlp*.exe" />
-    <Deny ID="ID_DENY_A_612B7D786F243350075DB4D02366CA92" FriendlyName="WildCard File Path Rule Type" FilePath="*\XSightService*.exe" />
     <Deny ID="ID_DENY_A_82F3B124B4990767EC158807A3527AAE" FriendlyName="WildCard File Path Rule Type" FilePath="*\pcictlui*.exe" />
-    <Deny ID="ID_DENY_A_79EDB350C32C6EEE44EADFD759F55137" FriendlyName="WildCard File Path Rule Type" FilePath="*\myivomgr*.exe" />
-    <Deny ID="ID_DENY_A_87D7B4B23A72FA371673A6C7F47CE646" FriendlyName="WildCard File Path Rule Type" FilePath="*\hsloader*.exe" />
     <Deny ID="ID_DENY_A_3C6C274A6388DFE9F28DE92D32D94D9A" FriendlyName="WildCard File Path Rule Type" FilePath="*\Syncro.Service*.exe" />
     <Deny ID="ID_DENY_A_7C1F762E0B51E08502BD4AE48AAEBAF2" FriendlyName="WildCard File Path Rule Type" FilePath="*\showmypc*.exe" />
     <Deny ID="ID_DENY_A_23CE8291101E7FD0488D58F935A1CCBD" FriendlyName="WildCard File Path Rule Type" FilePath="*\ToDesk_Setup*.exe" />
     <Deny ID="ID_DENY_A_6F8368D5AFF895708091340106C7D3CC" FriendlyName="WildCard File Path Rule Type" FilePath="*\ezHelpManager*.exe" />
     <Deny ID="ID_DENY_A_FBD1A9180EC59E24058309541673360A" FriendlyName="WildCard File Path Rule Type" FilePath="*\rpaccess*.exe" />
     <Deny ID="ID_DENY_A_7BB5ECB7009A0C7E3A48C78A34E8CDC9" FriendlyName="WildCard File Path Rule Type" FilePath="*\AMMYY_Admin*.exe" />
-    <Deny ID="ID_DENY_A_B8EC69100AB45269FB966517F5D7C79A" FriendlyName="WildCard File Path Rule Type" FilePath="*\DSGuest*.exe" />
     <Deny ID="ID_DENY_A_3BED00F6C9A449093FFAE5D9CA4F88D4" FriendlyName="WildCard File Path Rule Type" FilePath="*\nhstw32*.exe" />
     <Deny ID="ID_DENY_A_C5282E0864ECE0AA3E4C3BBA0B709CD6" FriendlyName="WildCard File Path Rule Type" FilePath="*\InstantHousecall*.exe" />
     <Deny ID="ID_DENY_A_84F34557433498C40E7B9BF7E7F05D03" FriendlyName="WildCard File Path Rule Type" FilePath="*\FastViewer*.exe" />
@@ -271,12 +258,9 @@
     <Deny ID="ID_DENY_A_203D7EDC4390AEA1A36554F584D688FD" FriendlyName="WildCard File Path Rule Type" FilePath="*\UltraViewer_Desktop*.exe" />
     <Deny ID="ID_DENY_A_CD6D3DEBA675B8E9AB89B7A144C0522B" FriendlyName="WildCard File Path Rule Type" FilePath="*\ngrok*.exe" />
     <Deny ID="ID_DENY_A_F8B23090CC96C00B0EF9034072388165" FriendlyName="WildCard File Path Rule Type" FilePath="*\action1_agent*.exe" />
-    <Deny ID="ID_DENY_A_D257278CB6A6C35EB38F8041E922A8F3" FriendlyName="WildCard File Path Rule Type" FilePath="*\totermw*.exe" />
     <Deny ID="ID_DENY_A_7CC614C5E5859E712BEC4B48B051B4D3" FriendlyName="WildCard File Path Rule Type" FilePath="*\ddsystem*.exe" />
     <Deny ID="ID_DENY_A_76C338CE92FE3A5153030BB690C9CC84" FriendlyName="WildCard File Path Rule Type" FilePath="*\pcvisit_service_client*.exe" />
-    <Deny ID="ID_DENY_A_8E29756561A1A94199BE51763B98A027" FriendlyName="WildCard File Path Rule Type" FilePath="*\agent_setup_5*.exe" />
     <Deny ID="ID_DENY_A_3C766029B54219C1A2BE23D028E362B7" FriendlyName="WildCard File Path Rule Type" FilePath="*\support-logmeinrescue*.exe" />
-    <Deny ID="ID_DENY_A_3B19B5140589808FE969CC85C3EA47DD" FriendlyName="WildCard File Path Rule Type" FilePath="*\ptdskhost*.exe" />
     <Deny ID="ID_DENY_A_080EB06B0203C3F9C07FCD5FCD940918" FriendlyName="WildCard File Path Rule Type" FilePath="*\RemotePCService*.exe" />
     <Deny ID="ID_DENY_A_798050AA39F58191C653B04E6F3A6525" FriendlyName="WildCard File Path Rule Type" FilePath="*\pdqdeployconsole*.exe" />
     <Deny ID="ID_DENY_A_4C64DFB41AB996197A5F21D5A9DC620E" FriendlyName="WildCard File Path Rule Type" FilePath="*\zero-powershell*.exe" />
@@ -300,25 +284,19 @@
     <Deny ID="ID_DENY_A_C37BD19CE7C5295E0860AA0B84DD5AE9" FriendlyName="WildCard File Path Rule Type" FilePath="*\AlpemixService*.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D26750E8E13AF4DF2A508FE" FriendlyName="WildCard File Path Rule Type" FilePath="*\xcmd.exe" />
     <Deny ID="ID_DENY_A_30145FC6982FFBFCE2E6EC0431FEDE57" FriendlyName="WildCard File Path Rule Type" FilePath="*\winvnc*.exe" />
-    <Deny ID="ID_DENY_A_56D95B1CA7F1522990FF379F3848AD5F" FriendlyName="WildCard File Path Rule Type" FilePath="*\TSClient*.exe" />
     <Deny ID="ID_DENY_A_55CF138A2561FD3CD5DED58DCB3AD705" FriendlyName="WildCard File Path Rule Type" FilePath="*\tailscale-ipn*.exe" />
     <Deny ID="ID_DENY_A_B27725F2377DA63D98AAF217D0D444C7" FriendlyName="WildCard File Path Rule Type" FilePath="*\RViewer*.exe" />
     <Deny ID="ID_DENY_A_9232DA2B7093D5FCFDC44ED20F5383B0" FriendlyName="WildCard File Path Rule Type" FilePath="*\superopsticket*.exe" />
     <Deny ID="ID_DENY_A_E688D42B35FADD6191F6B189498A2886" FriendlyName="WildCard File Path Rule Type" FilePath="*\srservice*.exe" />
-    <Deny ID="ID_DENY_A_F37E1C1014F60AAC853FCB6D0DA5DDB2" FriendlyName="WildCard File Path Rule Type" FilePath="*\ctiserv*.exe" />
-    <Deny ID="ID_DENY_A_9D610C012184A85D39D10929F97B2702" FriendlyName="WildCard File Path Rule Type" FilePath="*\prlsvcctl*.exe" />
     <Deny ID="ID_DENY_A_66382D149DFB2B4424444CCE571B6CAE" FriendlyName="WildCard File Path Rule Type" FilePath="*\prl_deskctl_agent*.exe" />
     <Deny ID="ID_DENY_A_6AF21A800AF4AA4CB974640D0DE84F72" FriendlyName="WildCard File Path Rule Type" FilePath="*\GovAgentInstallHelper*.exe" />
     <Deny ID="ID_DENY_A_18FAD58ADF51D9EBC6FFB66A1E862FCA" FriendlyName="WildCard File Path Rule Type" FilePath="*\TiExpertStandalone*.exe" />
-    <Deny ID="ID_DENY_A_472B759D757ABFF6E1C741C9D75D5841" FriendlyName="WildCard File Path Rule Type" FilePath="*\einstaller*.exe" />
     <Deny ID="ID_DENY_A_69A72F2D83DCBB09B96B1ADCB4DF1144" FriendlyName="WildCard File Path Rule Type" FilePath="*\pcnmgr*.exe" />
-    <Deny ID="ID_DENY_A_54CE41D7A671095A350B2A76F732C8FC" FriendlyName="WildCard File Path Rule Type" FilePath="*\myivomanager*.exe" />
     <Deny ID="ID_DENY_A_EADDF9347A8A2BE38C2530E42C21EDDB" FriendlyName="WildCard File Path Rule Type" FilePath="*\jumpdesktopconnect*.exe" />
     <Deny ID="ID_DENY_A_03C14A36C1877EC4A1BAA56DDAB92235" FriendlyName="WildCard File Path Rule Type" FilePath="*\Remote Workforce Client*.exe" />
     <Deny ID="ID_DENY_A_F2B2C171D3D4655F4926830A1FEEC262" FriendlyName="WildCard File Path Rule Type" FilePath="*\remobo_client*.exe" />
     <Deny ID="ID_DENY_A_D58D6852CDA7D158082EE0CC9E598897" FriendlyName="WildCard File Path Rule Type" FilePath="*\remotepchost*.exe" />
     <Deny ID="ID_DENY_A_E4EFFA7CEA9565AFB708DB08AEA79BC6" FriendlyName="WildCard File Path Rule Type" FilePath="*\BASupSysInf*.exe" />
-    <Deny ID="ID_DENY_A_7EF15E0440A9D13B382088F9E02CEA8A" FriendlyName="WildCard File Path Rule Type" FilePath="*\RAccess*.exe" />
     <Deny ID="ID_DENY_A_C743C53D6610833E863D2CC3D6ADD294" FriendlyName="WildCard File Path Rule Type" FilePath="*\todesk*.exe" />
     <Deny ID="ID_DENY_A_81534FA6808D98A234388573E5B6B87F" FriendlyName="WildCard File Path Rule Type" FilePath="*\CloudRaService*.exe" />
     <Deny ID="ID_DENY_A_C8F6CAA99B928449642B19111AA6A773" FriendlyName="WildCard File Path Rule Type" FilePath="*\screenconnect.clientservice*.exe" />
@@ -339,11 +317,9 @@
     <Deny ID="ID_DENY_A_77BC2044BC162883B0C168E9FA926E3B" FriendlyName="WildCard File Path Rule Type" FilePath="*\simpleservice*.exe" />
     <Deny ID="ID_DENY_A_DD3DF6FF64949DF184C932C5C7EDFE04" FriendlyName="WildCard File Path Rule Type" FilePath="*\ntrntservice*.exe" />
     <Deny ID="ID_DENY_A_E2AC8D1BB892E928D7EA9C095F41EC3F" FriendlyName="WildCard File Path Rule Type" FilePath="*\tv_x64*.exe" />
-    <Deny ID="ID_DENY_A_203A5324B10CBEFCEC6931A875A4941A" FriendlyName="WildCard File Path Rule Type" FilePath="*\mgntsvc*.exe" />
     <Deny ID="ID_DENY_A_8D89755B2EC83CA65A57672A82794236" FriendlyName="WildCard File Path Rule Type" FilePath="*\xeox-agent_x64*.exe" />
     <Deny ID="ID_DENY_A_6E1C1EC284B5957AD926DF68B18322C2" FriendlyName="WildCard File Path Rule Type" FilePath="*\BASupSrvc*.exe" />
     <Deny ID="ID_DENY_A_8AF0CF3123C8314ECDFD949DB99C7570" FriendlyName="WildCard File Path Rule Type" FilePath="*\neturo*.exe" />
-    <Deny ID="ID_DENY_A_055ABA3035CDC10F83BEF6957ACAA66C" FriendlyName="WildCard File Path Rule Type" FilePath="*\sfsserver64*.exe" />
     <Deny ID="ID_DENY_A_F88F9D575305EABBB71C61B50FEE21ED" FriendlyName="WildCard File Path Rule Type" FilePath="*\seetrolremote*.exe" />
     <Deny ID="ID_DENY_A_85A158DDB7F097C0121F7EC5DDA63C76" FriendlyName="WildCard File Path Rule Type" FilePath="*\tvnviewer*.exe" />
     <Deny ID="ID_DENY_A_51FDB41EED765ADF56DDE53614DDF89F" FriendlyName="WildCard File Path Rule Type" FilePath="*\SRServer*.exe" />
@@ -353,7 +329,6 @@
     <Deny ID="ID_DENY_A_8B136E7F05E19FC2658642363F3B2A9F" FriendlyName="WildCard File Path Rule Type" FilePath="*\Syncro.Overmind.Service*.exe" />
     <Deny ID="ID_DENY_A_6513A41029F1E5916333E614F436DB58" FriendlyName="WildCard File Path Rule Type" FilePath="*\BASEClient*.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D267393950AAD3DB09AA82F" FriendlyName="WildCard File Path Rule Type" FilePath="*\rv.exe" />
-    <Deny ID="ID_DENY_A_263F2F6C15E4966B028787D8C44042BD" FriendlyName="WildCard File Path Rule Type" FilePath="*\sfsserver*.exe" />
     <Deny ID="ID_DENY_A_F4564083CF4D47AA84B6C0778873FA9E" FriendlyName="WildCard File Path Rule Type" FilePath="*\AEMAgent*.exe" />
     <Deny ID="ID_DENY_A_D6829E7B1939DCE6E9DD43F78EB2D078" FriendlyName="WildCard File Path Rule Type" FilePath="*\ezhelpclientmanager*.exe" />
     <Deny ID="ID_DENY_A_31BE0B417F92A273B830421BEED2B4E1" FriendlyName="WildCard File Path Rule Type" FilePath="*\NTRsupportPro_EN*.exe" />
@@ -361,7 +336,6 @@
     <Deny ID="ID_DENY_A_E2B94307732A160DEFEE0ED560ED8FD0" FriendlyName="WildCard File Path Rule Type" FilePath="*\isllightservice*.exe" />
     <Deny ID="ID_DENY_A_98BF59435B96DC3FD5B2FFBF87E8A286" FriendlyName="WildCard File Path Rule Type" FilePath="*\screenconnect.windowsclient*.exe" />
     <Deny ID="ID_DENY_A_2B24DBEA19063CB1CE12768C6DB11600" FriendlyName="WildCard File Path Rule Type" FilePath="*\awhost32*.exe" />
-    <Deny ID="ID_DENY_A_2587794D15C5ED470504F17C114D155D" FriendlyName="WildCard File Path Rule Type" FilePath="*\wmcsvc*.exe" />
     <Deny ID="ID_DENY_A_36FC152C123EC61948EA1E2C5E450AB1" FriendlyName="WildCard File Path Rule Type" FilePath="*\ZohoMeeting*.exe" />
     <Deny ID="ID_DENY_A_9A838CDAD0D62AF1DE7E6BB60070F4DB" FriendlyName="WildCard File Path Rule Type" FilePath="*\winaw32*.exe" />
     <Deny ID="ID_DENY_A_55BA8816C5340C8564682C9A5D735D57" FriendlyName="WildCard File Path Rule Type" FilePath="*\remoting_host*.exe" />
@@ -395,8 +369,6 @@
     <Deny ID="ID_DENY_A_170E12BA5BA366144A599893346516CF" FriendlyName="WildCard File Path Rule Type" FilePath="*\NinjaRMMAgent*.exe" />
     <Deny ID="ID_DENY_A_A545C921B80F1C402B34BF597168545D" FriendlyName="WildCard File Path Rule Type" FilePath="*\remotepass-access*.exe" />
     <Deny ID="ID_DENY_A_4802DFC4D1D79BE35466AE95C5F2865E" FriendlyName="WildCard File Path Rule Type" FilePath="*\remote-it-installer*.exe" />
-    <Deny ID="ID_DENY_A_9B1ECAE1DD0543472FF07D3C298E7455" FriendlyName="WildCard File Path Rule Type" FilePath="*\agent64*.exe" />
-    <Deny ID="ID_DENY_A_49FF068FDB7948A07EC9899573D98169" FriendlyName="WildCard File Path Rule Type" FilePath="*\webrdp*.exe" />
     <Deny ID="ID_DENY_A_693529DEFF1828E0CE86735146AD0BFD" FriendlyName="WildCard File Path Rule Type" FilePath="*\OOSysAgent*.exe" />
     <Deny ID="ID_DENY_A_E7010AB03752423E1D97A1B91FB67219" FriendlyName="WildCard File Path Rule Type" FilePath="*\TPowerShell*.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D26761698A854731D79699E" FriendlyName="WildCard File Path Rule Type" FilePath="*\iit.exe" />
@@ -417,7 +389,6 @@
     <Deny ID="ID_DENY_A_09F67627D0C79F0A72A9BB3FC5C9BE28" FriendlyName="WildCard File Path Rule Type" FilePath="*\nxplayer*.exe" />
     <Deny ID="ID_DENY_A_11ADD9AECC84D2FD78B8FF7E1F7A98BF" FriendlyName="WildCard File Path Rule Type" FilePath="*\jumpservice*.exe" />
     <Deny ID="ID_DENY_A_7E331D949486D1B79CF86D7D5CEFEC04" FriendlyName="WildCard File Path Rule Type" FilePath="*\ir_agent*.exe" />
-    <Deny ID="ID_DENY_A_E9245D6EC27E9FA02168545DCF23DAD6" FriendlyName="WildCard File Path Rule Type" FilePath="*\hookldr*.exe" />
     <Deny ID="ID_DENY_A_5FC8FAD6F93E6A97155D661E87CB1584" FriendlyName="WildCard File Path Rule Type" FilePath="*\dcagentservice*.exe" />
     <Deny ID="ID_DENY_A_D53531A264E06E2A422E3F7661F30E74" FriendlyName="WildCard File Path Rule Type" FilePath="*\supremo*.exe" />
     <Deny ID="ID_DENY_A_9BE36CBE3D967BF6C18A72542921B2EE" FriendlyName="WildCard File Path Rule Type" FilePath="*\intelliadmin*.exe" />
@@ -429,7 +400,6 @@
     <Deny ID="ID_DENY_A_557EB45E7DA8208E78BB4DA1D646D2B6" FriendlyName="WildCard File Path Rule Type" FilePath="*\iperius*.exe" />
     <Deny ID="ID_DENY_A_534CA872BD54973D0D60B7CDECCF31D2" FriendlyName="WildCard File Path Rule Type" FilePath="*\TiClientCore*.exe" />
     <Deny ID="ID_DENY_A_D48AE99FCC49017DDCDECAA9BF4DCA53" FriendlyName="WildCard File Path Rule Type" FilePath="*\ericomrdp*.exe" />
-    <Deny ID="ID_DENY_A_952B1A81D7103FFE52847D497E6EC552" FriendlyName="WildCard File Path Rule Type" FilePath="*\clientmrinit*.exe" />
     <Deny ID="ID_DENY_A_070BDF623ED2DBEBABBE4178B7A70D38" FriendlyName="WildCard File Path Rule Type" FilePath="*\mygreenpc*.exe" />
     <Deny ID="ID_DENY_A_71577296F0C88EE071BD78F0F3CD0B1C" FriendlyName="WildCard File Path Rule Type" FilePath="*\RDPCheck*.exe" />
     <Deny ID="ID_DENY_A_068BFBA016F3D875697FDDB4BD81B993" FriendlyName="WildCard File Path Rule Type" FilePath="*\mikogo-starter*.exe" />
@@ -448,13 +418,11 @@
     <Deny ID="ID_DENY_A_C93BDD44A3223C40AC7FE1F22512903E" FriendlyName="WildCard File Path Rule Type" FilePath="*\supremosystem*.exe" />
     <Deny ID="ID_DENY_A_0F7105CC4314C5E33B010354A4FC8B26" FriendlyName="WildCard File Path Rule Type" FilePath="*\auvik.agent*.exe" />
     <Deny ID="ID_DENY_A_2079D3CF7A3A37743CE757BA95AA5C27" FriendlyName="WildCard File Path Rule Type" FilePath="*\RDesktop*.exe" />
-    <Deny ID="ID_DENY_A_5BAD3CF361B9C5C417D22645E587DD5B" FriendlyName="WildCard File Path Rule Type" FilePath="*\windowslauncher*.exe" />
     <Deny ID="ID_DENY_A_05A9394FF8D1899FCC1052CB1938905D" FriendlyName="WildCard File Path Rule Type" FilePath="*\ROMServer*.exe" />
     <Deny ID="ID_DENY_A_42E427E03CD8E586D71CECBFFF26D67A" FriendlyName="WildCard File Path Rule Type" FilePath="*\connectwisecontrol.client*.exe" />
     <Deny ID="ID_DENY_A_197167A60E75DED43FB88A6DB6102984" FriendlyName="WildCard File Path Rule Type" FilePath="*\ehorus_agent*.exe" />
     <Deny ID="ID_DENY_A_27C5D3CE1ED67F1584E18F3355C0F86C" FriendlyName="WildCard File Path Rule Type" FilePath="*\ngstw32*.exe" />
     <Deny ID="ID_DENY_A_24028CD85CEA411C76F60D87238EC14B" FriendlyName="WildCard File Path Rule Type" FilePath="*\TiExpertCore*.exe" />
-    <Deny ID="ID_DENY_A_9509CDCEB923CB482B593D76FBAAC6A1" FriendlyName="WildCard File Path Rule Type" FilePath="*\MonitoringAgent*.exe" />
     <Deny ID="ID_DENY_A_61147DCC464430936F25C9C114D9A6D9" FriendlyName="WildCard File Path Rule Type" FilePath="*\supremohelper*.exe" />
     <Deny ID="ID_DENY_A_11FA6959D7F56C753589E528C484545A" FriendlyName="WildCard File Path Rule Type" FilePath="*\psexecsvc*.exe" />
     <Deny ID="ID_DENY_A_FA1836F5C9C3F32B5D6E2996AFB9BB6A" FriendlyName="WildCard File Path Rule Type" FilePath="*\mionet*.exe" />
@@ -479,9 +447,6 @@
     <Deny ID="ID_DENY_A_6D78A2B7F3B511616F00CC6D1160856F" FriendlyName="WildCard File Path Rule Type" FilePath="*\atera_agent*.exe" />
     <Deny ID="ID_DENY_A_4637578F5460C21BF81093398FD97E51" FriendlyName="WildCard File Path Rule Type" FilePath="*\ScreenMeetSupport*.exe" />
     <Deny ID="ID_DENY_A_DD8F1D3BDB6B06B68BDF98F49C9365F5" FriendlyName="WildCard File Path Rule Type" FilePath="*\OrayRemoteShell*.exe" />
-    <Deny ID="ID_DENY_A_FC62F796EA3E1A9B39ED0D0269CFC216" FriendlyName="WildCard File Path Rule Type" FilePath="*\ServiceProxyLocalSys*.exe" />
-    <Deny ID="ID_DENY_A_342C33EB00563E9291F2BC5E1EE738F0" FriendlyName="WildCard File Path Rule Type" FilePath="*\sysdiag*.exe" />
-    <Deny ID="ID_DENY_A_A4BDC7A23D084373EF5700AED2DFB6F9" FriendlyName="WildCard File Path Rule Type" FilePath="*\wmc_deployer*.exe" />
     <Deny ID="ID_DENY_A_57B47EB185E59B1D55E578F473323DFA" FriendlyName="WildCard File Path Rule Type" FilePath="*\helpuserver*.exe" />
     <Deny ID="ID_DENY_A_1D990F85CA82D3C1F32D7D5FC017F8E6" FriendlyName="WildCard File Path Rule Type" FilePath="*\puttytray*.exe" />
     <Deny ID="ID_DENY_A_21479E5815DEC1F1EA00FABCF1042DE5" FriendlyName="WildCard File Path Rule Type" FilePath="*\ldinv32*.exe" />
@@ -499,7 +464,6 @@
     <Deny ID="ID_DENY_A_935DE6EE7651F5EE503A61EE63881BD6" FriendlyName="WildCard File Path Rule Type" FilePath="*\rcengmgru*.exe" />
     <Deny ID="ID_DENY_A_A84780DBD9BE3A10F51420530E6CEF66" FriendlyName="WildCard File Path Rule Type" FilePath="*\jumpdesktop*.exe" />
     <Deny ID="ID_DENY_A_12E270D09FAE92F7F59B9A8399A12A43" FriendlyName="WildCard File Path Rule Type" FilePath="*\TaniumClient*.exe" />
-    <Deny ID="ID_DENY_A_A19F13CA9268323EB557F1168E76F939" FriendlyName="WildCard File Path Rule Type" FilePath="*\routernt*.exe" />
     <Deny ID="ID_DENY_A_96F82F525C388621E36E375CAB09D6B3" FriendlyName="WildCard File Path Rule Type" FilePath="*\alpemix*.exe" />
     <Deny ID="ID_DENY_A_7B7B029937BF2D4CABCBA77E6612511B" FriendlyName="WildCard File Path Rule Type" FilePath="*\NinjaRMMAgenPatcher*.exe" />
     <Deny ID="ID_DENY_A_B91045C8E4EB1B77736A1239BFBBD3F2" FriendlyName="WildCard File Path Rule Type" FilePath="*\fleetdeck_commander_svc*.exe" />
@@ -516,7 +480,6 @@
     <Deny ID="ID_DENY_A_2FA7A4B2B6D4CE5C9EEC9836DBF38B86" FriendlyName="WildCard File Path Rule Type" FilePath="*\mikogo*.exe" />
     <Deny ID="ID_DENY_A_D3B7F41B64858C02B8F0E792675A0E6F" FriendlyName="WildCard File Path Rule Type" FilePath="*\vncserverui*.exe" />
     <Deny ID="ID_DENY_A_628A9CAE81E31CAA321ACF31298F5626" FriendlyName="WildCard File Path Rule Type" FilePath="*\ISLLightClient*.exe" />
-    <Deny ID="ID_DENY_A_9BBC29724FA5834F9BBECD3A11A29231" FriendlyName="WildCard File Path Rule Type" FilePath="*\konea*.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D2677E9A2FB053BB53941AF" FriendlyName="WildCard File Path Rule Type" FilePath="*\era.exe" />
     <Deny ID="ID_DENY_A_1F9EDD78EE242F6DC4BB5DE137B5F012" FriendlyName="WildCard File Path Rule Type" FilePath="*\pdqinventoryconsole*.exe" />
     <Deny ID="ID_DENY_A_4705EE24F3D19F6B206F09073AB705AF" FriendlyName="WildCard File Path Rule Type" FilePath="*\kausrtsk*.exe" />
@@ -533,11 +496,9 @@
     <Deny ID="ID_DENY_A_3764F4BCFDA755AEFD23607B72AE243E" FriendlyName="WildCard File Path Rule Type" FilePath="*\quickassist*.exe" />
     <Deny ID="ID_DENY_A_2C75C9ED5DD1861C92C71BCA0AED0221" FriendlyName="WildCard File Path Rule Type" FilePath="*\radmin*.exe" />
     <Deny ID="ID_DENY_A_1CAEBEF3B28BD9F4A6F5D9D533324B29" FriendlyName="WildCard File Path Rule Type" FilePath="*\ihcserver*.exe" />
-    <Deny ID="ID_DENY_A_088F0308B4978D5F0708D61572228FAC" FriendlyName="WildCard File Path Rule Type" FilePath="*\rcmgrsvc*.exe" />
     <Deny ID="ID_DENY_A_78D818D204A4F389EE9883A69829FEF1" FriendlyName="WildCard File Path Rule Type" FilePath="*\Cloud.Backup.RM.Service*.exe" />
     <Deny ID="ID_DENY_A_3523BC835A9E0C25225BBBFE4F4BBB8D" FriendlyName="WildCard File Path Rule Type" FilePath="*\Kabuto.Service.Runner*.exe" />
     <Deny ID="ID_DENY_A_E8725FDE3CAB366EE38088507592FE4A" FriendlyName="WildCard File Path Rule Type" FilePath="*\basupsrvcupdater*.exe" />
-    <Deny ID="ID_DENY_A_01A11AD07D26769EAC5459F1D6DBA36F" FriendlyName="WildCard File Path Rule Type" FilePath="*\wmc.exe" />
     <Deny ID="ID_DENY_A_76649DA9458CD244555DEDD8EEE47435" FriendlyName="WildCard File Path Rule Type" FilePath="*\qqpcmgr*.exe" />
     <Deny ID="ID_DENY_A_CFBCA873D4A378A0C56310F03D038EDB" FriendlyName="WildCard File Path Rule Type" FilePath="*\remoting_assistance_host*.exe" />
     <Deny ID="ID_DENY_A_24DECCF0AB21963731F2F479D2F40314" FriendlyName="WildCard File Path Rule Type" FilePath="*\romviewer*.exe" />
@@ -545,7 +506,6 @@
     <Deny ID="ID_DENY_A_0A12A5FE4065D94662B91D41EF90E3A4" FriendlyName="WildCard File Path Rule Type" FilePath="*\ERAAgent*.exe" />
     <Deny ID="ID_DENY_A_75645049AC2202B04B956E61DD0D94A4" FriendlyName="WildCard File Path Rule Type" FilePath="*\rustdesk*.exe" />
     <Deny ID="ID_DENY_A_8BE3C8B385B322BBE335A1CC69CBF73A" FriendlyName="WildCard File Path Rule Type" FilePath="*\seetrolmyservice*.exe" />
-    <Deny ID="ID_DENY_A_3F47A13897065D05A5863AB7328B8EDE" FriendlyName="WildCard File Path Rule Type" FilePath="*\RDConsole*.exe" />
     <Deny ID="ID_DENY_A_CF6B992FF61904046CAF497BFEAD2831" FriendlyName="WildCard File Path Rule Type" FilePath="*\WinVNCStub*.exe" />
     <Deny ID="ID_DENY_A_97AB7DAD804C48F748438FCECD2545B3" FriendlyName="WildCard File Path Rule Type" FilePath="*\client32*.exe" />
     <Deny ID="ID_DENY_A_CFCF71232DDDC663562F0EA04C482FE7" FriendlyName="WildCard File Path Rule Type" FilePath="*\turbomeetingstarter*.exe" />
@@ -558,7 +518,6 @@
     <Deny ID="ID_DENY_A_61623C6B2388E40D11AD6BC991A300F1" FriendlyName="WildCard File Path Rule Type" FilePath="*\mikogolauncher*.exe" />
     <Deny ID="ID_DENY_A_A55B78986C58CD27DE6DB2964EA0040E" FriendlyName="WildCard File Path Rule Type" FilePath="*\remcomsvc*.exe" />
     <Deny ID="ID_DENY_A_EC2FE5D7023A052AA101957477192179" FriendlyName="WildCard File Path Rule Type" FilePath="*\pocketcontroller*.exe" />
-    <Deny ID="ID_DENY_A_7C8AAEB1EADEB9CCFB161D3CFDF75740" FriendlyName="WildCard File Path Rule Type" FilePath="*\mwcliun*.exe" />
     <Deny ID="ID_DENY_A_B63BA84B08B1F5B4675A762A004C13CE" FriendlyName="WildCard File Path Rule Type" FilePath="*\bomgar-pac*.exe" />
     <Deny ID="ID_DENY_A_DA4FF5602EE734672179A1EFB230E5A4" FriendlyName="WildCard File Path Rule Type" FilePath="*\tdp2tcp*.exe" />
     <Deny ID="ID_DENY_A_03A9E582E59555F22CDBDC77341C0E49" FriendlyName="WildCard File Path Rule Type" FilePath="*\Remote Desktop*.exe" />
@@ -569,9 +528,7 @@
     <Deny ID="ID_DENY_A_3E087B0235C52199915411922D94929C" FriendlyName="WildCard File Path Rule Type" FilePath="*\rcstartsupport*.exe" />
     <Deny ID="ID_DENY_A_EA39FA638D1D9AB80EC0919C657749B3" FriendlyName="WildCard File Path Rule Type" FilePath="*\ItsmRsp*.exe" />
     <Deny ID="ID_DENY_A_13494E4C5E7A8A77CDE08CC5FB64AD8B" FriendlyName="WildCard File Path Rule Type" FilePath="*\apc_host*.exe" />
-    <Deny ID="ID_DENY_A_44658F8BD1D1BA303E9115435D4358B9" FriendlyName="WildCard File Path Rule Type" FilePath="*\remoteconsole*.exe" />
     <Deny ID="ID_DENY_A_E59FCC0788DA0C83441A91B5D9A135E3" FriendlyName="WildCard File Path Rule Type" FilePath="*\remote.it*.exe" />
-    <Deny ID="ID_DENY_A_7B5F435DC71BC7B170CE00C39602C3CD" FriendlyName="WildCard File Path Rule Type" FilePath="*\ptdskclient*.exe" />
     <Deny ID="ID_DENY_A_736A65A63CA0D1270371A99E367445EF" FriendlyName="WildCard File Path Rule Type" FilePath="*\AeroAdmin*.exe" />
     <Deny ID="ID_DENY_A_35FF667DD42ACE4BEDBF7DB3C61A13D9" FriendlyName="WildCard File Path Rule Type" FilePath="*\nhostsvc*.exe" />
     <Deny ID="ID_DENY_A_48F63D24ADB8BD1B60F46C9488C40349" FriendlyName="WildCard File Path Rule Type" FilePath="*\rfusclient*.exe" />
@@ -580,10 +537,8 @@
     <Deny ID="ID_DENY_A_0C54950BA60542AAB2B1D5CF09EE911F" FriendlyName="WildCard File Path Rule Type" FilePath="*\PCMonitorManager*.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D26708A969118F686B0C17D" FriendlyName="WildCard File Path Rule Type" FilePath="*\dd.exe" />
     <Deny ID="ID_DENY_A_F7DB3621D71C22CE8A1AA308FE634235" FriendlyName="WildCard File Path Rule Type" FilePath="*\jumpdesktopupdater*.exe" />
-    <Deny ID="ID_DENY_A_01A11AD07D267931A40A5C49392ECD3C" FriendlyName="WildCard File Path Rule Type" FilePath="*\aadg.exe" />
     <Deny ID="ID_DENY_A_01A11AD07D2678488D35C982BE24CBFE" FriendlyName="WildCard File Path Rule Type" FilePath="*\remotedesktop.exe" />
     <Deny ID="ID_DENY_A_6C3831ADC6F504E9F7436BFA729BBB5C" FriendlyName="WildCard File Path Rule Type" FilePath="*\Kabuto.App.Runner*.exe" />
-    <Deny ID="ID_DENY_A_46762245C017EECDC19B87F0417CFC9C" FriendlyName="WildCard File Path Rule Type" FilePath="*\strwinclt*.exe" />
     <Deny ID="ID_DENY_A_1C3C347577C1BF98B9DEA573C6B730C2" FriendlyName="WildCard File Path Rule Type" FilePath="*\cteshostsvc*.exe" />
     <Deny ID="ID_DENY_A_CBCF2FC9459B350B880A681E6E29301E" FriendlyName="WildCard File Path Rule Type" FilePath="*\pdqinventoryscanner*.exe" />
     <Deny ID="ID_DENY_A_770DB864325E6853C06838F6311DAE2D" FriendlyName="WildCard File Path Rule Type" FilePath="*\DameWare Remote Support*.exe" />
@@ -591,10 +546,8 @@
     <Deny ID="ID_DENY_A_ED1758A6DE956C111155E92B8EC30545" FriendlyName="WildCard File Path Rule Type" FilePath="*\pcicfgui*.exe" />
     <Deny ID="ID_DENY_A_FC4E50EA81B1B0A4D063371B70C50E89" FriendlyName="WildCard File Path Rule Type" FilePath="*\lttray*.exe" />
     <Deny ID="ID_DENY_A_25F693FAB697408FD060AC0F0D964FB5" FriendlyName="WildCard File Path Rule Type" FilePath="*\ezhelpclient*.exe" />
-    <Deny ID="ID_DENY_A_7B6006D427A8877FE9EED76AE933552D" FriendlyName="WildCard File Path Rule Type" FilePath="*\remote_host*.exe" />
     <Deny ID="ID_DENY_A_040E38ED7524986995CE3CC0BBB1C0B1" FriendlyName="WildCard File Path Rule Type" FilePath="*\ManageEngine_Remote_Access_Plus*.exe" />
     <Deny ID="ID_DENY_A_EA968EEE8392ABA683DDD80CA7F7FE70" FriendlyName="WildCard File Path Rule Type" FilePath="*\GotoHTTP_x64*.exe" />
-    <Deny ID="ID_DENY_A_0C83596AAA0AEC3D9E4506A965F9CECB" FriendlyName="WildCard File Path Rule Type" FilePath="*\ArcUI*.exe" />
     <Deny ID="ID_DENY_A_DC314AF0A1C3728DD28FD4D4398DA831" FriendlyName="WildCard File Path Rule Type" FilePath="*\winwvc*.exe" />
     <Deny ID="ID_DENY_A_1C5E97D49B7D1525C28744598976DF4C" FriendlyName="WildCard File Path Rule Type" FilePath="*\fleetdeck_installer*.exe" />
     <Deny ID="ID_DENY_A_9BB475C5EF2A7B4193A1514CD30F8EDB" FriendlyName="WildCard File Path Rule Type" FilePath="*\Domotz Pro Desktop App*.exe" />
@@ -634,8 +587,6 @@
     <Deny ID="ID_DENY_A_AA4792143A7C933720A1C650E2D15A77" FriendlyName="WildCard File Path Rule Type" FilePath="*\ConnectShellSetup*.exe" />
     <Deny ID="ID_DENY_A_B8A8BB5015873D1BF5947B845CEC923E" FriendlyName="WildCard File Path Rule Type" FilePath="*\allocentra-agent*.exe" />
     <Deny ID="ID_DENY_A_E840AA3B20AB481EF360D833ABAA4452" FriendlyName="WildCard File Path Rule Type" FilePath="*\aspia_client*.exe" />
-    <Deny ID="ID_DENY_A_CE0879017C1CD8CB01BC920AB09B1ED1" FriendlyName="WildCard File Path Rule Type" FilePath="*\AgentPackageNetworkDiscovery*.exe" />
-    <Deny ID="ID_DENY_A_63990653CB278A8C55F8B0776B05B4A6" FriendlyName="WildCard File Path Rule Type" FilePath="*\AgentPackageTaskScheduler*.exe" />
     <Deny ID="ID_DENY_A_54D799D32BA64879D2571DD0B377E052" FriendlyName="WildCard File Path Rule Type" FilePath="*\AlphaAgent*.exe" />
     <Deny ID="ID_DENY_A_6A6913B1DCA5AC7611DD9937BD1D5D39" FriendlyName="WildCard File Path Rule Type" FilePath="*\aweray_remote*.exe" />
     <Deny ID="ID_DENY_A_0E4FD755541EF8FEA9EFFD214EC9A627" FriendlyName="WildCard File Path Rule Type" FilePath="*\beacon-agent*.exe" />
@@ -755,8 +706,6 @@
     <Deny ID="ID_DENY_A_4A316F942B198DA6354367C4AA1DB2C1" FriendlyName="WildCard File Path Rule Type" FilePath="*\KaUpdHlp*.exe" />
     <Deny ID="ID_DENY_A_B9A9B2EBBD16B3CC13173D130E7B0B48" FriendlyName="WildCard File Path Rule Type" FilePath="*\komari*.exe" />
     <Deny ID="ID_DENY_A_9FDA659062C8EC516182BD1047319155" FriendlyName="WildCard File Path Rule Type" FilePath="*\komari-agent*.exe" />
-    <Deny ID="ID_DENY_A_C70C41374E6733DD7D64107036002B09" FriendlyName="WildCard File Path Rule Type" FilePath="*\softmon*.exe" />
-    <Deny ID="ID_DENY_A_DCB39BB3C19C6387D4295850FD318C43" FriendlyName="WildCard File Path Rule Type" FilePath="*\tmcsvc*.exe" />
     <Deny ID="ID_DENY_A_0D6324D78EBD8C18EDA27CAAB2995580" FriendlyName="WildCard File Path Rule Type" FilePath="*\LavawallWin*.exe" />
     <Deny ID="ID_DENY_A_7111B33CF54ADEBF0A5C0451AEB9D3AA" FriendlyName="WildCard File Path Rule Type" FilePath="*\LightRmmAgentService*.exe" />
     <Deny ID="ID_DENY_A_72CC3E97B216D8D913E6180861BEB10E" FriendlyName="WildCard File Path Rule Type" FilePath="*\lmiguardiansvc*.exe" />
@@ -781,7 +730,6 @@
     <Deny ID="ID_DENY_A_EB00799EE7DE71AA4633F2CC5A2F62F4" FriendlyName="WildCard File Path Rule Type" FilePath="*\NetLock_RMM_User_UAC*.exe" />
     <Deny ID="ID_DENY_A_5A68A57D4E5541D7C43D49EB317F8BED" FriendlyName="WildCard File Path Rule Type" FilePath="*\NetMaster_Client*.exe" />
     <Deny ID="ID_DENY_A_5608C1F346DC9C26438B5B86A66F0816" FriendlyName="WildCard File Path Rule Type" FilePath="*\Connect.Backdrop.cloud*.exe" />
-    <Deny ID="ID_DENY_A_A89B348905951D909D376E07C262163D" FriendlyName="WildCard File Path Rule Type" FilePath="*\remcmdstub*.exe" />
     <Deny ID="ID_DENY_A_F9BE32EF9B3B2AAD2AD2184CDA803ECC" FriendlyName="WildCard File Path Rule Type" FilePath="*\nvConsole*.exe" />
     <Deny ID="ID_DENY_A_228ACBAD5C16E149C774192904181A53" FriendlyName="WildCard File Path Rule Type" FilePath="*\nexusrmm*.exe" />
     <Deny ID="ID_DENY_A_DDF21401F19F6E109DF24E1B8B5BEC2F" FriendlyName="WildCard File Path Rule Type" FilePath="*\nezha-agent*.exe" />
@@ -812,7 +760,6 @@
     <Deny ID="ID_DENY_A_58C81E1E9A72D23562804001B67A4E50" FriendlyName="WildCard File Path Rule Type" FilePath="*\RemSupp_Setup_x64*.exe" />
     <Deny ID="ID_DENY_A_D541BCDA5C76ED89C851A1EAE9D69E50" FriendlyName="WildCard File Path Rule Type" FilePath="*\RemSupp*.exe" />
     <Deny ID="ID_DENY_A_4F7717C6D9042E9DC8C2CD69F93FFA6B" FriendlyName="WildCard File Path Rule Type" FilePath="*\Uninstall RemSupp*.exe" />
-    <Deny ID="ID_DENY_A_3DD4D4EAF806165ADE4DA2FFCA0A6626" FriendlyName="WildCard File Path Rule Type" FilePath="*\wisshell*.exe" />
     <Deny ID="ID_DENY_A_E569521183B2E50D90D2491AB40D8848" FriendlyName="WildCard File Path Rule Type" FilePath="*\RG_Supervision*.exe" />
     <Deny ID="ID_DENY_A_8DB8A4C071ABB1C66A03EBC9995F8D19" FriendlyName="WildCard File Path Rule Type" FilePath="*\RMMmaxAgentSetup*.exe" />
     <Deny ID="ID_DENY_A_A3DAEA8F40B8E3FD37790B1B26EBA030" FriendlyName="WildCard File Path Rule Type" FilePath="*\RMMmaxAgentService*.exe" />
@@ -893,7 +840,6 @@
     <Deny ID="ID_DENY_A_267BB2C4BC9A8B08CD111492F9B20773" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\Borealis\*" />
     <Deny ID="ID_DENY_A_F92372759BEE3959B5DFCA2086D6C687" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\ControlR\*" />
     <Deny ID="ID_DENY_A_573BFD1BFB02456A075C260525687457" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\Miradore\*" />
-    <Deny ID="ID_DENY_A_DAABB136E8C4DE045EC44DE1A22F80D4" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\RMMAgent\*" />
     <Deny ID="ID_DENY_A_4B88225E12CDA63F384BC1896DE262D5" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\GxM\agent\*" />
     <Deny ID="ID_DENY_A_867A80DD61D4B08783E16C2463017AA6" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\Msp Agent\*" />
     <Deny ID="ID_DENY_A_4ECEFCB104CCF3E87B00EB0B0130E3C0" FriendlyName="WildCard Folder Path Rule Type" FilePath="*\OpsBridge\*" />
@@ -1060,14 +1006,11 @@
           <FileRuleRef RuleID="ID_DENY_A_EC5A9076C2DEF449985135D729456C9D" />
           <FileRuleRef RuleID="ID_DENY_A_92FBB81612ECD0EBDB4946DBDD02DE0A" />
           <FileRuleRef RuleID="ID_DENY_A_858F4B7D956141E3DAD5601EDA108CE7" />
-          <FileRuleRef RuleID="ID_DENY_A_48E45B0D5575B187FFF379EEE781234E" />
           <FileRuleRef RuleID="ID_DENY_A_9F25DAD59E7E1EF21DDB53E795EA0737" />
           <FileRuleRef RuleID="ID_DENY_A_E6EA933C899C4480125DFEDFB55E60E0" />
           <FileRuleRef RuleID="ID_DENY_A_4F2925044A74EA9D83E408A2F6613306" />
           <FileRuleRef RuleID="ID_DENY_A_39C60A2EAED645D4D8A8521D2A3D5A5B" />
           <FileRuleRef RuleID="ID_DENY_A_ADC981310D14BC9C92CB30390B7AE66D" />
-          <FileRuleRef RuleID="ID_DENY_A_7C68C726D9E81378EEC82FA3923E2AFE" />
-          <FileRuleRef RuleID="ID_DENY_A_0ADD956EC28D20F4C033864AA9B3DDF0" />
           <FileRuleRef RuleID="ID_DENY_A_04D4395CDB3765A1121A67240AECB7D8" />
           <FileRuleRef RuleID="ID_DENY_A_98303CA835081A77ED9109B0625771BF" />
           <FileRuleRef RuleID="ID_DENY_A_8AFE2DFF1550971FA97F0C6C30E32AFB" />
@@ -1090,7 +1033,6 @@
           <FileRuleRef RuleID="ID_DENY_A_428642FD9D187CFF0D2EE1693A5FFE8E" />
           <FileRuleRef RuleID="ID_DENY_A_B38EE0F34E517BCA6ADEB46D40CF7385" />
           <FileRuleRef RuleID="ID_DENY_A_BA3F9FDC0DAF1B70EC5F8AC59F6F2789" />
-          <FileRuleRef RuleID="ID_DENY_A_9FDBF9A1D8C38FDDD1106E87D521B178" />
           <FileRuleRef RuleID="ID_DENY_A_BAF995C98E070C1A4E4C1287B29326CE" />
           <FileRuleRef RuleID="ID_DENY_A_C9EC2498588A2AEA0355E682E98CB23A" />
           <FileRuleRef RuleID="ID_DENY_A_DE04FEBB3105905C95FE068B443FD2D7" />
@@ -1107,8 +1049,6 @@
           <FileRuleRef RuleID="ID_DENY_A_3C986A42D868C54E9DC2CE81479B72A1" />
           <FileRuleRef RuleID="ID_DENY_A_E0A1DC2020EBCCD24B60973F1B6007C1" />
           <FileRuleRef RuleID="ID_DENY_A_A09433AB88029CBE522E6FE0D93A6290" />
-          <FileRuleRef RuleID="ID_DENY_A_95FF320B36EAB134FB50237406174E0E" />
-          <FileRuleRef RuleID="ID_DENY_A_BF094E8FBF909A65EF072B592A52DE91" />
           <FileRuleRef RuleID="ID_DENY_A_982358EEFA446D2114B20C9C9299274D" />
           <FileRuleRef RuleID="ID_DENY_A_36DC1FC3E1CB0A58E33ECC7784CB21B0" />
           <FileRuleRef RuleID="ID_DENY_A_45E610E81A48AD289E0FAE03B9A9560F" />
@@ -1137,10 +1077,8 @@
           <FileRuleRef RuleID="ID_DENY_A_454A632D3CBCBA25DC7BD38C909C948F" />
           <FileRuleRef RuleID="ID_DENY_A_FF4A11B45A6920838AF714CBA7D93F31" />
           <FileRuleRef RuleID="ID_DENY_A_BDEB8448EB71025C94E35C609CD78169" />
-          <FileRuleRef RuleID="ID_DENY_A_43E80E7A30D6A1B358F24B20467234E2" />
           <FileRuleRef RuleID="ID_DENY_A_0B08ADA986B257F53CF0DE7E2E05E014" />
           <FileRuleRef RuleID="ID_DENY_A_FE42289152BF7D0B57585847C10DFD34" />
-          <FileRuleRef RuleID="ID_DENY_A_01A11AD07D2673E987C337FF40347521" />
           <FileRuleRef RuleID="ID_DENY_A_607256F4D9B4BD24D44EDB8C83E8F172" />
           <FileRuleRef RuleID="ID_DENY_A_1C783EC5BFDF846E162879821134F99F" />
           <FileRuleRef RuleID="ID_DENY_A_C81C725B1C29686E24AEBF29EFB691EB" />
@@ -1149,19 +1087,14 @@
           <FileRuleRef RuleID="ID_DENY_A_30938E7FF0E0328E26DDB141C6FC60E1" />
           <FileRuleRef RuleID="ID_DENY_A_1B6DC4EE7A85996C2C8B8BDEAA07429E" />
           <FileRuleRef RuleID="ID_DENY_A_AE1B469E604F442EBE048C5B2EF1F0E6" />
-          <FileRuleRef RuleID="ID_DENY_A_00FB690B772997F00E341D126A6CDD45" />
           <FileRuleRef RuleID="ID_DENY_A_5701C1B31DAEA65A69CFBC12BA9B1BD3" />
-          <FileRuleRef RuleID="ID_DENY_A_612B7D786F243350075DB4D02366CA92" />
           <FileRuleRef RuleID="ID_DENY_A_82F3B124B4990767EC158807A3527AAE" />
-          <FileRuleRef RuleID="ID_DENY_A_79EDB350C32C6EEE44EADFD759F55137" />
-          <FileRuleRef RuleID="ID_DENY_A_87D7B4B23A72FA371673A6C7F47CE646" />
           <FileRuleRef RuleID="ID_DENY_A_3C6C274A6388DFE9F28DE92D32D94D9A" />
           <FileRuleRef RuleID="ID_DENY_A_7C1F762E0B51E08502BD4AE48AAEBAF2" />
           <FileRuleRef RuleID="ID_DENY_A_23CE8291101E7FD0488D58F935A1CCBD" />
           <FileRuleRef RuleID="ID_DENY_A_6F8368D5AFF895708091340106C7D3CC" />
           <FileRuleRef RuleID="ID_DENY_A_FBD1A9180EC59E24058309541673360A" />
           <FileRuleRef RuleID="ID_DENY_A_7BB5ECB7009A0C7E3A48C78A34E8CDC9" />
-          <FileRuleRef RuleID="ID_DENY_A_B8EC69100AB45269FB966517F5D7C79A" />
           <FileRuleRef RuleID="ID_DENY_A_3BED00F6C9A449093FFAE5D9CA4F88D4" />
           <FileRuleRef RuleID="ID_DENY_A_C5282E0864ECE0AA3E4C3BBA0B709CD6" />
           <FileRuleRef RuleID="ID_DENY_A_84F34557433498C40E7B9BF7E7F05D03" />
@@ -1169,12 +1102,9 @@
           <FileRuleRef RuleID="ID_DENY_A_203D7EDC4390AEA1A36554F584D688FD" />
           <FileRuleRef RuleID="ID_DENY_A_CD6D3DEBA675B8E9AB89B7A144C0522B" />
           <FileRuleRef RuleID="ID_DENY_A_F8B23090CC96C00B0EF9034072388165" />
-          <FileRuleRef RuleID="ID_DENY_A_D257278CB6A6C35EB38F8041E922A8F3" />
           <FileRuleRef RuleID="ID_DENY_A_7CC614C5E5859E712BEC4B48B051B4D3" />
           <FileRuleRef RuleID="ID_DENY_A_76C338CE92FE3A5153030BB690C9CC84" />
-          <FileRuleRef RuleID="ID_DENY_A_8E29756561A1A94199BE51763B98A027" />
           <FileRuleRef RuleID="ID_DENY_A_3C766029B54219C1A2BE23D028E362B7" />
-          <FileRuleRef RuleID="ID_DENY_A_3B19B5140589808FE969CC85C3EA47DD" />
           <FileRuleRef RuleID="ID_DENY_A_080EB06B0203C3F9C07FCD5FCD940918" />
           <FileRuleRef RuleID="ID_DENY_A_798050AA39F58191C653B04E6F3A6525" />
           <FileRuleRef RuleID="ID_DENY_A_4C64DFB41AB996197A5F21D5A9DC620E" />
@@ -1198,25 +1128,19 @@
           <FileRuleRef RuleID="ID_DENY_A_C37BD19CE7C5295E0860AA0B84DD5AE9" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D26750E8E13AF4DF2A508FE" />
           <FileRuleRef RuleID="ID_DENY_A_30145FC6982FFBFCE2E6EC0431FEDE57" />
-          <FileRuleRef RuleID="ID_DENY_A_56D95B1CA7F1522990FF379F3848AD5F" />
           <FileRuleRef RuleID="ID_DENY_A_55CF138A2561FD3CD5DED58DCB3AD705" />
           <FileRuleRef RuleID="ID_DENY_A_B27725F2377DA63D98AAF217D0D444C7" />
           <FileRuleRef RuleID="ID_DENY_A_9232DA2B7093D5FCFDC44ED20F5383B0" />
           <FileRuleRef RuleID="ID_DENY_A_E688D42B35FADD6191F6B189498A2886" />
-          <FileRuleRef RuleID="ID_DENY_A_F37E1C1014F60AAC853FCB6D0DA5DDB2" />
-          <FileRuleRef RuleID="ID_DENY_A_9D610C012184A85D39D10929F97B2702" />
           <FileRuleRef RuleID="ID_DENY_A_66382D149DFB2B4424444CCE571B6CAE" />
           <FileRuleRef RuleID="ID_DENY_A_6AF21A800AF4AA4CB974640D0DE84F72" />
           <FileRuleRef RuleID="ID_DENY_A_18FAD58ADF51D9EBC6FFB66A1E862FCA" />
-          <FileRuleRef RuleID="ID_DENY_A_472B759D757ABFF6E1C741C9D75D5841" />
           <FileRuleRef RuleID="ID_DENY_A_69A72F2D83DCBB09B96B1ADCB4DF1144" />
-          <FileRuleRef RuleID="ID_DENY_A_54CE41D7A671095A350B2A76F732C8FC" />
           <FileRuleRef RuleID="ID_DENY_A_EADDF9347A8A2BE38C2530E42C21EDDB" />
           <FileRuleRef RuleID="ID_DENY_A_03C14A36C1877EC4A1BAA56DDAB92235" />
           <FileRuleRef RuleID="ID_DENY_A_F2B2C171D3D4655F4926830A1FEEC262" />
           <FileRuleRef RuleID="ID_DENY_A_D58D6852CDA7D158082EE0CC9E598897" />
           <FileRuleRef RuleID="ID_DENY_A_E4EFFA7CEA9565AFB708DB08AEA79BC6" />
-          <FileRuleRef RuleID="ID_DENY_A_7EF15E0440A9D13B382088F9E02CEA8A" />
           <FileRuleRef RuleID="ID_DENY_A_C743C53D6610833E863D2CC3D6ADD294" />
           <FileRuleRef RuleID="ID_DENY_A_81534FA6808D98A234388573E5B6B87F" />
           <FileRuleRef RuleID="ID_DENY_A_C8F6CAA99B928449642B19111AA6A773" />
@@ -1237,11 +1161,9 @@
           <FileRuleRef RuleID="ID_DENY_A_77BC2044BC162883B0C168E9FA926E3B" />
           <FileRuleRef RuleID="ID_DENY_A_DD3DF6FF64949DF184C932C5C7EDFE04" />
           <FileRuleRef RuleID="ID_DENY_A_E2AC8D1BB892E928D7EA9C095F41EC3F" />
-          <FileRuleRef RuleID="ID_DENY_A_203A5324B10CBEFCEC6931A875A4941A" />
           <FileRuleRef RuleID="ID_DENY_A_8D89755B2EC83CA65A57672A82794236" />
           <FileRuleRef RuleID="ID_DENY_A_6E1C1EC284B5957AD926DF68B18322C2" />
           <FileRuleRef RuleID="ID_DENY_A_8AF0CF3123C8314ECDFD949DB99C7570" />
-          <FileRuleRef RuleID="ID_DENY_A_055ABA3035CDC10F83BEF6957ACAA66C" />
           <FileRuleRef RuleID="ID_DENY_A_F88F9D575305EABBB71C61B50FEE21ED" />
           <FileRuleRef RuleID="ID_DENY_A_85A158DDB7F097C0121F7EC5DDA63C76" />
           <FileRuleRef RuleID="ID_DENY_A_51FDB41EED765ADF56DDE53614DDF89F" />
@@ -1251,7 +1173,6 @@
           <FileRuleRef RuleID="ID_DENY_A_8B136E7F05E19FC2658642363F3B2A9F" />
           <FileRuleRef RuleID="ID_DENY_A_6513A41029F1E5916333E614F436DB58" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D267393950AAD3DB09AA82F" />
-          <FileRuleRef RuleID="ID_DENY_A_263F2F6C15E4966B028787D8C44042BD" />
           <FileRuleRef RuleID="ID_DENY_A_F4564083CF4D47AA84B6C0778873FA9E" />
           <FileRuleRef RuleID="ID_DENY_A_D6829E7B1939DCE6E9DD43F78EB2D078" />
           <FileRuleRef RuleID="ID_DENY_A_31BE0B417F92A273B830421BEED2B4E1" />
@@ -1259,7 +1180,6 @@
           <FileRuleRef RuleID="ID_DENY_A_E2B94307732A160DEFEE0ED560ED8FD0" />
           <FileRuleRef RuleID="ID_DENY_A_98BF59435B96DC3FD5B2FFBF87E8A286" />
           <FileRuleRef RuleID="ID_DENY_A_2B24DBEA19063CB1CE12768C6DB11600" />
-          <FileRuleRef RuleID="ID_DENY_A_2587794D15C5ED470504F17C114D155D" />
           <FileRuleRef RuleID="ID_DENY_A_36FC152C123EC61948EA1E2C5E450AB1" />
           <FileRuleRef RuleID="ID_DENY_A_9A838CDAD0D62AF1DE7E6BB60070F4DB" />
           <FileRuleRef RuleID="ID_DENY_A_55BA8816C5340C8564682C9A5D735D57" />
@@ -1293,8 +1213,6 @@
           <FileRuleRef RuleID="ID_DENY_A_170E12BA5BA366144A599893346516CF" />
           <FileRuleRef RuleID="ID_DENY_A_A545C921B80F1C402B34BF597168545D" />
           <FileRuleRef RuleID="ID_DENY_A_4802DFC4D1D79BE35466AE95C5F2865E" />
-          <FileRuleRef RuleID="ID_DENY_A_9B1ECAE1DD0543472FF07D3C298E7455" />
-          <FileRuleRef RuleID="ID_DENY_A_49FF068FDB7948A07EC9899573D98169" />
           <FileRuleRef RuleID="ID_DENY_A_693529DEFF1828E0CE86735146AD0BFD" />
           <FileRuleRef RuleID="ID_DENY_A_E7010AB03752423E1D97A1B91FB67219" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D26761698A854731D79699E" />
@@ -1315,7 +1233,6 @@
           <FileRuleRef RuleID="ID_DENY_A_09F67627D0C79F0A72A9BB3FC5C9BE28" />
           <FileRuleRef RuleID="ID_DENY_A_11ADD9AECC84D2FD78B8FF7E1F7A98BF" />
           <FileRuleRef RuleID="ID_DENY_A_7E331D949486D1B79CF86D7D5CEFEC04" />
-          <FileRuleRef RuleID="ID_DENY_A_E9245D6EC27E9FA02168545DCF23DAD6" />
           <FileRuleRef RuleID="ID_DENY_A_5FC8FAD6F93E6A97155D661E87CB1584" />
           <FileRuleRef RuleID="ID_DENY_A_D53531A264E06E2A422E3F7661F30E74" />
           <FileRuleRef RuleID="ID_DENY_A_9BE36CBE3D967BF6C18A72542921B2EE" />
@@ -1327,7 +1244,6 @@
           <FileRuleRef RuleID="ID_DENY_A_557EB45E7DA8208E78BB4DA1D646D2B6" />
           <FileRuleRef RuleID="ID_DENY_A_534CA872BD54973D0D60B7CDECCF31D2" />
           <FileRuleRef RuleID="ID_DENY_A_D48AE99FCC49017DDCDECAA9BF4DCA53" />
-          <FileRuleRef RuleID="ID_DENY_A_952B1A81D7103FFE52847D497E6EC552" />
           <FileRuleRef RuleID="ID_DENY_A_070BDF623ED2DBEBABBE4178B7A70D38" />
           <FileRuleRef RuleID="ID_DENY_A_71577296F0C88EE071BD78F0F3CD0B1C" />
           <FileRuleRef RuleID="ID_DENY_A_068BFBA016F3D875697FDDB4BD81B993" />
@@ -1346,13 +1262,11 @@
           <FileRuleRef RuleID="ID_DENY_A_C93BDD44A3223C40AC7FE1F22512903E" />
           <FileRuleRef RuleID="ID_DENY_A_0F7105CC4314C5E33B010354A4FC8B26" />
           <FileRuleRef RuleID="ID_DENY_A_2079D3CF7A3A37743CE757BA95AA5C27" />
-          <FileRuleRef RuleID="ID_DENY_A_5BAD3CF361B9C5C417D22645E587DD5B" />
           <FileRuleRef RuleID="ID_DENY_A_05A9394FF8D1899FCC1052CB1938905D" />
           <FileRuleRef RuleID="ID_DENY_A_42E427E03CD8E586D71CECBFFF26D67A" />
           <FileRuleRef RuleID="ID_DENY_A_197167A60E75DED43FB88A6DB6102984" />
           <FileRuleRef RuleID="ID_DENY_A_27C5D3CE1ED67F1584E18F3355C0F86C" />
           <FileRuleRef RuleID="ID_DENY_A_24028CD85CEA411C76F60D87238EC14B" />
-          <FileRuleRef RuleID="ID_DENY_A_9509CDCEB923CB482B593D76FBAAC6A1" />
           <FileRuleRef RuleID="ID_DENY_A_61147DCC464430936F25C9C114D9A6D9" />
           <FileRuleRef RuleID="ID_DENY_A_11FA6959D7F56C753589E528C484545A" />
           <FileRuleRef RuleID="ID_DENY_A_FA1836F5C9C3F32B5D6E2996AFB9BB6A" />
@@ -1377,9 +1291,6 @@
           <FileRuleRef RuleID="ID_DENY_A_6D78A2B7F3B511616F00CC6D1160856F" />
           <FileRuleRef RuleID="ID_DENY_A_4637578F5460C21BF81093398FD97E51" />
           <FileRuleRef RuleID="ID_DENY_A_DD8F1D3BDB6B06B68BDF98F49C9365F5" />
-          <FileRuleRef RuleID="ID_DENY_A_FC62F796EA3E1A9B39ED0D0269CFC216" />
-          <FileRuleRef RuleID="ID_DENY_A_342C33EB00563E9291F2BC5E1EE738F0" />
-          <FileRuleRef RuleID="ID_DENY_A_A4BDC7A23D084373EF5700AED2DFB6F9" />
           <FileRuleRef RuleID="ID_DENY_A_57B47EB185E59B1D55E578F473323DFA" />
           <FileRuleRef RuleID="ID_DENY_A_1D990F85CA82D3C1F32D7D5FC017F8E6" />
           <FileRuleRef RuleID="ID_DENY_A_21479E5815DEC1F1EA00FABCF1042DE5" />
@@ -1397,7 +1308,6 @@
           <FileRuleRef RuleID="ID_DENY_A_935DE6EE7651F5EE503A61EE63881BD6" />
           <FileRuleRef RuleID="ID_DENY_A_A84780DBD9BE3A10F51420530E6CEF66" />
           <FileRuleRef RuleID="ID_DENY_A_12E270D09FAE92F7F59B9A8399A12A43" />
-          <FileRuleRef RuleID="ID_DENY_A_A19F13CA9268323EB557F1168E76F939" />
           <FileRuleRef RuleID="ID_DENY_A_96F82F525C388621E36E375CAB09D6B3" />
           <FileRuleRef RuleID="ID_DENY_A_7B7B029937BF2D4CABCBA77E6612511B" />
           <FileRuleRef RuleID="ID_DENY_A_B91045C8E4EB1B77736A1239BFBBD3F2" />
@@ -1414,7 +1324,6 @@
           <FileRuleRef RuleID="ID_DENY_A_2FA7A4B2B6D4CE5C9EEC9836DBF38B86" />
           <FileRuleRef RuleID="ID_DENY_A_D3B7F41B64858C02B8F0E792675A0E6F" />
           <FileRuleRef RuleID="ID_DENY_A_628A9CAE81E31CAA321ACF31298F5626" />
-          <FileRuleRef RuleID="ID_DENY_A_9BBC29724FA5834F9BBECD3A11A29231" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D2677E9A2FB053BB53941AF" />
           <FileRuleRef RuleID="ID_DENY_A_1F9EDD78EE242F6DC4BB5DE137B5F012" />
           <FileRuleRef RuleID="ID_DENY_A_4705EE24F3D19F6B206F09073AB705AF" />
@@ -1431,11 +1340,9 @@
           <FileRuleRef RuleID="ID_DENY_A_3764F4BCFDA755AEFD23607B72AE243E" />
           <FileRuleRef RuleID="ID_DENY_A_2C75C9ED5DD1861C92C71BCA0AED0221" />
           <FileRuleRef RuleID="ID_DENY_A_1CAEBEF3B28BD9F4A6F5D9D533324B29" />
-          <FileRuleRef RuleID="ID_DENY_A_088F0308B4978D5F0708D61572228FAC" />
           <FileRuleRef RuleID="ID_DENY_A_78D818D204A4F389EE9883A69829FEF1" />
           <FileRuleRef RuleID="ID_DENY_A_3523BC835A9E0C25225BBBFE4F4BBB8D" />
           <FileRuleRef RuleID="ID_DENY_A_E8725FDE3CAB366EE38088507592FE4A" />
-          <FileRuleRef RuleID="ID_DENY_A_01A11AD07D26769EAC5459F1D6DBA36F" />
           <FileRuleRef RuleID="ID_DENY_A_76649DA9458CD244555DEDD8EEE47435" />
           <FileRuleRef RuleID="ID_DENY_A_CFBCA873D4A378A0C56310F03D038EDB" />
           <FileRuleRef RuleID="ID_DENY_A_24DECCF0AB21963731F2F479D2F40314" />
@@ -1443,7 +1350,6 @@
           <FileRuleRef RuleID="ID_DENY_A_0A12A5FE4065D94662B91D41EF90E3A4" />
           <FileRuleRef RuleID="ID_DENY_A_75645049AC2202B04B956E61DD0D94A4" />
           <FileRuleRef RuleID="ID_DENY_A_8BE3C8B385B322BBE335A1CC69CBF73A" />
-          <FileRuleRef RuleID="ID_DENY_A_3F47A13897065D05A5863AB7328B8EDE" />
           <FileRuleRef RuleID="ID_DENY_A_CF6B992FF61904046CAF497BFEAD2831" />
           <FileRuleRef RuleID="ID_DENY_A_97AB7DAD804C48F748438FCECD2545B3" />
           <FileRuleRef RuleID="ID_DENY_A_CFCF71232DDDC663562F0EA04C482FE7" />
@@ -1456,7 +1362,6 @@
           <FileRuleRef RuleID="ID_DENY_A_61623C6B2388E40D11AD6BC991A300F1" />
           <FileRuleRef RuleID="ID_DENY_A_A55B78986C58CD27DE6DB2964EA0040E" />
           <FileRuleRef RuleID="ID_DENY_A_EC2FE5D7023A052AA101957477192179" />
-          <FileRuleRef RuleID="ID_DENY_A_7C8AAEB1EADEB9CCFB161D3CFDF75740" />
           <FileRuleRef RuleID="ID_DENY_A_B63BA84B08B1F5B4675A762A004C13CE" />
           <FileRuleRef RuleID="ID_DENY_A_DA4FF5602EE734672179A1EFB230E5A4" />
           <FileRuleRef RuleID="ID_DENY_A_03A9E582E59555F22CDBDC77341C0E49" />
@@ -1467,9 +1372,7 @@
           <FileRuleRef RuleID="ID_DENY_A_3E087B0235C52199915411922D94929C" />
           <FileRuleRef RuleID="ID_DENY_A_EA39FA638D1D9AB80EC0919C657749B3" />
           <FileRuleRef RuleID="ID_DENY_A_13494E4C5E7A8A77CDE08CC5FB64AD8B" />
-          <FileRuleRef RuleID="ID_DENY_A_44658F8BD1D1BA303E9115435D4358B9" />
           <FileRuleRef RuleID="ID_DENY_A_E59FCC0788DA0C83441A91B5D9A135E3" />
-          <FileRuleRef RuleID="ID_DENY_A_7B5F435DC71BC7B170CE00C39602C3CD" />
           <FileRuleRef RuleID="ID_DENY_A_736A65A63CA0D1270371A99E367445EF" />
           <FileRuleRef RuleID="ID_DENY_A_35FF667DD42ACE4BEDBF7DB3C61A13D9" />
           <FileRuleRef RuleID="ID_DENY_A_48F63D24ADB8BD1B60F46C9488C40349" />
@@ -1478,10 +1381,8 @@
           <FileRuleRef RuleID="ID_DENY_A_0C54950BA60542AAB2B1D5CF09EE911F" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D26708A969118F686B0C17D" />
           <FileRuleRef RuleID="ID_DENY_A_F7DB3621D71C22CE8A1AA308FE634235" />
-          <FileRuleRef RuleID="ID_DENY_A_01A11AD07D267931A40A5C49392ECD3C" />
           <FileRuleRef RuleID="ID_DENY_A_01A11AD07D2678488D35C982BE24CBFE" />
           <FileRuleRef RuleID="ID_DENY_A_6C3831ADC6F504E9F7436BFA729BBB5C" />
-          <FileRuleRef RuleID="ID_DENY_A_46762245C017EECDC19B87F0417CFC9C" />
           <FileRuleRef RuleID="ID_DENY_A_1C3C347577C1BF98B9DEA573C6B730C2" />
           <FileRuleRef RuleID="ID_DENY_A_CBCF2FC9459B350B880A681E6E29301E" />
           <FileRuleRef RuleID="ID_DENY_A_770DB864325E6853C06838F6311DAE2D" />
@@ -1489,10 +1390,8 @@
           <FileRuleRef RuleID="ID_DENY_A_ED1758A6DE956C111155E92B8EC30545" />
           <FileRuleRef RuleID="ID_DENY_A_FC4E50EA81B1B0A4D063371B70C50E89" />
           <FileRuleRef RuleID="ID_DENY_A_25F693FAB697408FD060AC0F0D964FB5" />
-          <FileRuleRef RuleID="ID_DENY_A_7B6006D427A8877FE9EED76AE933552D" />
           <FileRuleRef RuleID="ID_DENY_A_040E38ED7524986995CE3CC0BBB1C0B1" />
           <FileRuleRef RuleID="ID_DENY_A_EA968EEE8392ABA683DDD80CA7F7FE70" />
-          <FileRuleRef RuleID="ID_DENY_A_0C83596AAA0AEC3D9E4506A965F9CECB" />
           <FileRuleRef RuleID="ID_DENY_A_DC314AF0A1C3728DD28FD4D4398DA831" />
           <FileRuleRef RuleID="ID_DENY_A_1C5E97D49B7D1525C28744598976DF4C" />
           <FileRuleRef RuleID="ID_DENY_A_9BB475C5EF2A7B4193A1514CD30F8EDB" />
@@ -1532,8 +1431,6 @@
           <FileRuleRef RuleID="ID_DENY_A_AA4792143A7C933720A1C650E2D15A77" />
           <FileRuleRef RuleID="ID_DENY_A_B8A8BB5015873D1BF5947B845CEC923E" />
           <FileRuleRef RuleID="ID_DENY_A_E840AA3B20AB481EF360D833ABAA4452" />
-          <FileRuleRef RuleID="ID_DENY_A_CE0879017C1CD8CB01BC920AB09B1ED1" />
-          <FileRuleRef RuleID="ID_DENY_A_63990653CB278A8C55F8B0776B05B4A6" />
           <FileRuleRef RuleID="ID_DENY_A_54D799D32BA64879D2571DD0B377E052" />
           <FileRuleRef RuleID="ID_DENY_A_6A6913B1DCA5AC7611DD9937BD1D5D39" />
           <FileRuleRef RuleID="ID_DENY_A_0E4FD755541EF8FEA9EFFD214EC9A627" />
@@ -1653,8 +1550,6 @@
           <FileRuleRef RuleID="ID_DENY_A_4A316F942B198DA6354367C4AA1DB2C1" />
           <FileRuleRef RuleID="ID_DENY_A_B9A9B2EBBD16B3CC13173D130E7B0B48" />
           <FileRuleRef RuleID="ID_DENY_A_9FDA659062C8EC516182BD1047319155" />
-          <FileRuleRef RuleID="ID_DENY_A_C70C41374E6733DD7D64107036002B09" />
-          <FileRuleRef RuleID="ID_DENY_A_DCB39BB3C19C6387D4295850FD318C43" />
           <FileRuleRef RuleID="ID_DENY_A_0D6324D78EBD8C18EDA27CAAB2995580" />
           <FileRuleRef RuleID="ID_DENY_A_7111B33CF54ADEBF0A5C0451AEB9D3AA" />
           <FileRuleRef RuleID="ID_DENY_A_72CC3E97B216D8D913E6180861BEB10E" />
@@ -1679,7 +1574,6 @@
           <FileRuleRef RuleID="ID_DENY_A_EB00799EE7DE71AA4633F2CC5A2F62F4" />
           <FileRuleRef RuleID="ID_DENY_A_5A68A57D4E5541D7C43D49EB317F8BED" />
           <FileRuleRef RuleID="ID_DENY_A_5608C1F346DC9C26438B5B86A66F0816" />
-          <FileRuleRef RuleID="ID_DENY_A_A89B348905951D909D376E07C262163D" />
           <FileRuleRef RuleID="ID_DENY_A_F9BE32EF9B3B2AAD2AD2184CDA803ECC" />
           <FileRuleRef RuleID="ID_DENY_A_228ACBAD5C16E149C774192904181A53" />
           <FileRuleRef RuleID="ID_DENY_A_DDF21401F19F6E109DF24E1B8B5BEC2F" />
@@ -1710,7 +1604,6 @@
           <FileRuleRef RuleID="ID_DENY_A_58C81E1E9A72D23562804001B67A4E50" />
           <FileRuleRef RuleID="ID_DENY_A_D541BCDA5C76ED89C851A1EAE9D69E50" />
           <FileRuleRef RuleID="ID_DENY_A_4F7717C6D9042E9DC8C2CD69F93FFA6B" />
-          <FileRuleRef RuleID="ID_DENY_A_3DD4D4EAF806165ADE4DA2FFCA0A6626" />
           <FileRuleRef RuleID="ID_DENY_A_E569521183B2E50D90D2491AB40D8848" />
           <FileRuleRef RuleID="ID_DENY_A_8DB8A4C071ABB1C66A03EBC9995F8D19" />
           <FileRuleRef RuleID="ID_DENY_A_A3DAEA8F40B8E3FD37790B1B26EBA030" />
@@ -1791,7 +1684,6 @@
           <FileRuleRef RuleID="ID_DENY_A_267BB2C4BC9A8B08CD111492F9B20773" />
           <FileRuleRef RuleID="ID_DENY_A_F92372759BEE3959B5DFCA2086D6C687" />
           <FileRuleRef RuleID="ID_DENY_A_573BFD1BFB02456A075C260525687457" />
-          <FileRuleRef RuleID="ID_DENY_A_DAABB136E8C4DE045EC44DE1A22F80D4" />
           <FileRuleRef RuleID="ID_DENY_A_4B88225E12CDA63F384BC1896DE262D5" />
           <FileRuleRef RuleID="ID_DENY_A_867A80DD61D4B08783E16C2463017AA6" />
           <FileRuleRef RuleID="ID_DENY_A_4ECEFCB104CCF3E87B00EB0B0130E3C0" />

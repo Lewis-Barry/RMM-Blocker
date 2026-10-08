@@ -1,6 +1,7 @@
 # RMM Block List Editor
 
-A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv4.xml`.
+A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
+(policy version `1.0.0.8`, 838 deny rules).
 Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
@@ -14,20 +15,6 @@ Unselected rules remain in place.
 No build, server-side processing, CDN or credentials are required. Relative URLs
 support both repository project sites and custom domains. `.nojekyll` enables
 plain static hosting. The provided XML is kept unchanged.
-
-## Local preview and tests
-
-Serve the directory over HTTP (opening `index.html` as a local file will not
-allow the browser to fetch the XML):
-
-```powershell
-Set-Location C:\Vibe\WDAC
-python -m http.server 8080 --bind 127.0.0.1
-```
-
-Open `http://127.0.0.1:8080/`. Open `/tests.html` on the same server for the
-browser-native regression suite. It uses the browser's real XML parser and
-serializer, with no package installation required.
 
 ## Policy behavior
 

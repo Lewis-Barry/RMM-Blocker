@@ -68,20 +68,27 @@ function verifyExport(policy, selection) {
 
 async function run() {
   try {
-    const response = await fetch("./Blocking_RMMsv4.xml");
+    const response = await fetch("./Blocking_RMMsv5.xml");
     assert(response.ok, `Source fetch failed: ${response.status}`);
     const source = await response.text();
     const policy = parsePolicy(source);
-    test("Bundled XML contains 892 deny rules and 894 references", () => {
-      assert(policy.rules.length === 892, "Deny count changed; review source and update test");
-      assert(elements(policy.document, "FileRuleRef").length === 894, "Reference count changed");
+    test("Bundled v5 XML contains 838 deny rules and 840 references", () => {
+      assert(policy.version === "1.0.0.8", "Policy version changed");
+      assert(policy.rules.length === 838, "Deny count changed; review source and update test");
+      assert(elements(policy.document, "FileRuleRef").length === 840, "Reference count changed");
     });
     test("No exclusions preserves original source exactly", () =>
       assert(exportPolicy(policy, new Set()) === source, "Source text changed"));
     test("Every deny rule is visible and assigned without ambiguous aliases", () => {
       const grouped = new Set(policy.tools.flatMap(tool => tool.rules.map(rule => rule.id)));
       assert(grouped.size === policy.rules.length, "Catalog hides deny rules");
-      assert(policy.tools.some(tool => tool.unclassified), "Unknown identities should be explicit");
+      assert(!policy.tools.some(tool => tool.unclassified), "v5 should contain no unclassified rules");
+    });
+    test("New unconfirmed identities remain visible and can be excluded", () => {
+      const unknown = parsePolicy(source.replace(policy.rules[0].path, "*\\unknown-test-tool*.exe"));
+      const tool = unknown.tools.find(tool => tool.unclassified);
+      assert(tool?.name === "Unclassified: unknown-test-tool.exe", "Unknown rule identity not explicit");
+      verifyExport(unknown, new Set([tool.name]));
     });
     test("TeamViewer selection includes all TeamViewer and TV helper executables", () => {
       const selection = new Set(["TeamViewer"]);
