@@ -1,4 +1,5 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
+import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -143,7 +144,120 @@ async function run() {
       expectError(() => parsePolicy(source.replace(second.id, first.id)), "duplicate file rule ID");
       expectError(() => parsePolicy(source.replace(/RuleID="[^"]+"/, 'RuleID="missing"')), "Unresolved file rule");
     });
-    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries tested).`;
+    const toolNames = policy.tools.map(tool => tool.name);
+    const iocs = await loadIocs(toolNames);
+    test("CSV parsing round-trips commas, escaped quotes, multiline fields, BOM and empty cells", () => {
+      const rows = [["first", "comma,value", 'quoted "text"', "line\r\nbreak", ""], ["", "plain", "", "", ""]];
+      const csv = serializeCsv(rows);
+      assert(JSON.stringify(parseCsv(`\uFEFF${csv}`)) === JSON.stringify(rows), "CSV round-trip failed");
+      assert(JSON.stringify(parseCsv(csv.trimEnd())) === JSON.stringify(rows), "CSV without final newline failed");
+    });
+    test("Malformed CSV quoting fails explicitly", () => {
+      expectError(() => parseCsv('"unclosed'), "Unterminated");
+      expectError(() => parseCsv('"closed"text'), "Invalid CSV");
+      expectError(() => parseCsv('unquoted"quote'), "Invalid CSV");
+    });
+    test("Combined sources contain 585 block IOCs: 573 domains and 12 IPs", () => {
+      assert(iocs.indicators.length === 585, "Combined indicator count changed");
+      assert(iocs.indicators.filter(row => row.type === "DomainName").length === 573, "Domain count changed");
+      assert(iocs.indicators.filter(row => row.type === "IpAddress").length === 12, "IP count changed");
+      assert(iocs.indicators.every(row => row.values[3] === "Block"), "An indicator changed action");
+    });
+    test("No IOC exclusions preserves all metadata in batches of 500 and 85", () => {
+      const result = filterIocs(iocs, new Set());
+      assert(result.removed.length === 0, "Unexpected exclusions");
+      const batches = exportIocBatches(result.retained);
+      assert(JSON.stringify(batches.map(batch => batch.count)) === "[500,85]", "Incorrect initial batches");
+      const rows = batches.flatMap(batch => {
+        const parsed = parseCsv(batch.csv);
+        assert(JSON.stringify(parsed[0]) === JSON.stringify(iocHeaders), "Defender header changed");
+        return parsed.slice(1);
+      });
+      assert(JSON.stringify(rows) === JSON.stringify(iocs.indicators.map(row => row.values)), "IOC metadata changed");
+    });
+    test("TeamViewer removes exactly four linked IOCs and retains all other indicators", () => {
+      const result = filterIocs(iocs, new Set(["TeamViewer"]));
+      assert(result.removed.length === 4 && result.retained.length === 581, "TeamViewer IOC count incorrect");
+      assert(result.removed.every(row => row.values[5] === "LOLRMM - TeamViewer"), "Unrelated IOC removed");
+      assert(!result.retained.some(row => row.values[5] === "LOLRMM - TeamViewer"), "TeamViewer IOC retained");
+    });
+    test("Ammyy selection removes its domain and all three IPs", () => {
+      const result = filterIocs(iocs, new Set(["Ammyy Admin"]));
+      assert(result.removed.length === 4, "Ammyy count incorrect");
+      assert(result.removed.filter(row => row.type === "IpAddress").length === 3, "Ammyy IPs remain");
+      assert(result.removed.filter(row => row.type === "DomainName").length === 1, "Ammyy domain remains");
+    });
+    test("Product aliases link Datto and shrink the combined dataset to one 464-row file", () => {
+      const result = filterIocs(iocs, new Set(["Datto RMM / Autotask"]));
+      assert(result.removed.length === 121, "Datto alias incomplete");
+      assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM (CentraStage)"), "Incorrect Datto mapping");
+      assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) === "[464]",
+        "Batch count not recomputed after filtering");
+    });
+    test("Shared descriptions link all owners and warn when an unselected owner is affected", () => {
+      const row = iocs.indicators.find(row => row.value === "kabuto.io");
+      assert(row.tools.includes("Kabuto") && row.tools.includes("Syncro"), "Secondary owner missed");
+      for (const name of ["Kabuto", "Syncro"]) {
+        const result = filterIocs(iocs, new Set([name]));
+        assert(result.removed.includes(row) && result.sharedRemoved.includes(row), "Shared IOC removal/warning missing");
+      }
+      const both = filterIocs(iocs, new Set(["Kabuto", "Syncro"]));
+      assert(!both.sharedRemoved.includes(row), "Warning incorrectly claims an unselected owner");
+      const nable = filterIocs(iocs, new Set(["N-able / SolarWinds"]));
+      assert(nable.sharedRemoved.some(row => row.value === "beanywhere.com"), "N-able secondary attribution missed");
+    });
+    test("Unlinked IOC-only tools remain blocked when every XML tool is excluded", () => {
+      const result = filterIocs(iocs, new Set(toolNames));
+      assert(result.retained.length === 12, "Unlinked IOC count changed");
+      const owners = new Set(result.retained.flatMap(row => row.owners.map(owner => owner.name)));
+      assert(owners.size === 7, "Unlinked identity count changed");
+      assert(result.retained.every(row => !row.tools.length && row.values[3] === "Block"), "Unlinked IOC was dropped or allowed");
+    });
+    test("XML-only selections do not remove unrelated IOCs", () => {
+      assert(filterIocs(iocs, new Set(["PsExec"])).retained.length === 585, "XML-only tool removed IOCs");
+      expectError(() => filterIocs(iocs, new Set(["Not a tool"])), "Unknown IOC tool selection");
+    });
+    test("Every XML selection removes only its linked IOC rows", () => {
+      for (const name of toolNames) {
+        const result = filterIocs(iocs, new Set([name]));
+        const expected = iocs.indicators.filter(row => row.tools.includes(name));
+        assert(JSON.stringify(result.removed) === JSON.stringify(expected), `Incorrect IOC filtering for ${name}`);
+        assert(result.retained.length + result.removed.length === iocs.indicators.length, "Indicators lost");
+      }
+    });
+    test("CSV batches enforce the exact 500-data-row boundary without loss or duplication", () => {
+      for (const count of [0, 1, 499, 500, 501, 1000, 1001]) {
+        const indicators = Array.from({ length: count }, (_, index) => ({
+          values: iocs.indicators[0].values.map((value, column) => column === 1 ? `ioc-${index}.example.invalid` : value),
+        }));
+        const batches = exportIocBatches(indicators);
+        assert(batches.length === Math.ceil(count / 500), `Wrong file count for ${count}`);
+        const exported = [];
+        for (const batch of batches) {
+          const rows = parseCsv(batch.csv);
+          assert(rows.length - 1 === batch.count && batch.count <= 500 && batch.count > 0, "Import limit exceeded");
+          assert(JSON.stringify(rows[0]) === JSON.stringify(iocHeaders), "Batch header missing");
+          exported.push(...rows.slice(1));
+        }
+        assert(JSON.stringify(exported) === JSON.stringify(indicators.map(row => row.values)), "Batch data lost or changed");
+      }
+    });
+    test("Invalid headers, duplicate indicators, non-Block actions and missing owners fail explicitly", () => {
+      const sample = iocs.indicators[0].values;
+      const source = rows => [{ name: "test.csv", text: serializeCsv(rows) }];
+      expectError(() => combineIocs(source([["wrong"], sample]), toolNames), "unexpected Defender CSV header");
+      expectError(() => combineIocs(source([iocHeaders, sample, sample]), toolNames), "duplicate indicator");
+      const allowed = [...sample];
+      allowed[3] = "Allow";
+      expectError(() => combineIocs(source([iocHeaders, allowed]), toolNames), "invalid block indicator");
+      const missing = [...sample];
+      missing[6] = "";
+      expectError(() => combineIocs(source([iocHeaders, missing]), toolNames), "missing tool attribution");
+      const shared = [...iocs.indicators.find(row => row.value === "kabuto.io").values];
+      shared[6] = shared[6].replace("Kabuto; Syncro", "Kabuto");
+      expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
+    });
+    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
   } catch (error) {

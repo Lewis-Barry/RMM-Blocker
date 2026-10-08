@@ -9,6 +9,12 @@
   <script type="module" src="./app.js"></script>
 </head>
 <body>
+  <aside class="wip-banner" role="note" aria-label="Work in progress warning">
+    <div class="container">
+      <strong>Work in progress (WIP).</strong>
+      This tool is still being developed. Review and test all generated XML policies and Defender IOC CSVs before deployment.
+    </div>
+  </aside>
   <header>
     <div class="container header-content">
       <strong>RMM Block List Editor</strong>
@@ -37,6 +43,30 @@
         This does not add an allow rule or guarantee the tool can run under other policies.
         Shared vendor folders can cover several products; review any shared-rule warning before downloading.
       </div>
+      <section class="ioc-panel" aria-label="Optional Defender IOC export">
+        <label class="ioc-toggle" for="link-iocs">
+          <input id="link-iocs" type="checkbox" autocomplete="off" aria-describedby="ioc-help ioc-status">
+          <span>Also prepare Defender IOC CSVs using these exclusions</span>
+        </label>
+        <p id="ioc-help">Optional, off by default. When enabled, the tools you exclude below are also removed from the Defender domain/IP block list. This does not create Allow indicators.</p>
+        <p id="ioc-status" role="status" aria-live="polite">OFF: XML only. No Defender IOC CSVs are prepared.</p>
+        <div id="ioc-output" hidden>
+          <p>XML and IOC CSVs are separate downloads. Download and import <strong>every CSV batch</strong> shown below. Each contains at most <strong>500 indicators</strong>, plus its header.</p>
+          <p>These CSVs do not delete previously imported IOCs. Remove those separately in Defender if needed.</p>
+          <div id="ioc-error" class="error" role="alert" hidden></div>
+          <div id="ioc-downloads" class="ioc-downloads"></div>
+          <details id="ioc-shared" hidden>
+            <summary id="ioc-shared-summary"></summary>
+            <p>These domains/IPs are shared. Excluding one linked tool removes the indicator for all listed owners, including tools you have not selected.</p>
+            <ul id="ioc-shared-list" class="rule-list"></ul>
+          </details>
+          <details id="ioc-unlinked" hidden>
+            <summary id="ioc-unlinked-summary"></summary>
+            <p>These IOC tool identities have no matching XML selection. Their indicators remain blocked in the CSV export.</p>
+            <ul id="ioc-unlinked-list"></ul>
+          </details>
+        </div>
+      </section>
       <p id="catalog-note" class="results"></p>
       <div class="toolbar">
         <div class="search-field">

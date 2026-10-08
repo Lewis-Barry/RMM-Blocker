@@ -1,9 +1,146 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
+import { loadIocs, filterIocs, exportIocBatches } from "./ioc.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
+byId("link-iocs").checked = false;
 let policy;
 let tools = [];
+let iocData;
+let iocLoading = false;
+let iocError;
+let iocExportKey;
+let iocUrls = [];
+
+function releaseIocDownloads() {
+  for (const url of iocUrls) URL.revokeObjectURL(url);
+  iocUrls = [];
+  iocExportKey = undefined;
+  byId("ioc-downloads").replaceChildren();
+}
+
+function showIocError(error) {
+  console.error(error);
+  iocError = error;
+  releaseIocDownloads();
+  byId("ioc-error").textContent = `${error.message} No IOC CSVs are available. XML export is unaffected. Turn the IOC toggle off and on to retry.`;
+  byId("ioc-error").hidden = false;
+}
+
+function attachIocDetails() {
+  for (const entry of tools) {
+    entry.iocs = iocData.indicators.filter(indicator => indicator.tools.includes(entry.tool.name));
+    entry.iocSearchText = entry.iocs.map(indicator => indicator.value).join(" ").toLowerCase();
+    const list = document.createElement("ul");
+    list.className = "rule-list";
+    for (const indicator of entry.iocs) {
+      const item = document.createElement("li");
+      const value = document.createElement("code");
+      value.textContent = `${indicator.type}: ${indicator.value}`;
+      const owners = document.createElement("span");
+      owners.className = "rule-meta";
+      owners.textContent = `Source attribution: ${indicator.owners.map(owner => owner.name).join("; ")}`;
+      item.append(value, owners);
+      list.append(item);
+    }
+    const summary = document.createElement("summary");
+    summary.textContent = `View matching Defender IOCs (${entry.iocs.length})`;
+    entry.iocDetails.replaceChildren(summary, list);
+  }
+  const unlinked = new Map();
+  for (const indicator of iocData.indicators) {
+    for (const owner of indicator.owners.filter(owner => !owner.tool)) {
+      unlinked.set(owner.name, (unlinked.get(owner.name) || 0) + 1);
+    }
+  }
+  byId("ioc-unlinked").hidden = !unlinked.size;
+  byId("ioc-unlinked-summary").textContent = `${unlinked.size} IOC tool identities have no XML match (retained in CSVs)`;
+  const list = document.createDocumentFragment();
+  for (const [name, count] of [...unlinked].sort(([a], [b]) => a.localeCompare(b))) {
+    const item = document.createElement("li");
+    item.textContent = `${name}: ${count} indicator${count === 1 ? "" : "s"}`;
+    list.append(item);
+  }
+  byId("ioc-unlinked-list").replaceChildren(list);
+}
+
+function updateIocs() {
+  const enabled = byId("link-iocs").checked;
+  byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
+  byId("ioc-output").hidden = !enabled;
+  for (const entry of tools) {
+    entry.iocCount.hidden = !enabled || !iocData;
+    entry.iocDetails.hidden = !enabled || !entry.iocs.length;
+    entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
+    entry.iocCount.textContent = entry.iocs.length
+      ? `${entry.iocs.length} linked Defender IOCs${excluded.has(entry.tool.name) ? " - excluded from CSVs" : ""}`
+      : "No linked Defender IOCs for this tool; its selection changes only the XML.";
+  }
+  if (!enabled) {
+    releaseIocDownloads();
+    byId("ioc-status").textContent = "OFF: XML only. No Defender IOC CSVs are prepared.";
+    return;
+  }
+  if (iocLoading) {
+    byId("ioc-status").textContent = "ON: Loading and combining the Defender IOC files...";
+    return;
+  }
+  if (iocError) {
+    byId("ioc-status").textContent = "ON: IOC export unavailable. See the error below.";
+    return;
+  }
+  if (!iocData) return;
+  const key = JSON.stringify([...excluded].sort());
+  if (key === iocExportKey) return;
+  try {
+    const { removed, retained, sharedRemoved } = filterIocs(iocData, excluded);
+    const batches = exportIocBatches(retained);
+    releaseIocDownloads();
+    byId("ioc-status").textContent = `ON: Same exclusions applied. ${retained.length} of ${iocData.indicators.length} IOCs retained; ${removed.length} removed. ${batches.length} CSV batch${batches.length === 1 ? "" : "es"}.`;
+    for (const [index, batch] of batches.entries()) {
+      const url = URL.createObjectURL(new Blob([batch.csv], { type: "text/csv;charset=utf-8" }));
+      iocUrls.push(url);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Defender_IOCs${excluded.size ? "_custom" : ""}_Part${index + 1}_of${batches.length}.csv`;
+      link.textContent = `Download IOC CSV ${index + 1} of ${batches.length} (${batch.count} indicators)`;
+      byId("ioc-downloads").append(link);
+    }
+    if (!batches.length) byId("ioc-downloads").textContent = "No IOCs remain. No CSV files need to be imported.";
+    byId("ioc-shared").hidden = !sharedRemoved.length;
+    byId("ioc-shared-summary").textContent = `Warning: ${sharedRemoved.length} removed shared indicator${sharedRemoved.length === 1 ? "" : "s"} also affect unselected tools`;
+    const list = document.createDocumentFragment();
+    for (const indicator of sharedRemoved) {
+      const item = document.createElement("li");
+      item.textContent = `${indicator.value}: ${indicator.owners.map(owner => owner.name).join("; ")}`;
+      list.append(item);
+    }
+    byId("ioc-shared-list").replaceChildren(list);
+    iocExportKey = key;
+  } catch (error) {
+    showIocError(error);
+    byId("ioc-status").textContent = "ON: IOC export unavailable. See the error below.";
+  }
+}
+
+async function enableIocs() {
+  if (!byId("link-iocs").checked || iocLoading) { update(); return; }
+  iocError = undefined;
+  byId("ioc-error").hidden = true;
+  if (iocData) { update(); return; }
+  iocLoading = true;
+  update();
+  try {
+    iocData = await loadIocs(policy.tools.map(tool => tool.name));
+    attachIocDetails();
+  } catch (error) {
+    iocData = undefined;
+    showIocError(error);
+  } finally {
+    iocLoading = false;
+    update();
+  }
+}
 
 function showError(error) {
   console.error(error);
@@ -69,8 +206,14 @@ function makeTool(tool, index) {
   }
   details.append(summary, list);
   row.append(details);
+  const iocCount = document.createElement("p");
+  iocCount.className = "rule-count ioc-count";
+  iocCount.hidden = true;
+  const iocDetails = document.createElement("details");
+  iocDetails.hidden = true;
+  row.append(iocCount, iocDetails);
   return {
-    tool, row, checkbox, action, warning,
+    tool, row, checkbox, action, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
     searchText: `${tool.name} ${tool.rules.map(rule => `${rule.path} ${rule.path.replaceAll("*", "")}`).join(" ")}`.toLowerCase(),
   };
 }
@@ -90,7 +233,8 @@ function update() {
     entry.warning.textContent = selected
       ? `Shared folder removal also affects: ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Their other rules stay blocked unless also selected.`
       : `${sharedRemoved.length} shared folder rule(s) removed by another selected tool. This tool's other block rules are retained.`;
-    entry.row.hidden = !entry.searchText.includes(query) ||
+    const searchText = `${entry.searchText} ${byId("link-iocs").checked ? entry.iocSearchText : ""}`;
+    entry.row.hidden = !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
     if (!entry.row.hidden) visible++;
   }
@@ -104,11 +248,15 @@ function update() {
   byId("export-summary").textContent = excluded.size
     ? `Download will remove ${ids.size} deny rules and ${refs} file rule references. Excluded: ${[...excluded].sort().join(", ")}.`
     : "No exclusions selected. Download will contain the original block list, unchanged.";
+  updateIocs();
 }
 
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());
 byId("reset").addEventListener("click", () => { excluded.clear(); update(); });
+byId("link-iocs").addEventListener("change", enableIocs);
+window.addEventListener("pagehide", releaseIocDownloads);
+window.addEventListener("pageshow", () => { if (policy) update(); });
 byId("download").addEventListener("click", () => {
   try {
     const xml = exportPolicy(policy, excluded);

@@ -3,6 +3,7 @@
 body { margin: 0; font-size: 14px; line-height: 1.5; }
 [hidden] { display: none !important; }
 .container { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+.wip-banner { background: #fff8df; color: #765719; border-bottom: 1px solid #d6af3e; padding: 12px 0; }
 header { background: #263b4b; color: white; border-bottom: 4px solid #2b8ac6; }
 .header-content { display: flex; justify-content: space-between; align-items: center; min-height: 64px; gap: 16px; }
 header strong { font-size: 20px; font-weight: 600; }
@@ -24,6 +25,17 @@ button.primary { color: white; background: #237ead; border-color: #19678f; font-
 button.primary:hover { background: #19678f; }
 :focus-visible { outline: 2px solid #176b9f; outline-offset: 3px; }
 .notice { background: #fff8df; border-left: 4px solid #d6af3e; padding: 12px 16px; margin-bottom: 24px; }
+.ioc-panel { border: 1px solid #b8c2ca; background: white; padding: 16px; margin-bottom: 20px; overflow-wrap: anywhere; }
+.ioc-toggle { display: flex; align-items: center; gap: 10px; font-size: 16px; cursor: pointer; }
+.ioc-toggle input { flex-shrink: 0; }
+.ioc-panel p { margin: 8px 0; }
+#ioc-help { color: #52616d; }
+#ioc-status { font-weight: 600; }
+.ioc-panel.enabled { border-left: 4px solid #237ead; padding-left: 13px; }
+.ioc-downloads { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.ioc-downloads a { display: inline-block; border: 1px solid #19678f; background: #eef6fa; padding: 9px 14px; }
+#ioc-shared { background: #fff8df; padding: 10px; }
+.ioc-count { margin-bottom: 0; }
 .toolbar { display: flex; gap: 16px; align-items: flex-end; }
 .search-field { flex: 1; }
 label { display: block; margin-bottom: 6px; font-weight: 600; }

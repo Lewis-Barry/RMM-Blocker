@@ -8,13 +8,55 @@ Unselected rules remain in place.
 
 ## GitHub Pages
 
-1. Put these files in a GitHub repository, keeping the XML beside `index.html`.
+1. Put these files in a GitHub repository, keeping the XML beside `index.html`
+   and including the `IOC` folder.
 2. In **Settings > Pages**, choose **Deploy from a branch**.
 3. Select your branch and **/ (root)**, then save.
 
 No build, server-side processing, CDN or credentials are required. Relative URLs
 support both repository project sites and custom domains. `.nojekyll` enables
 plain static hosting. The provided XML is kept unchanged.
+
+## Optional Defender IOC export
+
+The **Also prepare Defender IOC CSVs using these exclusions** checkbox defaults
+to **off**. Off means XML-only; IOC CSVs are not loaded or prepared.
+
+When enabled, the three supplied CSVs in `IOC` are combined locally into one
+585-indicator dataset (573 domains and 12 IPs). The same trusted-tool selections
+remove matching indicators; all remaining rows retain their original **Block**
+action and metadata. This does not create Allow indicators or delete indicators
+already imported into Defender.
+
+- Download the XML separately, then download and import **every IOC CSV batch**.
+  Batches are regenerated after filtering, with at most **500 data rows per
+  file**, plus the original Defender header. No selections produces batches of
+  500 and 85; excluding Datto RMM produces a single 464-indicator batch.
+- Each tool shows its matching IOCs when the toggle is on. Search also matches
+  their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
+  still work normally.
+- Mapping uses the CSV's tool attribution, including the full owners in
+  descriptions marked `(+1 more)`, and explicit product aliases. It never
+  guesses tool identity from a domain substring.
+- Shared indicators are removed if **any** linked owner is excluded. A warning
+  lists removed indicators that also affect unselected owners.
+- IOC-only tools without an XML match remain blocked and are listed for review.
+  The bundled unmatched identities are Any Support, baramundi Management Suite,
+  GatherPlace, Remote Desktop Plus, RMMCRAT, SkyFex and ZeroTier.
+- Turning the toggle off hides CSV downloads without changing XML selections.
+  Reset restores both block lists. Neither selections nor the toggle persist
+  after reload.
+- A CSV load/validation failure visibly disables IOC downloads, not XML export.
+  Turn the toggle off and on to retry. Sources are kept unchanged.
+
+Review domain-wide/shared indicators before importing. The export cannot
+guarantee that a selected tool can connect under other network controls.
+
+## Local preview and regression tests
+
+Serve this directory with `python -m http.server 8080 --bind 127.0.0.1`, then open
+`http://127.0.0.1:8080/`. Open `/tests.html` on that server to run the browser-native
+XML and IOC regression suite, including CSV round-trips and the 500-row boundary.
 
 ## Policy behavior
 
