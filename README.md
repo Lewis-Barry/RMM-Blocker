@@ -19,16 +19,19 @@ Unselected rules remain in place.
    RMM domains/IPs. Neither export creates allow rules.
 
 The UI follows the Fluent-style Settings Catalog Viewer: a compact header,
+a larger introductory instruction instead of a repeated page title,
 dense tool rows and a live download panel. There is no path selector. Dark is the default;
 the header switches between dark and light for the current page session.
-Blue highlights exclusions and export actions. Spacing follows an 8px grid;
-mobile stacks the panels. Technical/deployment notes use progressive disclosure.
+Blue highlights exclusions and export actions. Compact rows and download cards
+keep the main actions visible at normal desktop zoom, with independently scrolling
+panels for expanded content. Mobile stacks the panels without horizontal clipping;
+short desktop windows allow page scrolling. Technical/deployment notes use progressive disclosure.
 Visible copy is limited to instructions, counts, controls and actionable warnings;
 disabled IOC exports have no redundant status message.
 Nothing is uploaded; no framework or external dependencies were added.
 
 Tool rows use list semantics and headings. Native checkboxes and disclosures
-support keyboard input; controls have larger targets and visible focus.
+support keyboard input; controls have visible focus and larger targets on touch devices.
 Execution rules and IOCs use compact value/type rows in shaded groups.
 Checkbox descriptions include relevant
 warnings; disclosure names identify their tool. Fonts scale with text size,
@@ -97,7 +100,8 @@ Serve this directory with `python -m http.server 8080 --bind 127.0.0.1`, then op
 XML and IOC regression suite, including CSV round-trips and the 500-row boundary.
 The suite also exercises shared selections, generated XML/CSV downloads, theme switching,
 final export summaries,
-search/filter isolation, optional CSV exports and reset.
+search/filter isolation, optional CSV exports, reset and compact layouts across
+desktop, mobile and short-window viewport sizes.
 
 ## Policy behavior
 

@@ -77,7 +77,41 @@ async function testBuilder(policy, iocs) {
     const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
     const input = element => element.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
     const selection = document.querySelector('input[aria-label="Exclude Datto RMM / Autotask from block list"]');
+    frame.hidden = false;
+    frame.style.cssText = "position: fixed; top: 0; left: 0; border: 0; z-index: -1; pointer-events: none;";
+    try {
+      for (const [width, height] of [[1440, 768], [1280, 600], [1024, 600], [768, 768], [390, 844], [320, 568], [1024, 400]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        test(`Compact builder fits ${width}x${height} without clipping downloads`, () => {
+          const rect = selector => document.querySelector(selector).getBoundingClientRect();
+          assert(document.documentElement.scrollWidth <= width, "Page overflows horizontally");
+          const panel = rect(".export-panel");
+          assert(panel.left >= 0 && panel.right <= width, "Download panel is outside the viewport");
+          const row = rect(".tool");
+          const touch = frame.contentWindow.matchMedia("(pointer: coarse)").matches;
+          const wrappedTitle = width < 390 ? 24 : 0;
+          assert(row.height <= (touch ? 108 : 96) + wrappedTitle, `Collapsed product row is too tall: ${row.height}px`);
+          if (width > 800 && height >= 600) {
+            const content = rect(".export-content");
+            for (const selector of [".export-card", ".ioc-panel", "#kql-open"]) {
+              const card = rect(selector);
+              assert(card.top >= content.top && card.bottom <= content.bottom,
+                `${selector} requires scrolling in the initial desktop layout`);
+            }
+          } else {
+            assert(document.documentElement.scrollHeight > height, "Stacked or short layout cannot scroll");
+          }
+        });
+      }
+    } finally {
+      frame.hidden = true;
+      frame.removeAttribute("style");
+    }
     test("Builder starts with one tool list, no exclusions and CSVs disabled", () => {
+      assert(!document.querySelector(".page-heading"), "Repeated builder heading remains");
+      assert(parseFloat(frame.contentWindow.getComputedStyle(document.querySelector(".builder-intro")).fontSize) >= 16,
+        "Introductory instruction is too small");
       assert(!byId("paths") && document.querySelectorAll("#tools").length === 1, "Unexpected path selector or tool lists");
       assert(!byId("link-iocs").checked && byId("ioc-output").hidden, "CSVs enabled by default");
       assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled exports show redundant status copy");
@@ -167,8 +201,9 @@ async function testBuilder(policy, iocs) {
         }
         assert(parseFloat(style(row.querySelector(".exclude-label")).minHeight) >= 44,
           "Exclusion target is smaller than 44px");
-        assert(parseFloat(style(row.querySelector("summary")).minHeight) >= 44,
-          "Disclosure target is smaller than 44px");
+        const minimumDisclosureHeight = frame.contentWindow.matchMedia("(pointer: coarse)").matches ? 44 : 32;
+        assert(parseFloat(style(row.querySelector("summary")).minHeight) >= minimumDisclosureHeight,
+          "Disclosure target is too small for the input device");
         assert(parseFloat(style(selection).width) >= 24 && parseFloat(style(selection).height) >= 24,
           "Checkbox is smaller than 24px");
       } finally {
@@ -216,7 +251,7 @@ async function testBuilder(policy, iocs) {
     test("Unmatched tools appear below and outside the IOC card", () => {
       const note = byId("ioc-unlinked");
       const card = byId("link-iocs").closest("section");
-      assert(note.parentElement === card.parentElement && note.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+      assert(note.parentElement === card.parentElement && card.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
         "Unmatched tools remain inside the IOC card or are misplaced");
       assert(card.nextElementSibling === byId("kql-open"), "KQL action is not directly below the IOC card");
       assert(!note.hidden && byId("ioc-unlinked-list").children.length === 7, "Unmatched tools are missing");
