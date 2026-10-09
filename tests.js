@@ -11,6 +11,16 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function contrastRatio(foreground, background) {
+  const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+    value /= 255;
+    return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+  }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+  const first = luminance(foreground);
+  const second = luminance(background);
+  return (Math.max(first, second) + .05) / (Math.min(first, second) + .05);
+}
+
 function expectError(action, text) {
   let error;
   try { action(); } catch (caught) { error = caught; }
@@ -52,7 +62,7 @@ async function waitFor(condition, message) {
   }
 }
 
-async function testBuilder(policy) {
+async function testBuilder(policy, iocs) {
   const frame = document.createElement("iframe");
   frame.hidden = true;
   frame.title = "Builder regression fixture";
@@ -74,6 +84,98 @@ async function testBuilder(policy) {
       assert(byId("excluded-count").textContent === "0", "Unexpected initial exclusion");
       assert(byId("remaining-count").textContent === String(policy.rules.length), "Initial rules incorrect");
     });
+    test("Tool rows expose list items, headings and named native controls", () => {
+      const list = byId("tool-list");
+      assert(list.tagName === "UL" && list.getAttribute("role") === "list", "Tool list semantics missing");
+      assert(list.children.length === policy.tools.length, "Tool list omits entries");
+      for (const row of list.children) {
+        const heading = row.querySelector(".tool-title");
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        const summary = row.querySelector("summary");
+        assert(row.tagName === "LI" && heading.tagName === "H3", "Row or heading semantics missing");
+        assert(checkbox.labels.length === 1 && checkbox.getAttribute("aria-label").includes(heading.textContent),
+          "Checkbox label does not identify its tool");
+        assert(summary.getAttribute("aria-label") === `Execution rules for ${heading.textContent}`,
+          "Disclosure name does not identify its tool");
+        const descriptions = checkbox.getAttribute("aria-describedby").split(" ").map(byId);
+        assert(descriptions.length && descriptions.every(element => element && !element.hidden),
+          "Checkbox references missing or hidden descriptions");
+      }
+      assert(document.querySelector(".selection-count").getAttribute("aria-atomic") === "true",
+        "Selection announcements lack context");
+    });
+    test("Execution rules show compact path/type rows in one shaded, unbulleted group", () => {
+      const rows = new Map([...byId("tool-list").children].map(row =>
+        [row.querySelector(".tool-title").textContent, row]));
+      for (const tool of policy.tools) {
+        const list = rows.get(tool.name).querySelector(".execution-rule-list");
+        const style = frame.contentWindow.getComputedStyle(list);
+        assert(list.tagName === "UL" && list.getAttribute("role") === "list", "Rule list semantics missing");
+        assert(style.listStyleType === "none", "Rule bullets remain");
+        assert(style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.paddingLeft === "16px",
+          "Rules do not share a shaded container");
+        assert(list.children.length === tool.rules.length, "Displayed rules missing");
+        for (const [index, item] of [...list.children].entries()) {
+          assert(item.children.length === 2 && item.querySelector("code").textContent === tool.rules[index].path &&
+            item.querySelector(".rule-type").textContent === tool.rules[index].kind,
+          "Rule does not display only its original path and type");
+          const itemStyle = frame.contentWindow.getComputedStyle(item);
+          assert(itemStyle.backgroundColor === "rgba(0, 0, 0, 0)" && itemStyle.borderTopWidth === "0px" &&
+            parseFloat(itemStyle.paddingTop) <= 8 && parseFloat(itemStyle.paddingBottom) <= 8,
+          "Execution rule still uses a padded card");
+        }
+      }
+    });
+    const sharedSelection = document.querySelector('input[aria-label="Exclude ConnectWise Control / ScreenConnect from block list"]');
+    sharedSelection.click();
+    test("Shared-folder warnings describe the affected checkbox", () => {
+      const warning = sharedSelection.closest(".tool").querySelector(".shared-warning");
+      assert(!warning.hidden && sharedSelection.getAttribute("aria-describedby").split(" ").includes(warning.id),
+        "Shared-folder warning is not associated with the control");
+      assert(sharedSelection.labels[0].textContent.trim() === "Exclude", "Checkbox label changes with its state");
+    });
+    sharedSelection.click();
+    test("Clearing an exclusion removes its hidden warning description", () => {
+      const warning = sharedSelection.closest(".tool").querySelector(".shared-warning");
+      assert(warning.hidden && !sharedSelection.getAttribute("aria-describedby").split(" ").includes(warning.id),
+        "Hidden warning still describes the control");
+    });
+    test("Row text meets 4.5:1 contrast in both themes and selection states", () => {
+      const row = selection.closest(".tool");
+      const details = row.querySelector("details");
+      const initialTheme = document.documentElement.dataset.theme;
+      const initialOpen = details.open;
+      const style = element => frame.contentWindow.getComputedStyle(element);
+      try {
+        details.open = true;
+        for (const theme of ["dark", "light"]) {
+          document.documentElement.dataset.theme = theme;
+          for (const selected of [false, true]) {
+            if (selection.checked !== selected) selection.click();
+            for (const element of row.querySelectorAll(".tool-title, .rule-count, .exclude-label span, summary, code, .rule-type, dt, dd")) {
+              if (element.closest("[hidden]")) continue;
+              let surface = element;
+              while (style(surface).backgroundColor === "rgba(0, 0, 0, 0)" && surface.parentElement) {
+                surface = surface.parentElement;
+              }
+              assert(contrastRatio(style(element).color, style(surface).backgroundColor) >= 4.5,
+                `${theme}: insufficient contrast for ${element.textContent}`);
+              assert(parseFloat(style(element).fontSize) >= 14, "Row data text is smaller than 14px");
+            }
+          }
+        }
+        assert(parseFloat(style(row.querySelector(".exclude-label")).minHeight) >= 44,
+          "Exclusion target is smaller than 44px");
+        assert(parseFloat(style(row.querySelector("summary")).minHeight) >= 44,
+          "Disclosure target is smaller than 44px");
+        assert(parseFloat(style(selection).width) >= 24 && parseFloat(style(selection).height) >= 24,
+          "Checkbox is smaller than 24px");
+      } finally {
+        if (selection.checked) selection.click();
+        details.open = initialOpen;
+        document.documentElement.dataset.theme = initialTheme;
+      }
+    });
     selection.click();
     const expectedRemoved = excludedRuleIds(policy, new Set(["Datto RMM / Autotask"])).size;
     test("Tool selection updates the final XML summary and exclusion review", () => {
@@ -93,6 +195,40 @@ async function testBuilder(policy) {
       assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Wrong CSV batch count");
       assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
     });
+    test("IOC disclosures identify their tool and show compact value/type rows in a shaded group", () => {
+      const details = selection.closest(".tool").querySelectorAll("details")[1];
+      assert(details.querySelector("summary").getAttribute("aria-label") === "IOCs (121) for Datto RMM / Autotask",
+        "IOC disclosure name missing context");
+      for (const row of byId("tool-list").children) {
+        const name = row.querySelector(".tool-title").textContent;
+        const expected = iocs.indicators.filter(indicator => indicator.tools.includes(name));
+        const list = row.querySelector(".ioc-list");
+        const style = frame.contentWindow.getComputedStyle(list);
+        assert(list.getAttribute("role") === "list" && style.listStyleType === "none",
+          "IOC list semantics missing or bullets remain");
+        assert(style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.paddingLeft === "16px",
+          "IOCs do not share a shaded container");
+        assert(list.children.length === expected.length, "Displayed IOCs missing");
+        for (const [index, item] of [...list.children].entries()) {
+          assert(item.children.length === 2 && item.querySelector("code").textContent === expected[index].value &&
+            item.querySelector(".rule-type").textContent === (expected[index].type === "IpAddress" ? "IP address" : "Domain"),
+          "IOC does not display only its original value and type");
+          const itemStyle = frame.contentWindow.getComputedStyle(item);
+          assert(itemStyle.backgroundColor === "rgba(0, 0, 0, 0)" && itemStyle.borderTopWidth === "0px" &&
+            parseFloat(itemStyle.paddingTop) <= 8 && parseFloat(itemStyle.paddingBottom) <= 8,
+          "IOC still uses a padded card");
+        }
+      }
+      assert(byId("tools").getAttribute("aria-busy") === "false", "Loaded tool region remains busy");
+    });
+    const xmlOnlySelection = document.querySelector('input[aria-label="Exclude PsExec from block list"]');
+    xmlOnlySelection.click();
+    test("Missing IOC coverage is associated with the selected tool", () => {
+      const coverage = xmlOnlySelection.closest(".tool").querySelector(".ioc-count");
+      assert(!coverage.hidden && xmlOnlySelection.getAttribute("aria-describedby").split(" ").includes(coverage.id),
+        "Missing IOC warning is not associated with the control");
+    });
+    xmlOnlySelection.click();
     const csvResponse = await fetch(byId("ioc-downloads").querySelector("a").href);
     assert(csvResponse.ok, "Generated CSV URL unavailable");
     const csvRows = parseCsv(await csvResponse.text());
@@ -380,7 +516,7 @@ async function run() {
       shared[6] = shared[6].replace("Kabuto; Syncro", "Kabuto");
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
-    await testBuilder(policy);
+    await testBuilder(policy, iocs);
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);

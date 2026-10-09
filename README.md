@@ -27,6 +27,13 @@ Visible copy is limited to instructions, counts, controls and actionable warning
 disabled IOC exports have no redundant status message.
 Nothing is uploaded; no framework or external dependencies were added.
 
+Tool rows use list semantics and headings. Native checkboxes and disclosures
+support keyboard input; controls have larger targets and visible focus.
+Execution rules and IOCs use compact value/type rows in shaded groups.
+Checkbox descriptions include relevant
+warnings; disclosure names identify their tool. Fonts scale with text size,
+and Windows high-contrast mode uses native checkboxes.
+
 ## Deployment help
 
 [Deploy WDAC](./help.html) covers Intune XML upload, pilot assignment and verification,

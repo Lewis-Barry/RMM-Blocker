@@ -19,7 +19,7 @@
         <span>RMM Blocker</span>
       </a>
       <div class="header-actions">
-        <nav aria-label="Main navigation"><a href="#selection">Browse</a><a class="download-nav" href="#exports">Downloads</a><a href="./help.html">Help</a></nav>
+        <nav aria-label="Main navigation"><a href="./help.html">Help</a></nav>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
         <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
@@ -51,9 +51,9 @@
       </div>
       <div class="workbench">
         <section id="selection" class="selection-panel" aria-labelledby="selection-title" tabindex="-1">
-          <div class="panel-heading"><div class="tools-heading"><h2 id="selection-title">Tools</h2><span class="selection-count"><strong id="excluded-count">0</strong> excluded</span></div><button id="reset" class="quiet-button" type="button" disabled>Reset</button></div>
+          <div class="panel-heading"><div class="tools-heading"><h2 id="selection-title">Tools</h2><span class="selection-count" role="status" aria-live="polite" aria-atomic="true"><strong id="excluded-count">0</strong> excluded</span></div><button id="reset" class="quiet-button" type="button" disabled>Reset</button></div>
           <div class="list-heading"><span id="results" role="status" aria-live="polite"></span><span>Exclude</span></div>
-          <div id="tools" class="tool-scroll" tabindex="0" role="region" aria-label="Tools and exclusions"></div>
+          <div id="tools" class="tool-scroll" tabindex="0" role="region" aria-label="Tools and exclusions"><ul id="tool-list" class="tool-list" role="list"></ul></div>
           <p id="empty" class="empty-state" hidden>No matching tools.</p>
         </section>
         <section id="exports" class="export-panel" aria-labelledby="exports-title" tabindex="-1">
@@ -63,8 +63,8 @@
             <section class="export-card" aria-labelledby="wdac-export-title">
               <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
               <p class="output-description">Blocks execution.</p>
-              <p id="wdac-status" class="export-status" role="status" aria-live="polite"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
-              <button id="download" class="primary" type="button">Download XML <span aria-hidden="true">↓</span></button>
+              <p id="wdac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
+              <button id="download" class="primary" type="button">Download XML</button>
               <details class="export-details"><summary>Policy notes</summary><p>Removes selected filename/folder deny rules and references. Preserves policy IDs, settings and other rules.</p><p>No allow rules added. Other policies may still block execution. Validate with WDAC tooling; coverage varies by version and path.</p><p><a href="./Blocking_RMMsv5.xml" download>Original XML</a> <span id="policy-version"></span></p></details>
             </section>
             <section class="export-card ioc-panel" aria-labelledby="ioc-export-title">
@@ -74,7 +74,7 @@
                 <input id="link-iocs" type="checkbox" autocomplete="off" aria-describedby="ioc-status">
                 <span>Include IOC exports</span>
               </label>
-              <p id="ioc-status" class="export-status" role="status" aria-live="polite" hidden></p>
+              <p id="ioc-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="ioc-output" hidden>
                 <div id="ioc-error" class="error" role="alert" hidden></div>
                 <div id="ioc-downloads" class="ioc-downloads"></div>

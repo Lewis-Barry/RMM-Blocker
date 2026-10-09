@@ -26,24 +26,30 @@ function showIocError(error) {
   byId("ioc-error").hidden = false;
 }
 
+function makeRuleItem(value, kind) {
+  const item = document.createElement("li");
+  const path = document.createElement("code");
+  path.textContent = value;
+  const type = document.createElement("span");
+  type.className = "rule-type";
+  type.textContent = kind;
+  item.append(path, type);
+  return item;
+}
+
 function attachIocDetails() {
   for (const entry of tools) {
     entry.iocs = iocData.indicators.filter(indicator => indicator.tools.includes(entry.tool.name));
     entry.iocSearchText = entry.iocs.map(indicator => indicator.value).join(" ").toLowerCase();
     const list = document.createElement("ul");
-    list.className = "rule-list";
+    list.className = "compact-rule-list ioc-list";
+    list.setAttribute("role", "list");
     for (const indicator of entry.iocs) {
-      const item = document.createElement("li");
-      const value = document.createElement("code");
-      value.textContent = `${indicator.type}: ${indicator.value}`;
-      const owners = document.createElement("span");
-      owners.className = "rule-meta";
-      owners.textContent = `Source attribution: ${indicator.owners.map(owner => owner.name).join("; ")}`;
-      item.append(value, owners);
-      list.append(item);
+      list.append(makeRuleItem(indicator.value, indicator.type === "IpAddress" ? "IP address" : "Domain"));
     }
     const summary = document.createElement("summary");
     summary.textContent = `IOCs (${entry.iocs.length})`;
+    summary.setAttribute("aria-label", `${summary.textContent} for ${entry.tool.name}`);
     entry.iocDetails.replaceChildren(summary, list);
   }
   const unlinked = new Map();
@@ -68,11 +74,16 @@ function updateIocs() {
   byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
   byId("ioc-output").hidden = !enabled;
   byId("ioc-status").hidden = !enabled || !!iocError;
+  byId("tools").setAttribute("aria-busy", String(iocLoading));
   for (const entry of tools) {
     entry.iocCount.hidden = !enabled || !iocData || !!entry.iocs.length || !excluded.has(entry.tool.name);
     entry.iocDetails.hidden = !enabled || !entry.iocs.length;
     entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
     entry.iocCount.textContent = "No linked IOCs.";
+    entry.checkbox.setAttribute("aria-describedby",
+      [entry.counts, entry.identity, entry.warning, entry.iocCount]
+        .filter(element => element && !element.hidden)
+        .map(element => element.id).join(" "));
   }
   if (!enabled) {
     releaseIocDownloads();
@@ -147,17 +158,18 @@ function showError(error) {
 }
 
 function makeTool(tool, index) {
-  const row = document.createElement("article");
+  const row = document.createElement("li");
   row.className = "tool";
   const top = document.createElement("div");
   top.className = "tool-top";
   const heading = document.createElement("div");
-  const name = document.createElement("div");
+  const name = document.createElement("h3");
   name.className = "tool-title";
   name.id = `tool-${index}`;
   name.textContent = tool.name;
   const counts = document.createElement("div");
   counts.className = "rule-count";
+  counts.id = `rule-count-${index}`;
   const folders = tool.rules.filter(rule => rule.kind === "Folder").length;
   const filenames = tool.rules.length - folders;
   counts.textContent = [
@@ -180,42 +192,40 @@ function makeTool(tool, index) {
   label.append(checkbox, action);
   top.append(heading, label);
   row.append(top);
+  let identity;
   if (tool.unclassified) {
-    const note = document.createElement("p");
-    note.className = "unclassified-warning";
-    note.textContent = "Unconfirmed identity. Review the exact rule before excluding.";
-    row.append(note);
+    identity = document.createElement("p");
+    identity.id = `identity-${index}`;
+    identity.className = "unclassified-warning";
+    identity.textContent = "Unconfirmed identity. Review the exact rule before excluding.";
+    row.append(identity);
   }
   const warning = document.createElement("p");
   warning.className = "shared-warning";
+  warning.id = `shared-warning-${index}`;
   warning.hidden = true;
   row.append(warning);
   const details = document.createElement("details");
   const summary = document.createElement("summary");
   summary.textContent = "Execution rules";
+  summary.setAttribute("aria-label", `Execution rules for ${tool.name}`);
   const list = document.createElement("ul");
-  list.className = "rule-list";
+  list.className = "compact-rule-list execution-rule-list";
+  list.setAttribute("role", "list");
   for (const rule of tool.rules) {
-    const item = document.createElement("li");
-    const path = document.createElement("code");
-    path.textContent = rule.path;
-    const meta = document.createElement("span");
-    meta.className = "rule-meta";
-    meta.textContent = `${rule.kind} | ${rule.id} | ${rule.references} FileRuleRef${rule.references === 1 ? "" : "s"}` +
-      (rule.names.length > 1 ? ` | Shared with: ${rule.names.filter(name => name !== tool.name).join(", ")}` : "");
-    item.append(path, meta);
-    list.append(item);
+    list.append(makeRuleItem(rule.path, rule.kind));
   }
   details.append(summary, list);
   row.append(details);
   const iocCount = document.createElement("p");
   iocCount.className = "rule-count ioc-count";
+  iocCount.id = `ioc-coverage-${index}`;
   iocCount.hidden = true;
   const iocDetails = document.createElement("details");
   iocDetails.hidden = true;
   row.append(iocCount, iocDetails);
   return {
-    tool, row, checkbox, action, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
+    tool, row, checkbox, counts, identity, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
     searchText: `${tool.name} ${tool.rules.map(rule => `${rule.path} ${rule.path.replaceAll("*", "")}`).join(" ")}`.toLowerCase(),
   };
 }
@@ -230,7 +240,6 @@ function update() {
     const sharedRemoved = entry.tool.rules.filter(rule => ids.has(rule.id) && rule.names.length > 1);
     entry.checkbox.checked = selected;
     entry.row.classList.toggle("excluded", selected);
-    entry.action.textContent = selected ? "Excluded" : "Exclude";
     entry.warning.hidden = !sharedRemoved.length;
     entry.warning.textContent = selected
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
@@ -284,7 +293,7 @@ async function initialize() {
     tools = policy.tools.map(makeTool);
     const fragment = document.createDocumentFragment();
     for (const entry of tools) fragment.append(entry.row);
-    byId("tools").append(fragment);
+    byId("tool-list").append(fragment);
     byId("policy-version").textContent = `· v${policy.version}`;
     update();
     byId("editor").hidden = false;
