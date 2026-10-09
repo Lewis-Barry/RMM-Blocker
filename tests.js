@@ -44,6 +44,129 @@ function test(name, action) {
   }
 }
 
+async function waitFor(condition, message) {
+  const deadline = Date.now() + 10000;
+  while (!condition()) {
+    if (Date.now() >= deadline) throw new Error(message);
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+}
+
+async function testBuilder(policy) {
+  const frame = document.createElement("iframe");
+  frame.hidden = true;
+  frame.title = "Builder regression fixture";
+  frame.src = "./index.html";
+  document.body.append(frame);
+  try {
+    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false,
+      "Builder did not initialize");
+    const document = frame.contentDocument;
+    const byId = id => document.getElementById(id);
+    const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
+    const input = element => element.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+    const selection = document.querySelector('input[aria-label="Exclude Datto RMM / Autotask from block list"]');
+    test("Builder starts with one tool list, no exclusions and CSVs disabled", () => {
+      assert(!byId("paths") && document.querySelectorAll("#tools").length === 1, "Unexpected path selector or tool lists");
+      assert(!byId("link-iocs").checked && byId("ioc-output").hidden, "CSVs enabled by default");
+      assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled exports show redundant status copy");
+      assert(!byId("export-summary"), "Redundant export narrative remains");
+      assert(byId("excluded-count").textContent === "0", "Unexpected initial exclusion");
+      assert(byId("remaining-count").textContent === String(policy.rules.length), "Initial rules incorrect");
+    });
+    selection.click();
+    const expectedRemoved = excludedRuleIds(policy, new Set(["Datto RMM / Autotask"])).size;
+    test("Tool selection updates the final XML summary and exclusion review", () => {
+      assert(byId("excluded-count").textContent === "1", "Exclusion not counted");
+      assert(byId("removed-count").textContent === String(expectedRemoved), "Wrong removed count");
+      assert(byId("wdac-status").textContent.includes(`${expectedRemoved} removed`), "XML summary stale");
+      assert(!byId("selection-details").hidden && byId("selection-list").textContent === "Datto RMM / Autotask",
+        "Exclusion review missing");
+    });
+    byId("link-iocs").click();
+    await waitFor(() => byId("ioc-downloads").querySelectorAll("a").length > 0 || !byId("ioc-error").hidden,
+      "IOC exports were not prepared");
+    test("Enabling IOC exports applies the existing selection to one 464-indicator CSV", () => {
+      assert(byId("ioc-error").hidden, byId("ioc-error").textContent);
+      assert(selection.checked && byId("link-iocs").checked, "Enabling IOC exports cleared selection");
+      assert(byId("ioc-status").textContent === "464 indicators kept · 121 removed · 1 CSV", "IOC summary stale");
+      assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Wrong CSV batch count");
+      assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
+    });
+    const csvResponse = await fetch(byId("ioc-downloads").querySelector("a").href);
+    assert(csvResponse.ok, "Generated CSV URL unavailable");
+    const csvRows = parseCsv(await csvResponse.text());
+    test("Generated CSV download contains the filtered Defender rows and header", () => {
+      assert(JSON.stringify(csvRows[0]) === JSON.stringify(iocHeaders), "Downloaded header incorrect");
+      assert(csvRows.length === 465, "Downloaded CSV does not contain 464 indicators");
+      assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM (CentraStage)"),
+        "Downloaded CSV contains selected IOCs or non-Block actions");
+    });
+    let xmlDownload;
+    let xmlFilename;
+    const captureDownload = event => {
+      const link = event.target.closest("a[download]");
+      if (!link?.download.endsWith(".xml")) return;
+      event.preventDefault();
+      xmlFilename = link.download;
+      xmlDownload = fetch(link.href).then(response => {
+        assert(response.ok, "Generated XML URL unavailable");
+        return response.text();
+      });
+    };
+    document.addEventListener("click", captureDownload, true);
+    try {
+      byId("download").click();
+      assert(xmlDownload, "XML button did not produce a download");
+      const xml = await xmlDownload;
+      test("XML download button exports the same shared selection", () => {
+        assert(xmlFilename === "Blocking_RMMsv5_custom.xml", "Customized filename incorrect");
+        assert(xml === exportPolicy(policy, new Set(["Datto RMM / Autotask"])), "Downloaded XML has stale exclusions");
+      });
+    } finally {
+      document.removeEventListener("click", captureDownload, true);
+    }
+    byId("theme-toggle").click();
+    test("Changing theme preserves selections and both outputs", () => {
+      assert(document.documentElement.dataset.theme === "light", "Theme did not change");
+      assert(byId("theme-toggle").getAttribute("aria-label") === "Switch to dark theme", "Theme label stale");
+      assert(selection.checked && byId("link-iocs").checked, "Theme changed export selections");
+      assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Theme changed IOC exports");
+      assert(byId("wdac-status").textContent.includes(`${expectedRemoved} removed`), "Theme changed XML output");
+    });
+    byId("search").value = "no-such-tool-regression";
+    input(byId("search"));
+    byId("filter").value = "excluded";
+    change(byId("filter"));
+    test("Search and filters never change the final exports", () => {
+      assert(!byId("empty").hidden, "Empty search message missing");
+      assert(selection.checked && byId("excluded-count").textContent === "1", "Search changed selection");
+      assert(byId("ioc-status").textContent.startsWith("464 indicators kept"), "Search changed IOC output");
+      assert(byId("removed-count").textContent === String(expectedRemoved), "Search changed XML output");
+    });
+    byId("link-iocs").click();
+    test("Disabling IOC exports removes CSV links without changing XML selections", () => {
+      assert(byId("ioc-output").hidden && !byId("ioc-downloads").children.length, "CSV links retained");
+      assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled IOC status remains visible");
+      assert(selection.checked && byId("removed-count").textContent === String(expectedRemoved),
+        "Disabling CSVs changed XML exclusions");
+    });
+    byId("link-iocs").click();
+    byId("reset").click();
+    test("Reset restores both block lists and their original batch sizes", () => {
+      assert(!selection.checked && byId("excluded-count").textContent === "0", "Reset left selections");
+      assert(byId("removed-count").textContent === "0", "Reset left XML removals");
+      assert(byId("selection-details").hidden, "Reset left stale review");
+      assert(byId("ioc-status").textContent === "585 indicators kept · 0 removed · 2 CSVs", "IOC reset stale");
+      const links = [...byId("ioc-downloads").querySelectorAll("a")];
+      assert(links.length === 2 && links[0].textContent.includes("500 indicators") &&
+        links[1].textContent.includes("85 indicators"), "Reset batches incorrect");
+    });
+  } finally {
+    frame.remove();
+  }
+}
+
 function verifyExport(policy, selection) {
   const ids = excludedRuleIds(policy, selection);
   const modified = parsePolicy(exportPolicy(policy, selection));
@@ -257,6 +380,7 @@ async function run() {
       shared[6] = shared[6].replace("Kabuto; Syncro", "Kabuto");
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
+    await testBuilder(policy);
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);

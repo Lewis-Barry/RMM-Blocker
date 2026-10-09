@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Import RMM Blocker IOC CSVs into Microsoft Defender. Prepare protection, upload batches and verify blocking.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Import Defender IOCs — RMM Blocker</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="#guide">Skip to guide</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Blocker home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 27 7v9c0 6-5 10-11 13C10 26 5 22 5 16V7Z" stroke="currentColor" stroke-width="2"/><path d="m11 16 3 3 7-7" stroke="currentColor" stroke-width="2"/></svg>
+        <span>RMM Blocker</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help-ioc.html" aria-current="page">Help</a></nav>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container help-layout">
+    <aside class="help-sidebar">
+      <nav class="help-nav" aria-labelledby="guides-title">
+        <h2 id="guides-title">Guides</h2>
+        <a href="./help.html">WDAC</a>
+        <a href="./help-ioc.html" aria-current="page">Defender IOCs</a>
+      </nav>
+      <nav class="help-nav help-sections" aria-labelledby="sections-title">
+        <h2 id="sections-title">On this page</h2>
+        <a href="#download">1. Download</a>
+        <a href="#protection">2. Enable protection</a>
+        <a href="#import">3. Import</a>
+        <a href="#verify">4. Verify</a>
+      </nav>
+    </aside>
+    <article id="guide" class="help-guide" tabindex="-1">
+      <div class="page-heading"><h1>Import Defender IOCs</h1></div>
+      <aside class="help-warning" role="note">CSV scope defaults to all devices.</aside>
+      <section id="download" class="help-step" aria-labelledby="download-title">
+        <h2 id="download-title">1. Download</h2>
+        <p><a href="./index.html">Exclude trusted tools</a>. Enable <strong>Include IOC exports</strong>. Download every CSV.</p>
+        <p>Set <code>RbacGroups</code> to your pilot Defender device group in each CSV.</p>
+      </section>
+      <section id="protection" class="help-step" aria-labelledby="protection-title">
+        <h2 id="protection-title">2. Enable protection</h2>
+        <ul>
+          <li><strong>Settings → Endpoints → Advanced features → Custom network indicators</strong>: On.</li>
+          <li><a href="https://learn.microsoft.com/en-us/defender-endpoint/enable-network-protection" target="_blank" rel="noopener noreferrer">Network protection</a>: block mode.</li>
+          <li>Defender Antivirus: active mode, cloud protection and behavior monitoring enabled.</li>
+        </ul>
+      </section>
+      <section id="import" class="help-step" aria-labelledby="import-title">
+        <h2 id="import-title">3. Import</h2>
+        <p><a href="https://security.microsoft.com/" target="_blank" rel="noopener noreferrer">Defender</a> → <strong>Settings → Endpoints → Indicators → URLs/Domains</strong>.</p>
+        <figure><a href="./DefenderScreens/Step1.png" target="_blank" rel="noopener noreferrer" aria-label="Open Defender indicator import screenshot"><img src="./DefenderScreens/Step1.png" width="1369" height="842" loading="lazy" alt="Defender Settings: open Endpoints, select Indicators under Rules, then URLs/Domains and Import."></a></figure>
+        <p><strong>Import → Choose file</strong>. Select a CSV, then <strong>Import</strong>.</p>
+        <p>Repeat for every batch, then <strong>Done</strong>. Limit: 500 indicators per CSV.</p>
+      </section>
+      <section id="verify" class="help-step" aria-labelledby="verify-title">
+        <h2 id="verify-title">4. Verify</h2>
+        <ul>
+          <li>Resolve import errors before continuing.</li>
+          <li>Check imported rows under <strong>URLs/Domains</strong> and <strong>IP addresses</strong>.</li>
+          <li>Confirm device scope and blocking action.</li>
+          <li>Test blocked and excluded tools on pilot devices.</li>
+        </ul>
+        <p>Expand device scope after testing.</p>
+        <details class="export-details"><summary>Existing indicators</summary><p>Exclusions do not delete existing blocks. Remove obsolete indicators in Defender.</p></details>
+        <p><a href="https://learn.microsoft.com/en-us/defender-endpoint/indicator-manage" target="_blank" rel="noopener noreferrer">Import documentation <span aria-hidden="true">↗</span></a> · <a href="https://learn.microsoft.com/en-us/defender-endpoint/indicator-ip-domain" target="_blank" rel="noopener noreferrer">Protection requirements <span aria-hidden="true">↗</span></a></p>
+      </section>
+    </article>
+  </main>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./help.html">WDAC guide</a></div></footer>
+</body>
+</html>

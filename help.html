@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Deploy an RMM Blocker WDAC policy through Microsoft Intune. Screenshot guide for XML upload and pilot testing.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Deploy WDAC — RMM Blocker</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="#guide">Skip to guide</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Blocker home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 27 7v9c0 6-5 10-11 13C10 26 5 22 5 16V7Z" stroke="currentColor" stroke-width="2"/><path d="m11 16 3 3 7-7" stroke="currentColor" stroke-width="2"/></svg>
+        <span>RMM Blocker</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help.html" aria-current="page">Help</a></nav>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container help-layout">
+    <aside class="help-sidebar">
+      <nav class="help-nav" aria-labelledby="guides-title">
+        <h2 id="guides-title">Guides</h2>
+        <a href="./help.html" aria-current="page">WDAC</a>
+        <a href="./help-ioc.html">Defender IOCs</a>
+      </nav>
+      <nav class="help-nav help-sections" aria-labelledby="sections-title">
+        <h2 id="sections-title">On this page</h2>
+        <a href="#create">1. Create</a>
+        <a href="#name">2. Name</a>
+        <a href="#upload">3. Upload</a>
+        <a href="#assign">4. Assign</a>
+        <a href="#verify">5. Verify</a>
+      </nav>
+    </aside>
+    <article id="guide" class="help-guide" tabindex="-1">
+      <div class="page-heading"><div><h1>Deploy WDAC</h1><p><a href="./index.html">Exclude trusted tools</a>, then download XML.</p></div></div>
+      <aside class="help-warning" role="note">Enforced policy. Start with a pilot device group.</aside>
+      <section id="create" class="help-step" aria-labelledby="create-title">
+        <h2 id="create-title">1. Create</h2>
+        <p><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Endpoint security</strong> → <strong>App Control for Business</strong> → <strong>Create</strong>.</p>
+        <figure><a href="./WDACScreens/Step1.png" target="_blank" rel="noopener noreferrer" aria-label="Open Create policy screenshot"><img src="./WDACScreens/Step1.png" width="1089" height="626" alt="Intune App Control for Business: select App Control for Business, then Create."></a></figure>
+      </section>
+      <section id="name" class="help-step" aria-labelledby="name-title">
+        <h2 id="name-title">2. Name</h2>
+        <p>Name the policy. Select <strong>Next</strong>.</p>
+        <figure><a href="./WDACScreens/Step2.png" target="_blank" rel="noopener noreferrer" aria-label="Open policy name screenshot"><img src="./WDACScreens/Step2.png" width="809" height="367" loading="lazy" alt="Basics: the policy name is set to Block RMM."></a></figure>
+      </section>
+      <section id="upload" class="help-step" aria-labelledby="upload-title">
+        <h2 id="upload-title">3. Upload</h2>
+        <p>Choose <strong>XML upload (Default)</strong>. Upload your downloaded XML.</p>
+        <figure><a href="./WDACScreens/Step3.png" target="_blank" rel="noopener noreferrer" aria-label="Open XML upload screenshot"><img src="./WDACScreens/Step3.png" width="867" height="622" loading="lazy" alt="Configuration settings: XML upload selected, with an XML file loaded into XML value."></a></figure>
+      </section>
+      <section id="assign" class="help-step" aria-labelledby="assign-title">
+        <h2 id="assign-title">4. Assign</h2>
+        <p>Set scope tags if needed. Assign your pilot device group.</p>
+        <p><strong>Review + create</strong> → <strong>Create</strong>.</p>
+        <figure><a href="./WDACScreens/Step4.png" target="_blank" rel="noopener noreferrer" aria-label="Open group assignment screenshot"><img src="./WDACScreens/Step4.png" width="904" height="437" loading="lazy" alt="Assignments: one device group is selected with target type Include."></a></figure>
+      </section>
+      <section id="verify" class="help-step" aria-labelledby="verify-title">
+        <h2 id="verify-title">5. Verify</h2>
+        <ul>
+          <li>Sync the pilot device.</li>
+          <li>Check deployment status in Intune.</li>
+          <li>Test excluded and blocked tools.</li>
+          <li>Check Event Viewer: <strong>Applications and Services Logs → Microsoft → Windows → CodeIntegrity → Operational</strong>.</li>
+        </ul>
+        <p>Expand assignments after testing.</p>
+        <details class="export-details"><summary>Existing policies</summary><p>Exclusions add no allow rules. Other policies may still block trusted tools.</p></details>
+        <p><a href="https://learn.microsoft.com/en-us/intune/device-configuration/endpoint-security/manage-app-control" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a></p>
+      </section>
+    </article>
+  </main>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a></div></footer>
+</body>
+</html>

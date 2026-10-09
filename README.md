@@ -1,4 +1,4 @@
-# RMM Block List Editor
+# RMM Blocker
 
 A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
 (policy version `1.0.0.8`, 838 deny rules).
@@ -6,10 +6,41 @@ Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
 
+## Builder workflow
+
+1. **Set exceptions.** Check trusted tools in the single list to exclude them.
+   The same selections feed both outputs. Execution rules remain reviewable;
+   enabling IOC exports adds network indicators.
+   Search and filters only change visibility.
+2. **Review downloads.** Both outputs appear on the right, with retained/removed counts
+   and a reviewable selection list. XML is always available; CSVs are optional.
+   Download each desired format separately, and import every CSV batch.
+   WDAC blocks execution via filename/folder rules. Defender IOCs block known
+   RMM domains/IPs. Neither export creates allow rules.
+
+The UI follows the Fluent-style Settings Catalog Viewer: a compact header,
+dense tool rows and a live download panel. There is no path selector. Dark is the default;
+the header switches between dark and light for the current page session.
+Blue highlights exclusions and export actions. Spacing follows an 8px grid;
+mobile stacks the panels. Technical/deployment notes use progressive disclosure.
+Visible copy is limited to instructions, counts, controls and actionable warnings;
+disabled IOC exports have no redundant status message.
+Nothing is uploaded; no framework or external dependencies were added.
+
+## Deployment help
+
+[Deploy WDAC](./help.html) covers Intune XML upload, pilot assignment and verification,
+using the screenshots in `WDACScreens`. The exported policy is enforced, not audit-only.
+
+[Import Defender IOCs](./help-ioc.html) covers protection requirements, CSV import
+and verification, using `DefenderScreens`. CSVs default to all devices; set
+`RbacGroups` to a pilot Defender device group before testing.
+
 ## GitHub Pages
 
 1. Put these files in a GitHub repository, keeping the XML beside `index.html`
-   and including the `IOC` folder.
+   and including the `IOC`, `WDACScreens` and `DefenderScreens` folders.
+   Keep `help.html`, `help-ioc.html` and `theme.js` alongside the editor.
 2. In **Settings > Pages**, choose **Deploy from a branch**.
 3. Select your branch and **/ (root)**, then save.
 
@@ -19,8 +50,8 @@ plain static hosting. The provided XML is kept unchanged.
 
 ## Optional Defender IOC export
 
-The **Also prepare Defender IOC CSVs using these exclusions** checkbox defaults
-to **off**. Off means XML-only; IOC CSVs are not loaded or prepared.
+The **Include IOC exports** checkbox defaults to **off**. Off means XML-only;
+IOC CSVs are not loaded or prepared. Enable them in the output panel.
 
 When enabled, the three supplied CSVs in `IOC` are combined locally into one
 585-indicator dataset (573 domains and 12 IPs). The same trusted-tool selections
@@ -57,6 +88,9 @@ guarantee that a selected tool can connect under other network controls.
 Serve this directory with `python -m http.server 8080 --bind 127.0.0.1`, then open
 `http://127.0.0.1:8080/`. Open `/tests.html` on that server to run the browser-native
 XML and IOC regression suite, including CSV round-trips and the 500-row boundary.
+The suite also exercises shared selections, generated XML/CSV downloads, theme switching,
+final export summaries,
+search/filter isolation, optional CSV exports and reset.
 
 ## Policy behavior
 

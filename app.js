@@ -11,7 +11,6 @@ let iocLoading = false;
 let iocError;
 let iocExportKey;
 let iocUrls = [];
-
 function releaseIocDownloads() {
   for (const url of iocUrls) URL.revokeObjectURL(url);
   iocUrls = [];
@@ -23,7 +22,7 @@ function showIocError(error) {
   console.error(error);
   iocError = error;
   releaseIocDownloads();
-  byId("ioc-error").textContent = `${error.message} No IOC CSVs are available. XML export is unaffected. Turn the IOC toggle off and on to retry.`;
+  byId("ioc-error").textContent = `${error.message} CSVs unavailable; XML unaffected. Disable and re-enable IOC exports to retry.`;
   byId("ioc-error").hidden = false;
 }
 
@@ -44,7 +43,7 @@ function attachIocDetails() {
       list.append(item);
     }
     const summary = document.createElement("summary");
-    summary.textContent = `View matching Defender IOCs (${entry.iocs.length})`;
+    summary.textContent = `IOCs (${entry.iocs.length})`;
     entry.iocDetails.replaceChildren(summary, list);
   }
   const unlinked = new Map();
@@ -54,7 +53,7 @@ function attachIocDetails() {
     }
   }
   byId("ioc-unlinked").hidden = !unlinked.size;
-  byId("ioc-unlinked-summary").textContent = `${unlinked.size} IOC tool identities have no XML match (retained in CSVs)`;
+  byId("ioc-unlinked-summary").textContent = `${unlinked.size} unmatched tools stay blocked`;
   const list = document.createDocumentFragment();
   for (const [name, count] of [...unlinked].sort(([a], [b]) => a.localeCompare(b))) {
     const item = document.createElement("li");
@@ -68,25 +67,24 @@ function updateIocs() {
   const enabled = byId("link-iocs").checked;
   byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
   byId("ioc-output").hidden = !enabled;
+  byId("ioc-status").hidden = !enabled || !!iocError;
   for (const entry of tools) {
-    entry.iocCount.hidden = !enabled || !iocData;
+    entry.iocCount.hidden = !enabled || !iocData || !!entry.iocs.length || !excluded.has(entry.tool.name);
     entry.iocDetails.hidden = !enabled || !entry.iocs.length;
     entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
-    entry.iocCount.textContent = entry.iocs.length
-      ? `${entry.iocs.length} linked Defender IOCs${excluded.has(entry.tool.name) ? " - excluded from CSVs" : ""}`
-      : "No linked Defender IOCs for this tool; its selection changes only the XML.";
+    entry.iocCount.textContent = "No linked IOCs.";
   }
   if (!enabled) {
     releaseIocDownloads();
-    byId("ioc-status").textContent = "OFF: XML only. No Defender IOC CSVs are prepared.";
+    byId("ioc-status").textContent = "";
     return;
   }
   if (iocLoading) {
-    byId("ioc-status").textContent = "ON: Loading and combining the Defender IOC files...";
+    byId("ioc-status").textContent = "Loading IOCs...";
     return;
   }
   if (iocError) {
-    byId("ioc-status").textContent = "ON: IOC export unavailable. See the error below.";
+    byId("ioc-status").textContent = "";
     return;
   }
   if (!iocData) return;
@@ -96,19 +94,18 @@ function updateIocs() {
     const { removed, retained, sharedRemoved } = filterIocs(iocData, excluded);
     const batches = exportIocBatches(retained);
     releaseIocDownloads();
-    byId("ioc-status").textContent = `ON: Same exclusions applied. ${retained.length} of ${iocData.indicators.length} IOCs retained; ${removed.length} removed. ${batches.length} CSV batch${batches.length === 1 ? "" : "es"}.`;
+    byId("ioc-status").textContent = `${retained.length} indicators kept · ${removed.length} removed · ${batches.length} CSV${batches.length === 1 ? "" : "s"}`;
     for (const [index, batch] of batches.entries()) {
       const url = URL.createObjectURL(new Blob([batch.csv], { type: "text/csv;charset=utf-8" }));
       iocUrls.push(url);
       const link = document.createElement("a");
       link.href = url;
       link.download = `Defender_IOCs${excluded.size ? "_custom" : ""}_Part${index + 1}_of${batches.length}.csv`;
-      link.textContent = `Download IOC CSV ${index + 1} of ${batches.length} (${batch.count} indicators)`;
+      link.textContent = `CSV ${index + 1} / ${batches.length} · ${batch.count} indicators ↓`;
       byId("ioc-downloads").append(link);
     }
-    if (!batches.length) byId("ioc-downloads").textContent = "No IOCs remain. No CSV files need to be imported.";
     byId("ioc-shared").hidden = !sharedRemoved.length;
-    byId("ioc-shared-summary").textContent = `Warning: ${sharedRemoved.length} removed shared indicator${sharedRemoved.length === 1 ? "" : "s"} also affect unselected tools`;
+    byId("ioc-shared-summary").textContent = `${sharedRemoved.length} shared indicator${sharedRemoved.length === 1 ? "" : "s"} removed for other tools`;
     const list = document.createDocumentFragment();
     for (const indicator of sharedRemoved) {
       const item = document.createElement("li");
@@ -119,7 +116,8 @@ function updateIocs() {
     iocExportKey = key;
   } catch (error) {
     showIocError(error);
-    byId("ioc-status").textContent = "ON: IOC export unavailable. See the error below.";
+    byId("ioc-status").textContent = "";
+    byId("ioc-status").hidden = true;
   }
 }
 
@@ -161,7 +159,11 @@ function makeTool(tool, index) {
   const counts = document.createElement("div");
   counts.className = "rule-count";
   const folders = tool.rules.filter(rule => rule.kind === "Folder").length;
-  counts.textContent = `${tool.rules.length} rules: ${tool.rules.length - folders} filename, ${folders} folder`;
+  const filenames = tool.rules.length - folders;
+  counts.textContent = [
+    filenames ? `${filenames} filename${filenames === 1 ? "" : "s"}` : "",
+    folders ? `${folders} folder${folders === 1 ? "" : "s"}` : "",
+  ].filter(Boolean).join(" · ");
   heading.append(name, counts);
   const label = document.createElement("label");
   label.className = "exclude-label";
@@ -169,7 +171,7 @@ function makeTool(tool, index) {
   checkbox.type = "checkbox";
   checkbox.setAttribute("aria-label", `Exclude ${tool.name} from block list`);
   const action = document.createElement("span");
-  action.textContent = "Exclude from block list";
+  action.textContent = "Exclude";
   checkbox.addEventListener("change", () => {
     if (checkbox.checked) excluded.add(tool.name);
     else excluded.delete(tool.name);
@@ -181,7 +183,7 @@ function makeTool(tool, index) {
   if (tool.unclassified) {
     const note = document.createElement("p");
     note.className = "unclassified-warning";
-    note.textContent = "Tool identity not confirmed. This entry controls only the exact rule shown below.";
+    note.textContent = "Unconfirmed identity. Review the exact rule before excluding.";
     row.append(note);
   }
   const warning = document.createElement("p");
@@ -190,7 +192,7 @@ function makeTool(tool, index) {
   row.append(warning);
   const details = document.createElement("details");
   const summary = document.createElement("summary");
-  summary.textContent = "View matching rules";
+  summary.textContent = "Execution rules";
   const list = document.createElement("ul");
   list.className = "rule-list";
   for (const rule of tool.rules) {
@@ -228,11 +230,11 @@ function update() {
     const sharedRemoved = entry.tool.rules.filter(rule => ids.has(rule.id) && rule.names.length > 1);
     entry.checkbox.checked = selected;
     entry.row.classList.toggle("excluded", selected);
-    entry.action.textContent = selected ? "Excluded from block list" : "Exclude from block list";
+    entry.action.textContent = selected ? "Excluded" : "Exclude";
     entry.warning.hidden = !sharedRemoved.length;
     entry.warning.textContent = selected
-      ? `Shared folder removal also affects: ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Their other rules stay blocked unless also selected.`
-      : `${sharedRemoved.length} shared folder rule(s) removed by another selected tool. This tool's other block rules are retained.`;
+      ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
+      : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
     const searchText = `${entry.searchText} ${byId("link-iocs").checked ? entry.iocSearchText : ""}`;
     entry.row.hidden = !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
@@ -242,12 +244,11 @@ function update() {
   byId("excluded-count").textContent = excluded.size;
   byId("removed-count").textContent = ids.size;
   byId("reset").disabled = !excluded.size;
-  byId("results").textContent = `${visible} of ${tools.length} entries shown`;
+  byId("results").textContent = `${visible} / ${tools.length} tools`;
   byId("empty").hidden = visible !== 0;
-  const refs = policy.rules.filter(rule => ids.has(rule.id)).reduce((count, rule) => count + rule.references, 0);
-  byId("export-summary").textContent = excluded.size
-    ? `Download will remove ${ids.size} deny rules and ${refs} file rule references. Excluded: ${[...excluded].sort().join(", ")}.`
-    : "No exclusions selected. Download will contain the original block list, unchanged.";
+  byId("selection-details").hidden = !excluded.size;
+  byId("selection-summary").textContent = `Excluded tools (${excluded.size})`;
+  byId("selection-list").textContent = [...excluded].sort().join(", ");
   updateIocs();
 }
 
@@ -284,9 +285,7 @@ async function initialize() {
     const fragment = document.createDocumentFragment();
     for (const entry of tools) fragment.append(entry.row);
     byId("tools").append(fragment);
-    byId("policy-version").textContent = `Policy version ${policy.version}`;
-    const unclassified = policy.tools.filter(tool => tool.unclassified);
-    byId("catalog-note").textContent = `${unclassified.length} entries have unconfirmed tool identities and are marked Unclassified. Generic executable names cannot always be attributed to a product; inspect those rules separately.`;
+    byId("policy-version").textContent = `· v${policy.version}`;
     update();
     byId("editor").hidden = false;
   } catch (error) {
