@@ -229,3 +229,39 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   input[type="checkbox"]:checked::after { content: none; }
   .tool.excluded { box-shadow: none; }
 }
+:root {
+  --tok-comment: #6a9955;
+  --tok-string: #ce9178;
+  --tok-num: #b5cea8;
+  --tok-keyword: #569cd6;
+  --tok-table: #4ec9b0;
+  --tok-var: #9cdcfe;
+  --tok-op: #c8c8c8;
+}
+:root[data-theme="light"] {
+  --tok-comment: #008000;
+  --tok-string: #a31515;
+  --tok-num: #098658;
+  --tok-keyword: #0000ff;
+  --tok-table: #267f99;
+  --tok-var: #001080;
+  --tok-op: #000000;
+}
+.kql-open { width: 100%; justify-content: space-between; border-color: var(--line-strong); margin-bottom: 16px; }
+.kql-open:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal-backdrop { position: absolute; inset: 0; background: #000000b3; }
+.modal-dialog { position: relative; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; width: 100%; max-width: 880px; max-height: 90dvh; display: flex; flex-direction: column; padding: 20px; box-shadow: 0 24px 64px #00000080; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+.modal-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.modal-close { min-height: 32px; min-width: 32px; padding: 0; font-size: 20px; line-height: 1; }
+.modal-desc { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.kql-code { margin: 0; flex: 1; min-height: 0; overflow: auto; background: var(--page); border: 1px solid var(--line); border-radius: 6px; padding: 16px; font-family: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; line-height: 1.6; white-space: pre; tab-size: 4; }
+.modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.tok-comment { color: var(--tok-comment); }
+.tok-string { color: var(--tok-string); }
+.tok-num { color: var(--tok-num); }
+.tok-keyword { color: var(--tok-keyword); font-weight: 600; }
+.tok-table { color: var(--tok-table); }
+.tok-var { color: var(--tok-var); }
+.tok-op { color: var(--tok-op); }

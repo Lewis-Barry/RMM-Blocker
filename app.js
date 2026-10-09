@@ -1,5 +1,6 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches } from "./ioc.js";
+import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
@@ -11,6 +12,8 @@ let iocLoading = false;
 let iocError;
 let iocExportKey;
 let iocUrls = [];
+let kqlData;
+let kqlText = "";
 function releaseIocDownloads() {
   for (const url of iocUrls) URL.revokeObjectURL(url);
   iocUrls = [];
@@ -287,6 +290,68 @@ byId("download").addEventListener("click", () => {
   } catch (error) {
     showError(error);
   }
+});
+
+let kqlLastFocus;
+
+function openKqlModal() {
+  kqlLastFocus = document.activeElement;
+  byId("kql-modal").hidden = false;
+  byId("kql-close").focus();
+}
+
+function closeKqlModal() {
+  byId("kql-modal").hidden = true;
+  if (kqlLastFocus) kqlLastFocus.focus();
+}
+
+function copyText(text) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.append(area);
+  area.select();
+  const copied = document.execCommand("copy");
+  area.remove();
+  return copied ? Promise.resolve() : Promise.reject(new Error("Copy failed"));
+}
+
+byId("kql-open").addEventListener("click", async () => {
+  const errorBox = byId("kql-error");
+  errorBox.hidden = true;
+  byId("kql-code").textContent = "";
+  try {
+    if (!kqlData) kqlData = await loadIocs(policy.tools.map(tool => tool.name));
+    kqlText = buildNetworkDiscoveryKql(kqlData.indicators);
+    byId("kql-code").innerHTML = highlightKql(kqlText);
+  } catch (error) {
+    console.error(error);
+    errorBox.textContent = `Unable to build the KQL: ${error.message}`;
+    errorBox.hidden = false;
+  }
+  openKqlModal();
+});
+
+byId("kql-close").addEventListener("click", closeKqlModal);
+byId("kql-modal").addEventListener("click", event => {
+  if (event.target.closest("[data-close]")) closeKqlModal();
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !byId("kql-modal").hidden) closeKqlModal();
+});
+
+byId("kql-copy").addEventListener("click", async () => {
+  const button = byId("kql-copy");
+  try {
+    await copyText(kqlText);
+  } catch (error) {
+    console.error(error);
+    return;
+  }
+  button.textContent = "Copied";
+  setTimeout(() => { button.textContent = "Copy query"; }, 1500);
 });
 
 async function initialize() {

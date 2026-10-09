@@ -1,5 +1,6 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
+import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -203,22 +204,22 @@ async function testBuilder(policy, iocs) {
     byId("link-iocs").click();
     await waitFor(() => byId("ioc-downloads").querySelectorAll("a").length > 0 || !byId("ioc-error").hidden,
       "IOC exports were not prepared");
-    test("Enabling IOC exports applies the existing selection to one 464-indicator CSV", () => {
+    test("Enabling IOC exports applies the existing selection to one 454-indicator CSV", () => {
       assert(byId("ioc-error").hidden, byId("ioc-error").textContent);
       assert(selection.checked && byId("link-iocs").checked, "Enabling IOC exports cleared selection");
-      assert(byId("ioc-status").textContent === "464 indicators kept · 121 removed · 1 CSV", "IOC summary stale");
+      assert(byId("ioc-status").textContent === "454 indicators kept · 121 removed · 1 CSV", "IOC summary stale");
       assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Wrong CSV batch count");
-      assert(byId("ioc-downloads").querySelector("a").textContent === "CSV 1 / 1 · 464 indicators",
+      assert(byId("ioc-downloads").querySelector("a").textContent === "CSV 1 / 1 · 454 indicators",
         "Unexpected IOC download label");
       assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
     });
     test("Unmatched tools appear below and outside the IOC card", () => {
       const note = byId("ioc-unlinked");
       const card = byId("link-iocs").closest("section");
-      assert(note.parentElement === card.parentElement && note.previousElementSibling === card,
+      assert(note.parentElement === card.parentElement && note.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
         "Unmatched tools remain inside the IOC card or are misplaced");
-      assert(!note.hidden && byId("ioc-unlinked-list").children.length === 7,
-        "Unmatched tools are missing");
+      assert(card.nextElementSibling === byId("kql-open"), "KQL action is not directly below the IOC card");
+      assert(!note.hidden && byId("ioc-unlinked-list").children.length === 7, "Unmatched tools are missing");
     });
     test("IOC disclosures identify their tool and show compact value/type rows in a shaded group", () => {
       const details = selection.closest(".tool").querySelectorAll("details")[1];
@@ -259,7 +260,7 @@ async function testBuilder(policy, iocs) {
     const csvRows = parseCsv(await csvResponse.text());
     test("Generated CSV download contains the filtered Defender rows and header", () => {
       assert(JSON.stringify(csvRows[0]) === JSON.stringify(iocHeaders), "Downloaded header incorrect");
-      assert(csvRows.length === 465, "Downloaded CSV does not contain 464 indicators");
+      assert(csvRows.length === 455, "Downloaded CSV does not contain 454 indicators");
       assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM (CentraStage)"),
         "Downloaded CSV contains selected IOCs or non-Block actions");
     });
@@ -302,7 +303,7 @@ async function testBuilder(policy, iocs) {
     test("Search and filters never change the final exports", () => {
       assert(!byId("empty").hidden, "Empty search message missing");
       assert(selection.checked && byId("excluded-count").textContent === "1", "Search changed selection");
-      assert(byId("ioc-status").textContent.startsWith("464 indicators kept"), "Search changed IOC output");
+      assert(byId("ioc-status").textContent.startsWith("454 indicators kept"), "Search changed IOC output");
       assert(byId("removed-count").textContent === String(expectedRemoved), "Search changed XML output");
     });
     byId("link-iocs").click();
@@ -320,11 +321,22 @@ async function testBuilder(policy, iocs) {
       assert(byId("removed-count").textContent === "0", "Reset left XML removals");
       assert(byId("selection-details").hidden, "Reset left stale review");
       assert(byId("selection-list").children.length === 0, "Reset left stale exclusion items");
-      assert(byId("ioc-status").textContent === "585 indicators kept · 0 removed · 2 CSVs", "IOC reset stale");
+      assert(byId("ioc-status").textContent === "575 indicators kept · 0 removed · 2 CSVs", "IOC reset stale");
       assert(!byId("ioc-unlinked").hidden, "Re-enabling IOC exports leaves unmatched tools hidden");
       const links = [...byId("ioc-downloads").querySelectorAll("a")];
       assert(links.length === 2 && links[0].textContent.includes("500 indicators") &&
-        links[1].textContent.includes("85 indicators"), "Reset batches incorrect");
+        links[1].textContent.includes("75 indicators"), "Reset batches incorrect");
+    });
+    byId("kql-open").click();
+    await waitFor(() => !byId("kql-modal").hidden && byId("kql-code").textContent.includes("DeviceNetworkEvents"),
+      "KQL modal did not populate");
+    test("KQL modal renders the highlighted network query and closes", () => {
+      assert(!byId("kql-modal").hidden, "Modal did not open");
+      assert(byId("kql-error").hidden, "KQL modal reported an error");
+      assert(byId("kql-code").querySelector(".tok-table"), "KQL not syntax-highlighted");
+      assert(byId("kql-code").querySelectorAll(".tok-string").length >= 575, "KQL indicators missing from view");
+      byId("kql-close").click();
+      assert(byId("kql-modal").hidden, "Modal did not close");
     });
   } finally {
     frame.remove();
@@ -444,17 +456,39 @@ async function run() {
       expectError(() => parseCsv('"closed"text'), "Invalid CSV");
       expectError(() => parseCsv('unquoted"quote'), "Invalid CSV");
     });
-    test("Combined sources contain 585 block IOCs: 573 domains and 12 IPs", () => {
-      assert(iocs.indicators.length === 585, "Combined indicator count changed");
-      assert(iocs.indicators.filter(row => row.type === "DomainName").length === 573, "Domain count changed");
+    test("Combined sources contain 575 block IOCs: 563 domains and 12 IPs", () => {
+      assert(iocs.indicators.length === 575, "Combined indicator count changed");
+      assert(iocs.indicators.filter(row => row.type === "DomainName").length === 563, "Domain count changed");
       assert(iocs.indicators.filter(row => row.type === "IpAddress").length === 12, "IP count changed");
       assert(iocs.indicators.every(row => row.values[3] === "Block"), "An indicator changed action");
     });
-    test("No IOC exclusions preserves all metadata in batches of 500 and 85", () => {
+    test("Network discovery KQL embeds every indicator and both match paths", () => {
+      const kql = buildNetworkDiscoveryKql(iocs.indicators);
+      assert(kql.includes("let RMMDomains = dynamic(["), "Missing domain list");
+      assert(kql.includes("let RMMIPs = dynamic(["), "Missing IP list");
+      assert(kql.includes("DeviceNetworkEvents"), "Missing network table");
+      assert(kql.includes("RemoteUrl has_any (RMMDomains)"), "Missing domain match");
+      assert(kql.includes("RemoteIP in~ (RMMIPs)"), "Missing IP match");
+      for (const indicator of iocs.indicators) {
+        assert(kql.includes(`"${indicator.value}"`), `KQL omits ${indicator.value}`);
+      }
+      assert(!/www\./.test(kql), "KQL retained a www. prefix");
+      assert(iocs.indicators.filter(indicator => indicator.type === "DomainName").length === 563,
+        "Domain count after removing www. duplicates is incorrect");
+    });
+    test("KQL highlighting escapes HTML and tags comments, strings and tables", () => {
+      const highlighted = highlightKql('// note\nlet X = dynamic(["a&b"]);\nDeviceNetworkEvents\n| where X');
+      assert(highlighted.includes('class="tok-comment"'), "Comments not highlighted");
+      assert(highlighted.includes('class="tok-string"'), "Strings not highlighted");
+      assert(highlighted.includes("a&amp;b"), "String HTML not escaped");
+      assert(highlighted.includes('class="tok-table"'), "Table name not highlighted");
+      assert(!highlighted.includes("<script"), "Unescaped markup leaked");
+    });
+    test("No IOC exclusions preserves all metadata in batches of 500 and 75", () => {
       const result = filterIocs(iocs, new Set());
       assert(result.removed.length === 0, "Unexpected exclusions");
       const batches = exportIocBatches(result.retained);
-      assert(JSON.stringify(batches.map(batch => batch.count)) === "[500,85]", "Incorrect initial batches");
+      assert(JSON.stringify(batches.map(batch => batch.count)) === "[500,75]", "Incorrect initial batches");
       const rows = batches.flatMap(batch => {
         const parsed = parseCsv(batch.csv);
         assert(JSON.stringify(parsed[0]) === JSON.stringify(iocHeaders), "Defender header changed");
@@ -464,7 +498,7 @@ async function run() {
     });
     test("TeamViewer removes exactly four linked IOCs and retains all other indicators", () => {
       const result = filterIocs(iocs, new Set(["TeamViewer"]));
-      assert(result.removed.length === 4 && result.retained.length === 581, "TeamViewer IOC count incorrect");
+      assert(result.removed.length === 4 && result.retained.length === 571, "TeamViewer IOC count incorrect");
       assert(result.removed.every(row => row.values[5] === "LOLRMM - TeamViewer"), "Unrelated IOC removed");
       assert(!result.retained.some(row => row.values[5] === "LOLRMM - TeamViewer"), "TeamViewer IOC retained");
     });
@@ -474,11 +508,11 @@ async function run() {
       assert(result.removed.filter(row => row.type === "IpAddress").length === 3, "Ammyy IPs remain");
       assert(result.removed.filter(row => row.type === "DomainName").length === 1, "Ammyy domain remains");
     });
-    test("Product aliases link Datto and shrink the combined dataset to one 464-row file", () => {
+    test("Product aliases link Datto and shrink the combined dataset to one 454-row file", () => {
       const result = filterIocs(iocs, new Set(["Datto RMM / Autotask"]));
       assert(result.removed.length === 121, "Datto alias incomplete");
       assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM (CentraStage)"), "Incorrect Datto mapping");
-      assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) === "[464]",
+      assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) === "[454]",
         "Batch count not recomputed after filtering");
     });
     test("Shared descriptions link all owners and warn when an unselected owner is affected", () => {
@@ -495,13 +529,13 @@ async function run() {
     });
     test("Unlinked IOC-only tools remain blocked when every XML tool is excluded", () => {
       const result = filterIocs(iocs, new Set(toolNames));
-      assert(result.retained.length === 12, "Unlinked IOC count changed");
+      assert(result.retained.length === 11, "Unlinked IOC count changed");
       const owners = new Set(result.retained.flatMap(row => row.owners.map(owner => owner.name)));
       assert(owners.size === 7, "Unlinked identity count changed");
       assert(result.retained.every(row => !row.tools.length && row.values[3] === "Block"), "Unlinked IOC was dropped or allowed");
     });
     test("XML-only selections do not remove unrelated IOCs", () => {
-      assert(filterIocs(iocs, new Set(["PsExec"])).retained.length === 585, "XML-only tool removed IOCs");
+      assert(filterIocs(iocs, new Set(["PsExec"])).retained.length === 575, "XML-only tool removed IOCs");
       expectError(() => filterIocs(iocs, new Set(["Not a tool"])), "Unknown IOC tool selection");
     });
     test("Every XML selection removes only its linked IOC rows", () => {

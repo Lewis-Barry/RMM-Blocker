@@ -1,4 +1,4 @@
-# RMM Blocker
+# RMM and Remote Access Tool Blocker
 
 A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
 (policy version `1.0.0.8`, 838 deny rules).
@@ -61,7 +61,7 @@ The **Include IOC exports** checkbox defaults to **off**. Off means XML-only;
 IOC CSVs are not loaded or prepared. Enable them in the output panel.
 
 When enabled, the three supplied CSVs in `IOC` are combined locally into one
-585-indicator dataset (573 domains and 12 IPs). The same trusted-tool selections
+575-indicator dataset (563 domains and 12 IPs). The same trusted-tool selections
 remove matching indicators; all remaining rows retain their original **Block**
 action and metadata. This does not create Allow indicators or delete indicators
 already imported into Defender.
