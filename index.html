@@ -59,7 +59,7 @@
         <section id="exports" class="export-panel" aria-labelledby="exports-title" tabindex="-1">
           <div class="panel-heading"><h2 id="exports-title">Downloads</h2></div>
           <div class="export-content">
-            <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><p id="selection-list"></p></details>
+            <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
             <section class="export-card" aria-labelledby="wdac-export-title">
               <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
               <p class="output-description">Blocks execution.</p>
@@ -84,13 +84,13 @@
                   <p>Affects unselected owners:</p>
                   <ul id="ioc-shared-list" class="rule-list"></ul>
                 </details>
-                <details id="ioc-unlinked" class="export-details" hidden>
-                  <summary id="ioc-unlinked-summary"></summary>
-                  <ul id="ioc-unlinked-list"></ul>
-                </details>
                 <details class="export-details"><summary>Import notes</summary><p>No Allow indicators added. Delete existing imports separately. Other network controls may still block connections; endpoint coverage is incomplete.</p><p><a href="./help-ioc.html">Upload guide</a></p></details>
               </div>
             </section>
+            <details id="ioc-unlinked" class="export-details ioc-unlinked" hidden>
+              <summary id="ioc-unlinked-summary"></summary>
+              <ul id="ioc-unlinked-list"></ul>
+            </details>
           </div>
         </section>
       </div>

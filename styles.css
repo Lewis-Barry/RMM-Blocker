@@ -120,7 +120,8 @@ summary { width: fit-content; cursor: pointer; font-size: .875rem; color: var(--
 .export-panel { min-height: 0; min-width: 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; background: var(--surface-alt); }
 .export-content { padding: 16px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .selection-details { margin: 0 0 16px; }
-.selection-details p { color: var(--muted); font-size: .875rem; }
+.selection-details ul { margin: 8px 0; padding: 0; list-style: none; color: var(--muted); font-size: .875rem; }
+.selection-details li { margin: 8px 0; overflow-wrap: anywhere; }
 .export-card { padding: 16px; background: var(--page); border: 1px solid var(--line); border-radius: 4px; margin-bottom: 16px; }
 .export-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 h3 { font-size: 14px; font-weight: 600; margin: 0; }
@@ -131,6 +132,7 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .export-card .primary { width: 100%; justify-content: space-between; }
 .export-details { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 16px; }
+.ioc-unlinked { margin-top: 0; }
 .export-details p, .warning-details p { color: var(--muted); font-size: 12px; }
 .muted { color: var(--muted); font-size: 12px; }
 .ioc-toggle { display: flex; align-items: center; gap: 8px; font-size: .875rem; cursor: pointer; margin: 16px 0 0; min-height: 44px; }
@@ -192,6 +194,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .export-panel { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
   .export-content { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; overflow: visible; }
   .selection-details { grid-column: 1 / -1; margin: 0; }
+  .ioc-unlinked { grid-column: 2; }
   .export-card { margin: 0; }
   footer { margin-top: 16px; }
 }
@@ -210,6 +213,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .tool { padding: 12px; }
   .export-panel { grid-column: 1; }
   .export-content { grid-template-columns: minmax(0, 1fr); }
+  .ioc-unlinked { grid-column: 1; }
   .footer-content { flex-wrap: wrap; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
   button, select { min-height: 32px; }
 }

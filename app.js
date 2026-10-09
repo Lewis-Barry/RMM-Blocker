@@ -24,6 +24,7 @@ function showIocError(error) {
   releaseIocDownloads();
   byId("ioc-error").textContent = `${error.message} CSVs unavailable; XML unaffected. Disable and re-enable IOC exports to retry.`;
   byId("ioc-error").hidden = false;
+  byId("ioc-unlinked").hidden = true;
 }
 
 function makeRuleItem(value, kind) {
@@ -58,7 +59,6 @@ function attachIocDetails() {
       unlinked.set(owner.name, (unlinked.get(owner.name) || 0) + 1);
     }
   }
-  byId("ioc-unlinked").hidden = !unlinked.size;
   byId("ioc-unlinked-summary").textContent = `${unlinked.size} unmatched tools stay blocked`;
   const list = document.createDocumentFragment();
   for (const [name, count] of [...unlinked].sort(([a], [b]) => a.localeCompare(b))) {
@@ -73,6 +73,7 @@ function updateIocs() {
   const enabled = byId("link-iocs").checked;
   byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
   byId("ioc-output").hidden = !enabled;
+  byId("ioc-unlinked").hidden = !enabled || !iocData || !!iocError || !byId("ioc-unlinked-list").childElementCount;
   byId("ioc-status").hidden = !enabled || !!iocError;
   byId("tools").setAttribute("aria-busy", String(iocLoading));
   for (const entry of tools) {
@@ -112,7 +113,7 @@ function updateIocs() {
       const link = document.createElement("a");
       link.href = url;
       link.download = `Defender_IOCs${excluded.size ? "_custom" : ""}_Part${index + 1}_of${batches.length}.csv`;
-      link.textContent = `CSV ${index + 1} / ${batches.length} · ${batch.count} indicators ↓`;
+      link.textContent = `CSV ${index + 1} / ${batches.length} · ${batch.count} indicators`;
       byId("ioc-downloads").append(link);
     }
     byId("ioc-shared").hidden = !sharedRemoved.length;
@@ -257,7 +258,11 @@ function update() {
   byId("empty").hidden = visible !== 0;
   byId("selection-details").hidden = !excluded.size;
   byId("selection-summary").textContent = `Excluded tools (${excluded.size})`;
-  byId("selection-list").textContent = [...excluded].sort().join(", ");
+  byId("selection-list").replaceChildren(...[...excluded].sort().map(name => {
+    const item = document.createElement("li");
+    item.textContent = name;
+    return item;
+  }));
   updateIocs();
 }
 

@@ -13,7 +13,7 @@ Unselected rules remain in place.
    enabling IOC exports adds network indicators.
    Search and filters only change visibility.
 2. **Review downloads.** Both outputs appear on the right, with retained/removed counts
-   and a reviewable selection list. XML is always available; CSVs are optional.
+   and a line-by-line exclusion list. XML is always available; CSVs are optional.
    Download each desired format separately, and import every CSV batch.
    WDAC blocks execution via filename/folder rules. Defender IOCs block known
    RMM domains/IPs. Neither export creates allow rules.
@@ -78,7 +78,7 @@ already imported into Defender.
   guesses tool identity from a domain substring.
 - Shared indicators are removed if **any** linked owner is excluded. A warning
   lists removed indicators that also affect unselected owners.
-- IOC-only tools without an XML match remain blocked and are listed for review.
+- IOC-only tools without an XML match remain blocked and are listed below the IOC card.
   The bundled unmatched identities are Any Support, baramundi Management Suite,
   GatherPlace, Remote Desktop Plus, RMMCRAT, SkyFex and ZeroTier.
 - Turning the toggle off hides CSV downloads without changing XML selections.

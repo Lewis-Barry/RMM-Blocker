@@ -185,6 +185,21 @@ async function testBuilder(policy, iocs) {
       assert(!byId("selection-details").hidden && byId("selection-list").textContent === "Datto RMM / Autotask",
         "Exclusion review missing");
     });
+    test("Exclusion review lists one tool per line in alphabetical order", () => {
+      try {
+        sharedSelection.click();
+        const list = byId("selection-list");
+        assert(list.tagName === "UL" && list.getAttribute("role") === "list", "Exclusion list semantics missing");
+        assert([...list.children].every(item => item.tagName === "LI"), "Exclusions are not separate list items");
+        assert(JSON.stringify([...list.children].map(item => item.textContent)) ===
+          JSON.stringify(["ConnectWise Control / ScreenConnect", "Datto RMM / Autotask"]),
+        "Exclusion list is incomplete or unsorted");
+        assert(frame.contentWindow.getComputedStyle(list).listStyleType === "none", "Exclusion bullets remain");
+        assert(byId("selection-summary").textContent === "Excluded tools (2)", "Exclusion count is stale");
+      } finally {
+        if (sharedSelection.checked) sharedSelection.click();
+      }
+    });
     byId("link-iocs").click();
     await waitFor(() => byId("ioc-downloads").querySelectorAll("a").length > 0 || !byId("ioc-error").hidden,
       "IOC exports were not prepared");
@@ -193,7 +208,17 @@ async function testBuilder(policy, iocs) {
       assert(selection.checked && byId("link-iocs").checked, "Enabling IOC exports cleared selection");
       assert(byId("ioc-status").textContent === "464 indicators kept · 121 removed · 1 CSV", "IOC summary stale");
       assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Wrong CSV batch count");
+      assert(byId("ioc-downloads").querySelector("a").textContent === "CSV 1 / 1 · 464 indicators",
+        "Unexpected IOC download label");
       assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
+    });
+    test("Unmatched tools appear below and outside the IOC card", () => {
+      const note = byId("ioc-unlinked");
+      const card = byId("link-iocs").closest("section");
+      assert(note.parentElement === card.parentElement && note.previousElementSibling === card,
+        "Unmatched tools remain inside the IOC card or are misplaced");
+      assert(!note.hidden && byId("ioc-unlinked-list").children.length === 7,
+        "Unmatched tools are missing");
     });
     test("IOC disclosures identify their tool and show compact value/type rows in a shaded group", () => {
       const details = selection.closest(".tool").querySelectorAll("details")[1];
@@ -284,6 +309,7 @@ async function testBuilder(policy, iocs) {
     test("Disabling IOC exports removes CSV links without changing XML selections", () => {
       assert(byId("ioc-output").hidden && !byId("ioc-downloads").children.length, "CSV links retained");
       assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled IOC status remains visible");
+      assert(byId("ioc-unlinked").hidden, "Disabled IOC exports leave unmatched tools visible");
       assert(selection.checked && byId("removed-count").textContent === String(expectedRemoved),
         "Disabling CSVs changed XML exclusions");
     });
@@ -293,7 +319,9 @@ async function testBuilder(policy, iocs) {
       assert(!selection.checked && byId("excluded-count").textContent === "0", "Reset left selections");
       assert(byId("removed-count").textContent === "0", "Reset left XML removals");
       assert(byId("selection-details").hidden, "Reset left stale review");
+      assert(byId("selection-list").children.length === 0, "Reset left stale exclusion items");
       assert(byId("ioc-status").textContent === "585 indicators kept · 0 removed · 2 CSVs", "IOC reset stale");
+      assert(!byId("ioc-unlinked").hidden, "Re-enabling IOC exports leaves unmatched tools hidden");
       const links = [...byId("ioc-downloads").querySelectorAll("a")];
       assert(links.length === 2 && links[0].textContent.includes("500 indicators") &&
         links[1].textContent.includes("85 indicators"), "Reset batches incorrect");
