@@ -363,15 +363,16 @@ async function testBuilder(policy, iocs) {
         links[1].textContent.includes("75 indicators"), "Reset batches incorrect");
     });
     byId("kql-open").click();
-    await waitFor(() => !byId("kql-modal").hidden && byId("kql-code").textContent.includes("DeviceNetworkEvents"),
+    await waitFor(() => byId("kql-modal").open && byId("kql-code").textContent.includes("DeviceNetworkEvents"),
       "KQL modal did not populate");
     test("KQL modal renders the highlighted network query and closes", () => {
-      assert(!byId("kql-modal").hidden, "Modal did not open");
+      assert(byId("kql-modal").matches(":modal"), "Popup is not a native modal dialog");
+      assert(!byId("kql-copy").disabled, "Copy disabled after the query loaded");
       assert(byId("kql-error").hidden, "KQL modal reported an error");
       assert(byId("kql-code").querySelector(".tok-table"), "KQL not syntax-highlighted");
       assert(byId("kql-code").querySelectorAll(".tok-string").length >= 575, "KQL indicators missing from view");
       byId("kql-close").click();
-      assert(byId("kql-modal").hidden, "Modal did not close");
+      assert(!byId("kql-modal").open, "Modal did not close");
     });
   } finally {
     frame.remove();

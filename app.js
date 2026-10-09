@@ -12,8 +12,16 @@ let iocLoading = false;
 let iocError;
 let iocExportKey;
 let iocUrls = [];
-let kqlData;
+let iocPromise;
 let kqlText = "";
+// One shared load for the IOC toggle and the KQL popup; a failure clears it so the next try refetches.
+function loadIocsOnce() {
+  return iocPromise ||= loadIocs(policy.tools.map(tool => tool.name)).catch(error => {
+    iocPromise = undefined;
+    throw error;
+  });
+}
+
 function releaseIocDownloads() {
   for (const url of iocUrls) URL.revokeObjectURL(url);
   iocUrls = [];
@@ -144,7 +152,7 @@ async function enableIocs() {
   iocLoading = true;
   update();
   try {
-    iocData = await loadIocs(policy.tools.map(tool => tool.name));
+    iocData = await loadIocsOnce();
     attachIocDetails();
   } catch (error) {
     iocData = undefined;
@@ -292,60 +300,33 @@ byId("download").addEventListener("click", () => {
   }
 });
 
-let kqlLastFocus;
-
-function openKqlModal() {
-  kqlLastFocus = document.activeElement;
-  byId("kql-modal").hidden = false;
-  byId("kql-close").focus();
-}
-
-function closeKqlModal() {
-  byId("kql-modal").hidden = true;
-  if (kqlLastFocus) kqlLastFocus.focus();
-}
-
-function copyText(text) {
-  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  const copied = document.execCommand("copy");
-  area.remove();
-  return copied ? Promise.resolve() : Promise.reject(new Error("Copy failed"));
-}
-
 byId("kql-open").addEventListener("click", async () => {
   const errorBox = byId("kql-error");
   errorBox.hidden = true;
   byId("kql-code").textContent = "";
+  byId("kql-copy").disabled = true;
   try {
-    if (!kqlData) kqlData = await loadIocs(policy.tools.map(tool => tool.name));
-    kqlText = buildNetworkDiscoveryKql(kqlData.indicators);
+    kqlText = buildNetworkDiscoveryKql((await loadIocsOnce()).indicators);
     byId("kql-code").innerHTML = highlightKql(kqlText);
+    byId("kql-copy").disabled = false;
   } catch (error) {
     console.error(error);
     errorBox.textContent = `Unable to build the KQL: ${error.message}`;
     errorBox.hidden = false;
   }
-  openKqlModal();
+  byId("kql-modal").showModal();
 });
 
-byId("kql-close").addEventListener("click", closeKqlModal);
+byId("kql-close").addEventListener("click", () => byId("kql-modal").close());
+// A click on the dialog element itself lands on the backdrop, outside the content box.
 byId("kql-modal").addEventListener("click", event => {
-  if (event.target.closest("[data-close]")) closeKqlModal();
-});
-document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && !byId("kql-modal").hidden) closeKqlModal();
+  if (event.target === byId("kql-modal")) byId("kql-modal").close();
 });
 
 byId("kql-copy").addEventListener("click", async () => {
   const button = byId("kql-copy");
   try {
-    await copyText(kqlText);
+    await navigator.clipboard.writeText(kqlText);
   } catch (error) {
     console.error(error);
     return;

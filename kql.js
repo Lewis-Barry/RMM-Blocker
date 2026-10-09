@@ -1,11 +1,5 @@
-const KEYWORDS = new Set([
-  "let", "dynamic", "datatable", "externaldata", "project", "where",
-  "summarize", "extend", "order", "by", "desc", "asc", "or", "and", "not",
-  "in", "in~", "has", "has_any", "has_all", "contains", "startswith", "endswith",
-  "ago", "iff", "case", "between", "distinct", "count", "dcount", "materialize",
-  "render", "take", "top", "join", "kind", "parse", "mv-expand", "bag_unpack",
-  "bin", "now", "tostring", "toint", "todouble", "strcat", "trim", "round", "sort",
-]);
+// Only the keywords the generated query uses.
+const KEYWORDS = new Set(["let", "dynamic", "where", "has_any", "or", "in", "project", "order", "by", "desc"]);
 
 const escapeHtml = text => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 

@@ -72,7 +72,7 @@ already imported into Defender.
 - Download the XML separately, then download and import **every IOC CSV batch**.
   Batches are regenerated after filtering, with at most **500 data rows per
   file**, plus the original Defender header. No selections produces batches of
-  500 and 85; excluding Datto RMM produces a single 464-indicator batch.
+  500 and 75; excluding Datto RMM produces a single 454-indicator batch.
 - Each tool shows its matching IOCs when the toggle is on. Search also matches
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.
@@ -102,6 +102,9 @@ The suite also exercises shared selections, generated XML/CSV downloads, theme s
 final export summaries,
 search/filter isolation, optional CSV exports, reset and compact layouts across
 desktop, mobile and short-window viewport sizes.
+
+`node run-tests.mjs [browser path]` runs the same suite in headless Chrome or Edge
+with no installs; GitHub Actions runs it on every push and pull request.
 
 ## Policy behavior
 
