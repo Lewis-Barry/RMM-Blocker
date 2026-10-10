@@ -6,6 +6,8 @@ Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
 
+https://lewis-barry.github.io/RMM-Blocker/
+
 ## Adding or updating products
 
 `products.json` is the only file to edit. Each product lists any of `paths`
