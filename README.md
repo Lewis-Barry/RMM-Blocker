@@ -6,7 +6,7 @@ Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
 
-The policy targets **Windows 11** end-user devices only. Many rules use more than one
+The policy is designed for **Windows 11 24H2 and newer** end-user devices. Many rules use more than one
 wildcard or a mid-path wildcard, which older Windows versions do not support.
 
 https://lewis-barry.github.io/RMM-Blocker/
