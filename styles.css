@@ -66,9 +66,10 @@ nav a:hover, .source-link:hover, .theme-toggle:hover:not(:disabled) { color: #ff
 h1 { font-size: 24px; line-height: 1.25; margin: 0; font-weight: 600; }
 .page-heading p { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
 .builder-intro { color: var(--muted); font-size: 16px; margin: 12px 0 4px; flex-shrink: 0; }
-.wip-banner { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--muted); font-size: 12px; flex-shrink: 0; }
-.chip { display: inline-flex; border-radius: 4px; padding: 0 8px; font-size: 11px; font-weight: 600; }
-.warning-chip { background: var(--warning-fill); color: var(--warning); }
+.how-to { color: var(--ink); font-size: 14px; flex-shrink: 0; background: var(--accent-fill); border: 1px solid var(--accent); border-radius: 4px; padding: 8px 16px; margin-bottom: 8px; }
+.how-to strong { color: var(--accent); }
+.how-to ol { margin: 0 0 4px; padding-left: 20px; }
+.how-to p { margin: 0 0 4px; }
 #editor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .toolbar { display: flex; gap: 12px; align-items: center; padding: 8px 0 12px; flex-shrink: 0; }
 .search-field { position: relative; flex: 1; min-width: 0; }
@@ -150,6 +151,7 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 footer { border-top: 1px solid var(--line); flex-shrink: 0; background: var(--page); }
 .footer-content { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; font-size: 11px; color: var(--muted); }
 .footer-content a { text-decoration: none; }
+.footer-warning { color: var(--error); }
 .help-page { min-height: 100dvh; display: flex; flex-direction: column; }
 .help-layout { display: grid; grid-template-columns: 192px minmax(0, 960px); gap: 32px; padding-top: 24px; padding-bottom: 32px; flex: 1; align-items: start; }
 .help-sidebar { position: sticky; top: 24px; }

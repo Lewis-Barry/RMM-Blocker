@@ -43,7 +43,7 @@
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
       <div class="page-heading"><div><h1>Deploy WDAC</h1><p><a href="./index.html">Exclude trusted tools</a>, then download XML.</p></div></div>
-      <aside class="help-warning" role="note">Enforced policy. Start with a pilot device group.</aside>
+      <aside class="help-warning" role="note">Enforced policy. Start with a pilot device group.<br>This guide assumes you have no prior AppLocker/WDAC/App Control For Business policies configured today.</aside>
       <section id="create" class="help-step" aria-labelledby="create-title">
         <h2 id="create-title">1. Create</h2>
         <p><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Endpoint security</strong> → <strong>App Control for Business</strong> → <strong>Create</strong>.</p>
@@ -68,13 +68,10 @@
       <section id="verify" class="help-step" aria-labelledby="verify-title">
         <h2 id="verify-title">5. Verify</h2>
         <ul>
-          <li>Sync the pilot device.</li>
-          <li>Check deployment status in Intune.</li>
+          <li>Allow the policy to sync to the pilot device.</li>
           <li>Test excluded and blocked tools.</li>
-          <li>Check Event Viewer: <strong>Applications and Services Logs → Microsoft → Windows → CodeIntegrity → Operational</strong>.</li>
         </ul>
         <p>Expand assignments after testing.</p>
-        <details class="export-details"><summary>Existing policies</summary><p>Exclusions add no allow rules. Other policies may still block trusted tools.</p></details>
         <p><a href="https://learn.microsoft.com/en-us/intune/device-configuration/endpoint-security/manage-app-control" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a></p>
       </section>
     </article>

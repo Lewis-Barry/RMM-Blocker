@@ -28,7 +28,15 @@
   </header>
   <main class="container page-main">
     <p class="builder-intro">Exclude trusted tools from XML and CSV exports.</p>
-    <aside class="wip-banner" role="note" aria-label="Work in progress warning"><span class="chip warning-chip">Preview</span><span>Test on a non-production device.</span></aside>
+    <section class="how-to" aria-labelledby="how-to-title">
+      <p id="how-to-title"><strong>How to use</strong></p>
+      <ol>
+        <li>Find each remote tool your team uses, then tick <strong>Exclude</strong>.</li>
+        <li>Download the XML and deploy it as a WDAC policy, e.g. through Intune.</li>
+        <li>Optional: turn on <strong>Include IOC exports</strong> and import every CSV batch into Defender indicators.</li>
+        <li>Pilot on one test device before a wider rollout.</li>
+      </ol>
+    </section>
     <div id="error" class="error" role="alert" hidden></div>
     <p id="loading" role="status">Loading policy...</p>
     <div id="editor" hidden>
@@ -110,6 +118,6 @@
       </div>
     </div>
   </dialog>
-  <footer><div class="container footer-content"><span>Processed locally.</span><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a></div></footer>
+  <footer><div class="container footer-content"><span class="footer-warning">It is your responsibility to test appropriately with application and network blocking tools.</span><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a></div></footer>
 </body>
 </html>
