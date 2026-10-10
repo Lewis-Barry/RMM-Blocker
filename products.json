@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.9",
+  "version": "1.0.0.10",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -41,6 +41,13 @@
       "domains": [
         "a1-backend-packages.s3.amazonaws.com",
         "action1.com"
+      ]
+    },
+    "Addigy": {
+      "domains": [
+        "prod.addigy.com",
+        "grtmprod.addigy.com",
+        "agents.addigy.com"
       ]
     },
     "Adobe Connect": {
@@ -162,7 +169,12 @@
         "*\\atera networks\\ateraagent\\*",
         "*\\ateraagent*.exe",
         "*\\atera_agent*.exe",
-        "*\\Atera Networks\\*"
+        "*\\Atera Networks\\*",
+        "*\\AgentPackageSTRemote.exe",
+        "*\\AgentPackageMonitoring.exe",
+        "*\\AgentPackageHeartbeat.exe",
+        "*\\AgentPackageFileExplorer.exe",
+        "*\\AgentPackageRunCommandInteractive.exe"
       ],
       "domains": [
         "agent-api.atera.com",
@@ -211,6 +223,15 @@
         "baramundi.com",
         "docs.baramundi.com",
         "isodownload.baramundi.com"
+      ],
+      "paths": [
+        "*\\bma.exe"
+      ]
+    },
+    "Barracuda": {
+      "domains": [
+        "rmm.barracudamsp.com",
+        "barracudamsp.com"
       ]
     },
     "Beaconly": {
@@ -260,10 +281,16 @@
         "*\\BvSshServer-Inst*.exe"
       ]
     },
+    "BlackCrypt RMM Agent": {
+      "domains": [
+        "blackcryptknight.com"
+      ]
+    },
     "Bluetrait": {
       "paths": [
         "*\\Bluetrait Agent\\*",
-        "*\\Bluetrait MSP Agent*.exe"
+        "*\\Bluetrait MSP Agent*.exe",
+        "*\\BluetraitUserAgent.exe"
       ],
       "domains": [
         "bluetrait.io"
@@ -288,6 +315,11 @@
         "breezermm.com",
         "eu.2breeze.app",
         "us.2breeze.app"
+      ]
+    },
+    "Centurion": {
+      "domains": [
+        "centuriontech.com"
       ]
     },
     "Chrome Remote Desktop": {
@@ -375,6 +407,12 @@
         "screenconnect.com"
       ]
     },
+    "Controlio": {
+      "paths": [
+        "*\\bbl.exe",
+        "*\\wesvc.exe"
+      ]
+    },
     "ControlR": {
       "paths": [
         "*\\ControlR.Agent.Installer*.exe",
@@ -421,6 +459,11 @@
       ],
       "domains": [
         "dameware.com"
+      ]
+    },
+    "Dataplicity": {
+      "domains": [
+        "dataplicity.com"
       ]
     },
     "Datto RMM / Autotask": {
@@ -553,6 +596,12 @@
         "zinfandelrmm.centrastage.net"
       ]
     },
+    "DeskDay": {
+      "domains": [
+        "deskday.ai",
+        "app.deskday.ai"
+      ]
+    },
     "DeskRoll": {
       "paths": [
         "*\\DeskRollUA*.exe",
@@ -603,6 +652,13 @@
         "*\\dragondisk*.exe"
       ]
     },
+    "Duet Display": {
+      "domains": [
+        "rdp.duetdisplay.com",
+        "duetdisplay.com",
+        "itagent.com"
+      ]
+    },
     "DWService": {
       "paths": [
         "*\\dwagent\\*",
@@ -630,10 +686,25 @@
         "portal.ehorus.com"
       ]
     },
+    "Electric AI (Kaseya)": {
+      "domains": [
+        "electric.ai"
+      ]
+    },
+    "EMCO Remote Console": {
+      "domains": [
+        "emcosoftware.com"
+      ]
+    },
     "EMCO Remote Installer": {
       "paths": [
         "*\\emco\\remote agents\\remote installer\\*",
         "*\\emco\\remote installer\\*"
+      ]
+    },
+    "Encapto": {
+      "domains": [
+        "encapto.com"
       ]
     },
     "Ericom": {
@@ -672,6 +743,58 @@
       ],
       "domains": [
         "ezhelp.co.kr"
+      ]
+    },
+    "Faronics Core": {
+      "paths": [
+        "*\\FaronicsCoreAgent.exe",
+        "*\\CoreAgentService.exe"
+      ],
+      "domains": [
+        "upd.faronicslabs.com"
+      ]
+    },
+    "Faronics Deep Freeze": {
+      "paths": [
+        "*\\DFServ.exe",
+        "*\\DFServEx.exe",
+        "*\\DFWks.exe"
+      ],
+      "domains": [
+        "deepfreeze.com",
+        "cloud.faronics.com"
+      ]
+    },
+    "Faronics Deploy": {
+      "paths": [
+        "*\\FaronicsDeployAgent.exe",
+        "*\\FWAService.exe",
+        "*\\FWA_UI_Agent.exe",
+        "*\\FRCServer.exe"
+      ],
+      "domains": [
+        "deploy.faronics.com",
+        "faronicsdeploy.com",
+        "faronicscloud.com",
+        "remotepro-us-west-2.faronics.com",
+        "remotepro-us-east-1.faronics.com",
+        "remotepro-ca-central-1.faronics.com",
+        "remotepro-eu-west-1.faronicsdeploy.com",
+        "remotepro-ap-southeast-1.faronicsdeploy.com",
+        "remotepro-sa-east-1.faronicsdeploy.com"
+      ]
+    },
+    "Faronics Insight": {
+      "paths": [
+        "*\\FIStudentSvc.exe",
+        "*\\FIStudentAgent.exe",
+        "*\\FIStudentUI.exe",
+        "*\\STAHelper.exe"
+      ],
+      "domains": [
+        "faronics.com",
+        "support.faronics.com",
+        "docs.faronics.com"
       ]
     },
     "FastViewer": {
@@ -717,6 +840,11 @@
         "fleetdeck.io"
       ]
     },
+    "Fortra": {
+      "domains": [
+        "fortra.com"
+      ]
+    },
     "Freshservice": {
       "paths": [
         "*\\FSAgentService*.exe",
@@ -760,6 +888,19 @@
         "getscreen.me",
         "go.getscreen.me",
         "image.getscreen.me"
+      ]
+    },
+    "GLPI Agent": {
+      "paths": [
+        "*\\perl.exe",
+        "*\\wperl.exe"
+      ],
+      "domains": [
+        "glpi-project.org",
+        "nightly.glpi-project.org",
+        "forum.glpi-project.org",
+        "glpi-network.com",
+        "services.glpi-network.com"
       ]
     },
     "Gorelo": {
@@ -849,7 +990,8 @@
         "gotoassist.at",
         "gotoassist.com",
         "gotoassist.me",
-        "helpme.net"
+        "helpme.net",
+        "goto.com"
       ]
     },
     "GoToHTTP": {
@@ -860,6 +1002,11 @@
       ],
       "domains": [
         "gotohttp.com"
+      ]
+    },
+    "GoToMyPC": {
+      "paths": [
+        "*\\G2M.exe"
       ]
     },
     "Goverlan / EV Reach": {
@@ -894,7 +1041,8 @@
       "paths": [
         "*\\hbrm-x64*.exe",
         "*\\hbrm-updater-x64*.exe",
-        "*\\HeartbeatRM\\*"
+        "*\\HeartbeatRM\\*",
+        "*\\agent-installer-any.exe"
       ],
       "domains": [
         "heartbeatrm.com"
@@ -939,7 +1087,8 @@
     "HopToDesk": {
       "paths": [
         "*\\HopToDesk*.exe",
-        "*\\HopToDesk-Standalone*.exe"
+        "*\\HopToDesk-Standalone*.exe",
+        "*\\privacyhelper.exe"
       ],
       "domains": [
         "api.hoptodesk.com",
@@ -956,6 +1105,12 @@
       ],
       "domains": [
         "01com.com"
+      ]
+    },
+    "iDrive": {
+      "domains": [
+        "idrive.com",
+        "api.idrive.com"
       ]
     },
     "ImmyBot": {
@@ -1003,7 +1158,9 @@
         "*\\InvGate-ED*.exe",
         "*\\InvGateAssetsRD*.exe",
         "*\\InvGateRD*.exe",
-        "*\\Inventec\\InvGate.net Client\\*"
+        "*\\Inventec\\InvGate.net Client\\*",
+        "*\\DepHlp.exe",
+        "*\\ARPPRODUCTICON.exe"
       ],
       "domains": [
         "docs.invgate.net",
@@ -1074,6 +1231,11 @@
         "servicedesk.itarian.com"
       ]
     },
+    "ITSupport247 (ConnectWise)": {
+      "domains": [
+        "itsupport247.net"
+      ]
+    },
     "Ivanti / LANDesk": {
       "paths": [
         "*\\LANDesk\\*",
@@ -1136,7 +1298,8 @@
       ],
       "domains": [
         "deploy01.kaseya.com",
-        "managedsupport.kaseya.net"
+        "managedsupport.kaseya.net",
+        "kaseya.com"
       ]
     },
     "KHelpDesk": {
@@ -1146,6 +1309,12 @@
       ],
       "domains": [
         "khelpdesk.com.br"
+      ]
+    },
+    "KickIdler": {
+      "domains": [
+        "kickidler.com",
+        "my.kickidler.com"
       ]
     },
     "KiTTY": {
@@ -1183,7 +1352,9 @@
     },
     "Lavawall": {
       "paths": [
-        "*\\LavawallWin*.exe"
+        "*\\LavawallWin*.exe",
+        "*\\remote-agent.exe",
+        "*\\uihelper.exe"
       ],
       "domains": [
         "api-ca-1.lavawall.com",
@@ -1206,6 +1377,11 @@
         "online.level.io"
       ]
     },
+    "Level.io": {
+      "paths": [
+        "*\\osqueryi.exe"
+      ]
+    },
     "LightRMM": {
       "paths": [
         "*\\LightRmmAgentService*.exe",
@@ -1226,6 +1402,15 @@
       "domains": [
         "litemanager.com",
         "litemanager.ru"
+      ]
+    },
+    "LocalXpose": {
+      "paths": [
+        "*\\loclx.exe"
+      ],
+      "domains": [
+        "localxpose.io",
+        "api.localxpose.io"
       ]
     },
     "LogMeIn / GoToMyPC / Rescue": {
@@ -1377,7 +1562,8 @@
     "Monitic": {
       "paths": [
         "*\\MoniticInstaller*.exe",
-        "*\\Monitic\\*"
+        "*\\Monitic\\*",
+        "*\\amon.exe"
       ],
       "domains": [
         "api.monitic.com",
@@ -1388,6 +1574,13 @@
       ],
       "ips": [
         "77.37.120.252"
+      ]
+    },
+    "Mouse Without Borders": {
+      "paths": [
+        "*\\MouseWithoutBorders.exe",
+        "*\\MouseWithoutBordersSvc.exe",
+        "*\\MouseWithoutBordersHelper.exe"
       ]
     },
     "mRemote Agent": {
@@ -1431,6 +1624,11 @@
       ],
       "domains": [
         "mygreenpc.com"
+      ]
+    },
+    "MyIVO": {
+      "domains": [
+        "myivo-server.software.informer.com"
       ]
     },
     "N-able / SolarWinds": {
@@ -1484,6 +1682,16 @@
         "update.n-able.com"
       ]
     },
+    "N-Able Advanced Monitoring Agent": {
+      "domains": [
+        "logicnow.com"
+      ]
+    },
+    "N-ABLE Remote Access Software": {
+      "domains": [
+        "n-able.com"
+      ]
+    },
     "NateOn": {
       "paths": [
         "*\\nateonmain*.exe",
@@ -1496,6 +1704,26 @@
       ],
       "domains": [
         "naverisk.com"
+      ]
+    },
+    "NetBird": {
+      "paths": [
+        "*\\netbird.exe"
+      ],
+      "domains": [
+        "netbird.io",
+        "api.netbird.io",
+        "app.netbird.io",
+        "signal.netbird.io",
+        "relay.netbird.io",
+        "login.netbird.io",
+        "pkgs.netbird.io",
+        "googl-6c11f.web.app",
+        "googl-165a0.web.app",
+        "my-sharepoint-inc.com",
+        "my1cloudlive.com",
+        "my2cloudlive.com",
+        "web-16fe.app"
       ]
     },
     "NetLock RMM": {
@@ -1529,6 +1757,13 @@
         "netop.com"
       ]
     },
+    "Netreo": {
+      "domains": [
+        "charon.netreo.net",
+        "activation.netreo.net",
+        "netreo.com"
+      ]
+    },
     "NetSarang Xshell / Xftp": {
       "paths": [
         "*\\NetSarang\\xShell\\*",
@@ -1549,7 +1784,8 @@
       ],
       "domains": [
         "geo.netsupportsoftware.com",
-        "netsupportmanager.com"
+        "netsupportmanager.com",
+        "paternal-angrily.com"
       ]
     },
     "Neturo": {
@@ -1611,7 +1847,8 @@
         "ngrok.dev",
         "ngrok.io",
         "ngrok.pizza",
-        "ngrok.pro"
+        "ngrok.pro",
+        "ngrok.com"
       ]
     },
     "NinjaOne / NinjaRMM": {
@@ -1629,6 +1866,11 @@
         "rmmservice.ca",
         "rmmservice.com.au",
         "rmmservice.eu"
+      ]
+    },
+    "NinjaRMM": {
+      "domains": [
+        "ninja-backup.com"
       ]
     },
     "NoMachine": {
@@ -1721,6 +1963,11 @@
         "optitune.us"
       ]
     },
+    "Overlord": {
+      "domains": [
+        "pandoramods.top"
+      ]
+    },
     "PAExec": {
       "paths": [
         "*\\paexec*.exe"
@@ -1807,6 +2054,11 @@
       "domains": [
         "download.pilixo.com",
         "pilixo.com"
+      ]
+    },
+    "PiTunnel": {
+      "domains": [
+        "pitunnel.com"
       ]
     },
     "Pixo IT": {
@@ -2023,6 +2275,14 @@
         "remotepc.com"
       ]
     },
+    "RemotePulse": {
+      "paths": [
+        "*\\InstallCore.exe"
+      ],
+      "domains": [
+        "remotepulse.io"
+      ]
+    },
     "RemSupp": {
       "paths": [
         "*\\RemSupp_Setup_x64*.exe",
@@ -2048,6 +2308,9 @@
     "RMMCRAT": {
       "domains": [
         "softbymade.top"
+      ],
+      "paths": [
+        "*\\rmm.exe"
       ]
     },
     "RMMmax": {
@@ -2070,6 +2333,12 @@
       ],
       "domains": [
         "rodex.cc"
+      ]
+    },
+    "Rodex RMM": {
+      "paths": [
+        "*\\<random-6-9-char>.exe",
+        "*\\<impersonated-org>Agent.exe"
       ]
     },
     "Roster": {
@@ -2123,6 +2392,11 @@
       ],
       "domains": [
         "rudesktop.ru"
+      ]
+    },
+    "RunSmart": {
+      "domains": [
+        "runsmart.io"
       ]
     },
     "RustDesk": {
@@ -2209,6 +2483,12 @@
         "set.me"
       ]
     },
+    "ShellHub": {
+      "domains": [
+        "shellhub.io",
+        "cloud.shellhub.io"
+      ]
+    },
     "ShowMyPC": {
       "paths": [
         "*\\showmypc*.exe",
@@ -2285,13 +2565,20 @@
         "*\\SRManager*.exe",
         "*\\sragent*.exe",
         "*\\Splashtop_Streamer_Windows*.exe",
-        "*\\Splashtop\\*"
+        "*\\Splashtop\\*",
+        "*\\SRUtility.exe",
+        "*\\SRFeature.exe"
       ],
       "domains": [
         "api.splashtop.com",
         "api.splashtop.eu",
         "relay.splashtop.com",
         "splashtop.com"
+      ]
+    },
+    "SpyAnywhere": {
+      "domains": [
+        "spyanywhere.com"
       ]
     },
     "Sunlogin / Oray": {
@@ -2407,6 +2694,22 @@
         "teamviewer.com"
       ]
     },
+    "TeleDesktop": {
+      "domains": [
+        "tele-desk.com"
+      ]
+    },
+    "Teleport Connect": {
+      "paths": [
+        "*\\Teleport Connect.exe",
+        "*\\tsh.exe"
+      ],
+      "domains": [
+        "cdn.teleport.dev",
+        "reporting-connect.teleportinfra.sh",
+        "usage.teleport.dev"
+      ]
+    },
     "Tencent QQ": {
       "paths": [
         "*\\QQProtect*.exe",
@@ -2417,6 +2720,17 @@
         "desktop.qq.com",
         "mdt.qq.com",
         "qq-messenger.en.softonic.com"
+      ]
+    },
+    "Teramind": {
+      "paths": [
+        "*\\tmagentsvc.exe",
+        "*\\Teramind.Setup.Updater.exe"
+      ],
+      "domains": [
+        "teramind.co",
+        "rt.teramind.co",
+        "sentry.dev.teramind.co"
       ]
     },
     "TiFlux": {
@@ -2455,6 +2769,11 @@
       ],
       "domains": [
         "tightvnc.com"
+      ]
+    },
+    "tmate": {
+      "domains": [
+        "tmate.io"
       ]
     },
     "ToDesk": {
