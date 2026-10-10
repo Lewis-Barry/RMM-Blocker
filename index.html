@@ -20,6 +20,7 @@
       </a>
       <div class="header-actions">
         <nav aria-label="Main navigation"><a href="./help.html">Help</a></nav>
+        <button id="perfect-open" class="header-button" type="button" aria-haspopup="dialog">Is this perfect?</button>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
         <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
@@ -118,6 +119,28 @@
       </div>
     </div>
   </dialog>
-  <footer><div class="container footer-content"><span class="footer-warning">It is your responsibility to test appropriately with application and network blocking tools.</span><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a></div></footer>
+  <dialog id="perfect-modal" class="modal" aria-labelledby="perfect-modal-title" aria-describedby="perfect-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="perfect-modal-title">Is this perfect?</h2>
+        <button id="perfect-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <div id="perfect-modal-desc" class="modal-desc">
+        <p>No. This policy matches tools by expected file name and path, not by file hash or publisher signature. Renamed copies or tools run from unexpected folders can get past it, and legitimate copies in other locations may be blocked.</p>
+        <p>Pair it with the Defender IOCs. Even if a tool launches, it won't be able to connect.</p>
+        <p>Most RMM abuse uses legitimate tools the expected way, which these rules can't tell apart from your own use. Treat this as one layer and test on pilot devices first.</p>
+        <p>Read more about RMM abuse in the <a href="https://www.microsoft.com/en-us/corporate-responsibility/topics/cybersecurity/reports/microsoft-digital-defense-report/" target="_blank" rel="noopener noreferrer">Microsoft Digital Defense Report 2026 <span aria-hidden="true">↗</span></a>.</p>
+      </div>
+    </div>
+  </dialog>
+  <script type="module">
+    const modal = document.getElementById("perfect-modal");
+    document.getElementById("perfect-open").addEventListener("click", () => modal.showModal());
+    document.getElementById("perfect-close").addEventListener("click", () => modal.close());
+    modal.addEventListener("click", event => {
+      if (event.target === modal) modal.close();
+    });
+  </script>
+  <footer><div class="container footer-content"><span class="footer-warning">It is your responsibility to test appropriately with application and network blocking tools.</span><span><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a> · by <a href="https://conditionalaccess.uk" target="_blank" rel="noopener noreferrer">Lewis Barry</a></span></div></footer>
 </body>
 </html>

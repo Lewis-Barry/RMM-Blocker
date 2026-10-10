@@ -58,8 +58,8 @@ header { background: #1b1b1f; color: #fff; flex-shrink: 0; border-bottom: 1px so
 .brand-mark { width: 24px; height: 24px; flex-shrink: 0; color: #60cdff; }
 .header-actions { flex-shrink: 0; }
 .header-actions, nav { display: flex; align-items: center; gap: 8px; }
-nav a, .source-link, .theme-toggle { text-decoration: none; color: #ffffffcc; font-size: 13px; padding: 8px; border: 0; background: transparent; font-weight: 400; border-radius: 4px; }
-nav a:hover, .source-link:hover, .theme-toggle:hover:not(:disabled) { color: #fff; background: #ffffff12; }
+nav a, .source-link, .theme-toggle, .header-button { text-decoration: none; color: #ffffffcc; font-size: 13px; padding: 8px; border: 0; background: transparent; font-weight: 400; border-radius: 4px; }
+nav a:hover, .source-link:hover, .theme-toggle:hover:not(:disabled), .header-button:hover { color: #fff; background: #ffffff12; }
 .header-divider { height: 24px; width: 1px; background: #ffffff33; margin: 0 8px; }
 .page-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 12px 0 4px; flex-shrink: 0; }
@@ -193,7 +193,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .header-content { gap: 8px; }
   .header-actions { gap: 0; }
   .header-divider, .source-link { display: none; }
-  nav a, .theme-toggle { padding: 8px; font-size: 12px; }
+  nav a, .theme-toggle, .header-button { padding: 8px; font-size: 12px; }
   h1 { font-size: 22px; }
   .workbench { grid-template-columns: minmax(0, 1fr); border-bottom: 1px solid var(--line); }
   .selection-panel { min-height: 480px; max-height: 640px; }
