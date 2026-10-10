@@ -28,6 +28,7 @@ if (!entries) {
     section.append(element("p", changes.length
       ? `${changes.length} tools updated · ${paths} executables · ${domains} domains added${entry.source ? ` (source: ${entry.source})` : ""}`
       : entry.source || "No changes recorded."));
+    if (entry.note) section.append(element("p", entry.note, "changelog-note"));
     const items = element("ul", undefined, "changelog-products");
     for (const change of changes) {
       const item = element("li");

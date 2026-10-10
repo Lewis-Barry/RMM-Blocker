@@ -1,5 +1,46 @@
 [
   {
+    "version": "1.0.0.11",
+    "date": "2026-10-10",
+    "source": "Manual fix",
+    "note": "NinjaRMM merged into NinjaOne / NinjaRMM; GoToMyPC merged into LogMeIn / GoToMyPC / Rescue; N-ABLE Remote Access Software merged into N-able / SolarWinds; N-Able Advanced Monitoring Agent merged into N-able / SolarWinds; Level.io merged into Level; Rodex RMM merged into Rodex, placeholder paths removed.",
+    "products": [
+      {
+        "name": "NinjaOne / NinjaRMM",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "ninja-backup.com"
+        ]
+      },
+      {
+        "name": "LogMeIn / GoToMyPC / Rescue",
+        "new": false,
+        "paths": [
+          "*\\G2M.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "N-able / SolarWinds",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "n-able.com",
+          "logicnow.com"
+        ]
+      },
+      {
+        "name": "Level",
+        "new": false,
+        "paths": [
+          "*\\osqueryi.exe"
+        ],
+        "domains": []
+      }
+    ]
+  },
+  {
     "version": "1.0.0.10",
     "date": "2026-10-10",
     "source": "lolrmm.io",

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.10",
+  "version": "1.0.0.11",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -1004,11 +1004,6 @@
         "gotohttp.com"
       ]
     },
-    "GoToMyPC": {
-      "paths": [
-        "*\\G2M.exe"
-      ]
-    },
     "Goverlan / EV Reach": {
       "paths": [
         "*\\goverlan inc\\goverlanagent\\*",
@@ -1367,7 +1362,8 @@
         "*\\level\\*",
         "*\\level.exe",
         "*\\level-windows-amd64*.exe",
-        "*\\level-remote-control-ffmpeg*.exe"
+        "*\\level-remote-control-ffmpeg*.exe",
+        "*\\osqueryi.exe"
       ],
       "domains": [
         "agents.level.io",
@@ -1375,11 +1371,6 @@
         "downloads.level.io",
         "level.io",
         "online.level.io"
-      ]
-    },
-    "Level.io": {
-      "paths": [
-        "*\\osqueryi.exe"
       ]
     },
     "LightRMM": {
@@ -1432,7 +1423,8 @@
         "*\\lmiguardiansvc*.exe",
         "*\\lmiignition*.exe",
         "*\\logmeinsystray*.exe",
-        "*\\logmein*.exe"
+        "*\\logmein*.exe",
+        "*\\G2M.exe"
       ],
       "domains": [
         "gotomypc.com",
@@ -1679,17 +1671,9 @@
         "systemmonitor.eu.com",
         "systemmonitor.us",
         "systemmonitor.us.cdn.cloudflare.net",
-        "update.n-able.com"
-      ]
-    },
-    "N-Able Advanced Monitoring Agent": {
-      "domains": [
+        "update.n-able.com",
+        "n-able.com",
         "logicnow.com"
-      ]
-    },
-    "N-ABLE Remote Access Software": {
-      "domains": [
-        "n-able.com"
       ]
     },
     "NateOn": {
@@ -1865,11 +1849,7 @@
         "resources.ninjarmm.com",
         "rmmservice.ca",
         "rmmservice.com.au",
-        "rmmservice.eu"
-      ]
-    },
-    "NinjaRMM": {
-      "domains": [
+        "rmmservice.eu",
         "ninja-backup.com"
       ]
     },
@@ -2333,12 +2313,6 @@
       ],
       "domains": [
         "rodex.cc"
-      ]
-    },
-    "Rodex RMM": {
-      "paths": [
-        "*\\<random-6-9-char>.exe",
-        "*\\<impersonated-org>Agent.exe"
       ]
     },
     "Roster": {

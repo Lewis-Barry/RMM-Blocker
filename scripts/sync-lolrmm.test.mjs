@@ -80,3 +80,31 @@ test("reject removes a product's additions from the latest release and drops a r
   assert.equal(second.data.version, "1.0.0.9");
   assert.equal(reject(data, log, "Unknown").removed, 0);
 });
+
+test("a tool named after one part of a combined product joins that product", () => {
+  const data = { version: "1.0.0.9", products: { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"] } } };
+  const { products, changes } = sync(data, [tool("NinjaRMM", [], ["ninja-backup.com"])], none);
+  assert.deepEqual(changes.map(({ name, isNew }) => [name, isNew]), [["NinjaOne / NinjaRMM", false]]);
+  assert.deepEqual(products, { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"], domains: ["ninja-backup.com"] } });
+});
+
+test("a tool joins an existing product on name and domain, and only suggests one on name alone", () => {
+  const data = { version: "1.0.0.9", products: {
+    Level: { paths: ["*\\levelagent*.exe"], domains: ["level.io"] },
+    "Faronics Insight": { paths: ["*\\FIStudentSvc*.exe"], domains: ["faronics.com"] },
+  } };
+  const placed = sync(data, [tool("Level.io", [], ["app.level.io"])], none).changes[0];
+  assert.equal(placed.name, "Level");
+  assert.equal(placed.placement, "high");
+
+  const suggested = sync(data, [tool("Faronics Core", [exe("C:\\x\\FaronicsCore.exe")], ["faronics.com"])], none).changes[0];
+  assert.equal(suggested.name, "Faronics Core");
+  assert.equal(suggested.isNew, true);
+  assert.equal(suggested.placement, undefined);
+  assert.deepEqual(suggested.suggested.map(match => [match.name, match.confidence]), [["Faronics Insight", "medium"]]);
+});
+
+test("candidates skip placeholder names from the API such as <random>.exe", () => {
+  const found = candidates(tool("Rodex RMM", [exe("C:\\x\\<random-6-9-char>.exe"), exe("C:\\x\\<impersonated-org>Agent.exe"), exe("C:\\x\\RodexAgent.exe")]), none);
+  assert.deepEqual([...found.paths], ["*\\RodexAgent.exe"]);
+});

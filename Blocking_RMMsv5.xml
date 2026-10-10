@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.10</VersionEx>
+  <VersionEx>1.0.0.11</VersionEx>
   <PolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</PolicyID>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
@@ -324,7 +324,6 @@
     <Deny ID="ID_DENY_A_E085846A8A044DC58A80FA9A21AED6FF" FriendlyName="GoToHTTP" FilePath="*\gotohttpremotecontrolfrombrowser\*" />
     <Deny ID="ID_DENY_A_61571089EE8644FB2C755C53DBD81BDA" FriendlyName="GoToHTTP" FilePath="*\gotohttp*.exe" />
     <Deny ID="ID_DENY_A_C5D8FDE7B8F172E47730D4031088CEFE" FriendlyName="GoToHTTP" FilePath="*\GotoHTTP_x64*.exe" />
-    <Deny ID="ID_DENY_A_526810CCDAE92ED67B148D47D97392E2" FriendlyName="GoToMyPC" FilePath="*\G2M.exe" />
     <Deny ID="ID_DENY_A_A727D4EE6EE064D18566EC895D44B628" FriendlyName="Goverlan / EV Reach" FilePath="*\goverlan inc\goverlanagent\*" />
     <Deny ID="ID_DENY_A_13644FF763B6D0C46F734C52EBDAD159" FriendlyName="Goverlan / EV Reach" FilePath="*\PJ Technologies\GOVsrv\*" />
     <Deny ID="ID_DENY_A_70C2A97F5E70027DA453CC7EAC05545E" FriendlyName="Goverlan / EV Reach" FilePath="*\goverrmc*.exe" />
@@ -442,7 +441,7 @@
     <Deny ID="ID_DENY_A_B067C300852C4E7885B5E54B0C6990D1" FriendlyName="Level" FilePath="*\level.exe" />
     <Deny ID="ID_DENY_A_C16AD7E210DDE6D923DAB70D0A8B8626" FriendlyName="Level" FilePath="*\level-windows-amd64*.exe" />
     <Deny ID="ID_DENY_A_8ECB710AFD72D3DEA842428A03BFD26B" FriendlyName="Level" FilePath="*\level-remote-control-ffmpeg*.exe" />
-    <Deny ID="ID_DENY_A_4E59CC5A59920B1C35C77B7C570AC61D" FriendlyName="Level.io" FilePath="*\osqueryi.exe" />
+    <Deny ID="ID_DENY_A_4E59CC5A59920B1C35C77B7C570AC61D" FriendlyName="Level" FilePath="*\osqueryi.exe" />
     <Deny ID="ID_DENY_A_1E6387E5BB7230016A21F4A93A3381FB" FriendlyName="LightRMM" FilePath="*\LightRmmAgentService*.exe" />
     <Deny ID="ID_DENY_A_C9A05BADF429D9FA92E5769F8A95FFB6" FriendlyName="LightRMM" FilePath="*\LightRmmAgent\*" />
     <Deny ID="ID_DENY_A_DDA4C07E4437EC39E90DFAD02F0397C6" FriendlyName="LiteManager" FilePath="*\litemanager*.exe" />
@@ -469,6 +468,7 @@
     <Deny ID="ID_DENY_A_65280FE1D355ABB02524DB04B84DE103" FriendlyName="LogMeIn / GoToMyPC / Rescue" FilePath="*\lmiignition*.exe" />
     <Deny ID="ID_DENY_A_5794CBF1D97231A2FCA4931052FD5313" FriendlyName="LogMeIn / GoToMyPC / Rescue" FilePath="*\logmeinsystray*.exe" />
     <Deny ID="ID_DENY_A_9D665A696E5C98F1191551E4CEF45F99" FriendlyName="LogMeIn / GoToMyPC / Rescue" FilePath="*\logmein*.exe" />
+    <Deny ID="ID_DENY_A_526810CCDAE92ED67B148D47D97392E2" FriendlyName="LogMeIn / GoToMyPC / Rescue" FilePath="*\G2M.exe" />
     <Deny ID="ID_DENY_A_63FEF93A8F774C3BC2C3231B40CFF12E" FriendlyName="LS RMM" FilePath="*\LS RMM*.exe" />
     <Deny ID="ID_DENY_A_F43137BFED52A5E3E8928AD11AF4513C" FriendlyName="LS RMM" FilePath="*\LS RMM Worker*.exe" />
     <Deny ID="ID_DENY_A_1F06C8985359AEA20B09C18CB65528E6" FriendlyName="LS RMM" FilePath="*\LS RMM-Update*.exe" />
@@ -718,8 +718,6 @@
     <Deny ID="ID_DENY_A_021B86FC1B09CC61286F2A1DE9940F87" FriendlyName="RMMmax" FilePath="*\RMMmaxAgentService*.exe" />
     <Deny ID="ID_DENY_A_229BBEC30C430CC1FD7D02BB3E583EB7" FriendlyName="Rocket Remote Desktop" FilePath="*\RocketRemoteDesktop_Setup*.exe" />
     <Deny ID="ID_DENY_A_D8349841AA24CF83F3E352346A311DD8" FriendlyName="Rodex" FilePath="*\RodexAgent*.exe" />
-    <Deny ID="ID_DENY_A_CB1FB09E1B04CE29C3981D9448F42493" FriendlyName="Rodex RMM" FilePath="*\&lt;random-6-9-char&gt;.exe" />
-    <Deny ID="ID_DENY_A_470E83475F90C1F3B6810DB1F7D114F7" FriendlyName="Rodex RMM" FilePath="*\&lt;impersonated-org&gt;Agent.exe" />
     <Deny ID="ID_DENY_A_A5D6425D77327816BE8D2B811C3E5B7F" FriendlyName="Roster" FilePath="*\Roster\*" />
     <Deny ID="ID_DENY_A_59B30E8614F2B705151C577FBD8B3759" FriendlyName="Royal TS / Royal Server" FilePath="*\royalts*.exe" />
     <Deny ID="ID_DENY_A_13A6A0C4390C7133BB1068DF149ED7CE" FriendlyName="Royal TS / Royal Server" FilePath="*\royalserver*.exe" />
@@ -1216,7 +1214,6 @@
           <FileRuleRef RuleID="ID_DENY_A_E085846A8A044DC58A80FA9A21AED6FF" />
           <FileRuleRef RuleID="ID_DENY_A_61571089EE8644FB2C755C53DBD81BDA" />
           <FileRuleRef RuleID="ID_DENY_A_C5D8FDE7B8F172E47730D4031088CEFE" />
-          <FileRuleRef RuleID="ID_DENY_A_526810CCDAE92ED67B148D47D97392E2" />
           <FileRuleRef RuleID="ID_DENY_A_A727D4EE6EE064D18566EC895D44B628" />
           <FileRuleRef RuleID="ID_DENY_A_13644FF763B6D0C46F734C52EBDAD159" />
           <FileRuleRef RuleID="ID_DENY_A_70C2A97F5E70027DA453CC7EAC05545E" />
@@ -1361,6 +1358,7 @@
           <FileRuleRef RuleID="ID_DENY_A_65280FE1D355ABB02524DB04B84DE103" />
           <FileRuleRef RuleID="ID_DENY_A_5794CBF1D97231A2FCA4931052FD5313" />
           <FileRuleRef RuleID="ID_DENY_A_9D665A696E5C98F1191551E4CEF45F99" />
+          <FileRuleRef RuleID="ID_DENY_A_526810CCDAE92ED67B148D47D97392E2" />
           <FileRuleRef RuleID="ID_DENY_A_63FEF93A8F774C3BC2C3231B40CFF12E" />
           <FileRuleRef RuleID="ID_DENY_A_F43137BFED52A5E3E8928AD11AF4513C" />
           <FileRuleRef RuleID="ID_DENY_A_1F06C8985359AEA20B09C18CB65528E6" />
@@ -1610,8 +1608,6 @@
           <FileRuleRef RuleID="ID_DENY_A_021B86FC1B09CC61286F2A1DE9940F87" />
           <FileRuleRef RuleID="ID_DENY_A_229BBEC30C430CC1FD7D02BB3E583EB7" />
           <FileRuleRef RuleID="ID_DENY_A_D8349841AA24CF83F3E352346A311DD8" />
-          <FileRuleRef RuleID="ID_DENY_A_CB1FB09E1B04CE29C3981D9448F42493" />
-          <FileRuleRef RuleID="ID_DENY_A_470E83475F90C1F3B6810DB1F7D114F7" />
           <FileRuleRef RuleID="ID_DENY_A_A5D6425D77327816BE8D2B811C3E5B7F" />
           <FileRuleRef RuleID="ID_DENY_A_59B30E8614F2B705151C577FBD8B3759" />
           <FileRuleRef RuleID="ID_DENY_A_13A6A0C4390C7133BB1068DF149ED7CE" />

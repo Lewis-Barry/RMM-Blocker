@@ -34,6 +34,14 @@ const normalize = name => lower(name).replace(/[^a-z0-9]/g, "");
 // Matches WDAC wildcards (*) against stored paths, case-insensitively.
 const globToRegExp = pattern => new RegExp(`^${pattern.split("*").map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`, "i");
 const bumpVersion = version => version.replace(/(\d+)$/, number => String(Number(number) + 1));
+// Words that describe a product type rather than a vendor, so they never link two products.
+const GENERIC_WORDS = new Set(["access", "agent", "client", "connect", "console", "control", "core", "cloud", "deploy", "desktop",
+  "insight", "installer", "management", "manager", "monitoring", "remote", "server", "service", "services", "software", "support",
+  "suite", "system", "tools", "update"]);
+const tokens = text => text.toLowerCase().split(/[^a-z0-9]+/).filter(token => token.length >= 4);
+const words = text => tokens(text).filter(word => !GENERIC_WORDS.has(word));
+// The registrable label of a domain, e.g. n-able from remote.n-able.com, normalized to match product names.
+const rootLabel = domain => { const labels = lower(domain).replace(/^\*\./, "").split("."); return normalize(labels[labels.length - 2] || labels[0]); };
 
 // The Windows executables and network domains one lolRMM tool contributes, ignoring anything in the ignore set.
 export function candidates(tool, ignore) {
@@ -44,7 +52,7 @@ export function candidates(tool, ignore) {
     if (!/^Windows$/i.test(disk.OS) || typeof disk.File !== "string") continue;
     const name = disk.File.split(/[\\/]/).pop();
     const stem = lower(name.replace(/\.exe$/i, ""));
-    if (!/^[^*?]+\.exe$/i.test(name) || stem.length < 3 || GENERIC.has(stem) || SYSTEM.has(stem) || ignore.has(lower(name))) continue;
+    if (!/^[^*?<>]+\.exe$/i.test(name) || stem.length < 3 || GENERIC.has(stem) || SYSTEM.has(stem) || ignore.has(lower(name))) continue;
     paths.add(`*\\${name}`);
   }
   for (const network of tool.Artifacts?.Network || []) {
@@ -66,7 +74,11 @@ export function sync(data, tools, ignore) {
   const domains = new Set(stored.flatMap(product => [...(product.domains || []), ...(product.vendorDomains || [])]).map(lower));
   const vendors = stored.flatMap(product => product.vendorDomains || []).map(lower);
   const covered = domain => domains.has(domain) || vendors.some(vendor => domain.endsWith(`.${vendor}`));
-  const byName = new Map(Object.keys(products).map(name => [normalize(name), name]));
+  // Combined names such as "NinjaOne / NinjaRMM" also match each part, so a tool joins the product it belongs to.
+  const byName = new Map();
+  for (const name of Object.keys(products)) {
+    for (const part of [name, ...name.split(" / ")]) if (!byName.has(normalize(part))) byName.set(normalize(part), name);
+  }
   const changes = [];
 
   for (const tool of tools) {
@@ -75,7 +87,32 @@ export function sync(data, tools, ignore) {
     const newDomains = [...found.domains].filter(domain => !covered(domain));
     if (!newPaths.length && !newDomains.length) continue;
 
-    const name = byName.get(normalize(tool.Name)) || tool.Name.replace(/;/g, ",").trim();
+    // Exact name first. Otherwise a shared name word plus a matching domain places the tool ("high");
+    // a shared name word alone only suggests a product for review ("medium").
+    let name = byName.get(normalize(tool.Name));
+    let placement;
+    const suggestions = [];
+    if (name) placement = "exact";
+    else {
+      const toolWords = words(tool.Name);
+      const toolRoots = new Set([...found.domains].map(rootLabel));
+      const toolTokens = tokens(tool.Name);
+      for (const [existing, product] of Object.entries(products)) {
+        if (!toolWords.some(word => words(existing).includes(word))) continue;
+        // Every word of one part of the existing name must appear in the tool name, so "Faronics Core" does not join "Faronics Insight".
+        const fullPart = existing.split(" / ").some(part => tokens(part).length && tokens(part).every(token => toolTokens.includes(token)));
+        const identities = new Set([...existing.split(" / "), existing].map(normalize));
+        for (const domain of [...(product.domains || []), ...(product.vendorDomains || [])]) identities.add(rootLabel(domain));
+        const domainHit = [...toolRoots].some(root => identities.has(root));
+        suggestions.push({ name: existing, confidence: fullPart && domainHit ? "high" : "medium" });
+      }
+      const high = suggestions.filter(match => match.confidence === "high");
+      if (high.length === 1) {
+        name = high[0].name;
+        placement = "high";
+      }
+    }
+    name ||= tool.Name.replace(/;/g, ",").trim();
     const isNew = !products[name];
     const product = products[name] ||= {};
     if (newPaths.length) product.paths = [...(product.paths || []), ...newPaths];
@@ -84,7 +121,9 @@ export function sync(data, tools, ignore) {
     patterns.push(...newPaths.map(globToRegExp));
     newDomains.forEach(domain => domains.add(domain));
     byName.set(normalize(name), name);
-    changes.push({ name, isNew, paths: newPaths, domains: newDomains });
+    // Suggestions only matter for a new product that was not placed automatically.
+    const suggested = isNew && !placement ? suggestions : [];
+    changes.push({ name, isNew, paths: newPaths, domains: newDomains, placement, suggested, tool: tool.Name });
   }
 
   const sorted = Object.fromEntries(Object.entries(products).sort(([a], [b]) => a.localeCompare(b, "en", { sensitivity: "base" })));
@@ -96,7 +135,9 @@ const summary = (changes, version, date) => {
   const domains = changes.reduce((total, change) => total + change.domains.length, 0);
   const lines = [`Policy ${version} (${date}): ${changes.length} tools updated, ${paths} executables and ${domains} domains added.`, ""];
   for (const change of changes) {
-    lines.push(`- **${change.name}**${change.isNew ? " (new)" : ""}`);
+    const placed = change.placement === "high" ? ` (matched on name and domain, previously ${change.tool})` : "";
+    lines.push(`- **${change.name}**${change.isNew ? " (new)" : ""}${placed}`);
+    if (change.suggested.length) lines.push(`  - Review: may belong in ${change.suggested.map(match => `${match.name} (${match.confidence})`).join(", ")}. Merge with the product above, or keep it separate.`);
     for (const path of change.paths) lines.push(`  - \`${path}\``);
     for (const domain of change.domains) lines.push(`  - ${domain}`);
   }
