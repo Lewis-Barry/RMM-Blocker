@@ -66,7 +66,8 @@ and verification, using `DefenderScreens`. CSVs default to all devices; set
 
 1. Put these files in a GitHub repository, keeping the XML beside `index.html`
    and including the `IOC`, `WDACScreens` and `DefenderScreens` folders.
-   Keep `help.html`, `help-ioc.html` and `theme.js` alongside the editor.
+   Keep `help.html`, `help-ioc.html`, `theme.js`, `credits.js` and
+   `LOLRMM-LICENSE.txt` alongside the editor.
 2. In **Settings > Pages**, choose **Deploy from a branch**.
 3. Select your branch and **/ (root)**, then save.
 
@@ -143,3 +144,12 @@ with no installs; GitHub Actions runs it on every push and pull request.
 After changing `products.json`, rebuild and run the regression suite. Invalid XML,
 duplicate IDs, unresolved references and rules without a product name produce
 visible errors instead of a downloadable partial policy.
+
+## Attribution
+
+Much of the product, path and network indicator data in `products.json` comes from
+[LOLRMM](https://github.com/magicsword-io/LOLRMM) (Living Off the Land RMM),
+licensed under the Apache License 2.0. A copy is in `LOLRMM-LICENSE.txt` (LOLRMM
+ships no NOTICE file). The footer's **Credits & licence** dialog (`credits.js`)
+states the source, that the data was modified, and that this tool is independent
+and provided as is.
