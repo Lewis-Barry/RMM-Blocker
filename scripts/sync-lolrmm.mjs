@@ -26,7 +26,7 @@ const GENERIC = new Set([
 // shortcut: hand-picked Windows and everyday app binaries that some tool entries reuse, extend when review finds more
 const SYSTEM = new Set([
   "tar", "curl", "ssh", "scp", "explorer", "svchost", "cmd", "powershell", "pwsh", "rundll32", "msiexec", "conhost",
-  "dllhost", "taskmgr", "notepad", "regedit", "wscript", "cscript", "teams", "zoom", "slack", "chrome", "msedge", "firefox",
+  "dllhost", "taskmgr", "notepad", "notepad++", "regedit", "wscript", "cscript", "teams", "zoom", "slack", "chrome", "msedge", "firefox",
 ]);
 
 const lower = value => value.toLowerCase();
@@ -121,7 +121,7 @@ async function main() {
   }
 
   const version = bumpVersion(data.version);
-  console.log(`${summary(changes, version, date)}\n\nReview each tool before merging. lolRMM also lists tools that are not remote management, and every executable or domain here is blocked on all devices once deployed. Apply the review rules in the README (R1 to R4). To keep a rejected tool out of future syncs, add it to \`scripts/lolrmm-ignore.json\` with a reason.`);
+  console.log(`${summary(changes, version, date)}\n\nReview each tool before merging. lolRMM also lists tools that are not remote management, and every executable or domain here is blocked on all devices once deployed. Apply the review rules in the README (R1 to R4). To remove a tool from this PR and future syncs, check out \`lolrmm-sync\` and run \`node scripts/lolrmm-reject.mjs "<name>" "<reason>"\`, then commit and push.`);
   if (dryRun) return;
 
   writeFileSync(productsPath, `${JSON.stringify({ ...data, version, products }, null, 2)}\n`);

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { candidates, sync } from "./sync-lolrmm.mjs";
+import { reject } from "./lolrmm-reject.mjs";
 
 const none = new Set();
 const tool = (Name, Disk = [], Domains = []) => ({ Name, Artifacts: { Disk, Network: [{ Domains }] } });
@@ -18,7 +19,7 @@ test("candidates keep Windows executables and skip generic names, wildcards and 
 });
 
 test("candidates skip Windows and everyday app binaries and fold www. into the apex domain", () => {
-  const found = candidates(tool("Tool", [exe("C:\\Windows\\System32\\tar.exe"), exe("C:\\Program Files\\Teams\\teams.exe"), exe("C:\\x\\Tool.exe")],
+  const found = candidates(tool("Tool", [exe("C:\\Windows\\System32\\tar.exe"), exe("C:\\Program Files\\Teams\\teams.exe"), exe("C:\\ProgramData\\RMMAgent\\packages\\Notepad++.exe"), exe("C:\\x\\Tool.exe")],
     ["www.tool.com", "tool.com"]), none);
   assert.deepEqual([...found.paths], ["*\\Tool.exe"]);
   assert.deepEqual([...found.domains], ["tool.com"]);
@@ -56,4 +57,26 @@ test("the current products.json re-serialises unchanged, so a sync diff only sho
   const { products, changes } = sync(data, [], none);
   assert.deepEqual(changes, []);
   assert.equal(JSON.stringify(Object.keys(products)), JSON.stringify(Object.keys(data.products)));
+});
+
+test("reject removes a product's additions from the latest release and drops a release left empty", () => {
+  const data = { version: "1.0.0.10", products: { "Acme RMM": { paths: ["*\\acme.exe", "*\\AcmeRemote.exe"], domains: ["remote.acme.com"] }, Beta: { paths: ["*\\Beta.exe"] } } };
+  const log = [
+    { version: "1.0.0.10", products: [
+      { name: "Beta", new: true, paths: ["*\\Beta.exe"], domains: [] },
+      { name: "Acme RMM", new: false, paths: ["*\\AcmeRemote.exe"], domains: ["remote.acme.com"] },
+    ] },
+    { version: "1.0.0.9", products: [] },
+  ];
+  const first = reject(data, log, "beta");
+  assert.equal(first.removed, 1);
+  assert.deepEqual(Object.keys(first.data.products), ["Acme RMM"]);
+  assert.equal(first.data.version, "1.0.0.10");
+  assert.deepEqual(first.log[0].products.map(change => change.name), ["Acme RMM"]);
+
+  const second = reject(first.data, first.log, "Acme RMM");
+  assert.deepEqual(second.data.products["Acme RMM"], { paths: ["*\\acme.exe"] });
+  assert.equal(second.log.length, 1);
+  assert.equal(second.data.version, "1.0.0.9");
+  assert.equal(reject(data, log, "Unknown").removed, 0);
 });

@@ -44,6 +44,11 @@ Nothing reaches `main` until you merge that pull request.
     and the name is a common product, leave it out until someone confirms it. Its domain may be the real product.
   - **Decide in the PR** when the rules do not settle it, such as employee-monitoring or backup products
     with a remote feature. Merge only after a decision, and record it in the ignore file if you exclude it.
+- **Removing a tool from an open PR.** Check out `lolrmm-sync`, run
+  `node scripts/lolrmm-reject.mjs "<product name as shown in the PR>" "<reason>"`, then commit and push.
+  It removes that product's additions from the release, adds the tool to the ignore list, and rebuilds
+  the XML and CSVs. Rejections survive the monthly rebuild, because the job merges the branch's ignore list first.
+  The script refuses to run on `main`, so it can't change a merged release.
 - `changelog.json` records each release. `changelog.html` displays it.
 - Run `node scripts/sync-lolrmm.mjs --dry-run` to preview a sync without writing files.
 - Repository settings must allow Actions to create pull requests (Settings > Actions > General).

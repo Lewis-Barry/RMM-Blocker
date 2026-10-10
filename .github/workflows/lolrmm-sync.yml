@@ -15,11 +15,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Keep rejections already recorded on the open sync branch
+        run: |
+          git fetch -q origin lolrmm-sync 2>/dev/null || exit 0
+          git show origin/lolrmm-sync:scripts/lolrmm-ignore.json > "$RUNNER_TEMP/branch-ignore.json" 2>/dev/null || exit 0
+          node -e '
+            const fs = require("fs");
+            const path = "scripts/lolrmm-ignore.json";
+            const entries = [...JSON.parse(fs.readFileSync(path, "utf8")), ...JSON.parse(fs.readFileSync(process.argv[1], "utf8"))];
+            const byName = new Map(entries.map(entry => [entry.name.toLowerCase(), entry]));
+            fs.writeFileSync(path, JSON.stringify([...byName.values()], null, 2) + "\n");
+          ' "$RUNNER_TEMP/branch-ignore.json"
       - name: Pull new tools from lolRMM
         id: sync
         run: |
           node scripts/sync-lolrmm.mjs > "$RUNNER_TEMP/summary.md"
-          if git diff --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+          if git diff --quiet -- products.json changelog.json; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
       - name: Regenerate, verify and open pull request
         if: steps.sync.outputs.changed == 'true'
         env:
