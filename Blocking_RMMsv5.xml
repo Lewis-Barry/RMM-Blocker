@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.13</VersionEx>
+  <VersionEx>1.0.0.14</VersionEx>
   <PolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</PolicyID>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
@@ -445,7 +445,7 @@
     <Deny ID="ID_DENY_A_7FC69970D611817E9425B934E28D2412" FriendlyName="Lavawall" FilePath="*\remote-agent.exe" />
     <Deny ID="ID_DENY_A_96A2566A184D431C1CC1A658337E69DC" FriendlyName="Lavawall" FilePath="*\uihelper.exe" />
     <Deny ID="ID_DENY_A_7F5FDFD924BABB325445B86381E3EFAD" FriendlyName="Level" FilePath="*\level\*" />
-    <Deny ID="ID_DENY_A_B067C300852C4E7885B5E54B0C6990D1" FriendlyName="Level" FilePath="*\level.exe" />
+    <Deny ID="ID_DENY_A_A3DC5587125FF27C3CFCFD92BDC235EC" FriendlyName="Level" FilePath="*\Level\level.exe" />
     <Deny ID="ID_DENY_A_C16AD7E210DDE6D923DAB70D0A8B8626" FriendlyName="Level" FilePath="*\level-windows-amd64*.exe" />
     <Deny ID="ID_DENY_A_8ECB710AFD72D3DEA842428A03BFD26B" FriendlyName="Level" FilePath="*\level-remote-control-ffmpeg*.exe" />
     <Deny ID="ID_DENY_A_4E59CC5A59920B1C35C77B7C570AC61D" FriendlyName="Level" FilePath="*\osqueryi.exe" />
@@ -836,7 +836,8 @@
     <Deny ID="ID_DENY_A_200C275F9D3F8D6130260B143656B628" FriendlyName="Teleport Connect" FilePath="*\Teleport Connect.exe" />
     <Deny ID="ID_DENY_A_5A940F575A95381E26B5A2B9FBFF4CBC" FriendlyName="Teleport Connect" FilePath="*\tsh.exe" />
     <Deny ID="ID_DENY_A_570A5FC5043AE06BB1462537F416B81D" FriendlyName="Tencent QQ" FilePath="*\QQProtect*.exe" />
-    <Deny ID="ID_DENY_A_D0FE2FD8EDE176E7DEFB1958C652EF32" FriendlyName="Tencent QQ" FilePath="*\qq.exe" />
+    <Deny ID="ID_DENY_A_134D20582785527950AA5DD6C7E93C50" FriendlyName="Tencent QQ" FilePath="*\Tencent\QQ\qq.exe" />
+    <Deny ID="ID_DENY_A_38F53C0990DB95B98E8CA747DBE75441" FriendlyName="Tencent QQ" FilePath="*\Tencent\QQIntl\Bin\qq.exe" />
     <Deny ID="ID_DENY_A_E95E65E810A6543F32D3DDC6CE387F58" FriendlyName="Tencent QQ" FilePath="*\qqpcmgr*.exe" />
     <Deny ID="ID_DENY_A_6862A592EFBF2C21D4734125C56FF3E3" FriendlyName="Teramind" FilePath="*\tmagentsvc.exe" />
     <Deny ID="ID_DENY_A_6F5C03BB1EE9A9BBD87CD5025A34C481" FriendlyName="Teramind" FilePath="*\Teramind.Setup.Updater.exe" />
@@ -1348,7 +1349,7 @@
           <FileRuleRef RuleID="ID_DENY_A_7FC69970D611817E9425B934E28D2412" />
           <FileRuleRef RuleID="ID_DENY_A_96A2566A184D431C1CC1A658337E69DC" />
           <FileRuleRef RuleID="ID_DENY_A_7F5FDFD924BABB325445B86381E3EFAD" />
-          <FileRuleRef RuleID="ID_DENY_A_B067C300852C4E7885B5E54B0C6990D1" />
+          <FileRuleRef RuleID="ID_DENY_A_A3DC5587125FF27C3CFCFD92BDC235EC" />
           <FileRuleRef RuleID="ID_DENY_A_C16AD7E210DDE6D923DAB70D0A8B8626" />
           <FileRuleRef RuleID="ID_DENY_A_8ECB710AFD72D3DEA842428A03BFD26B" />
           <FileRuleRef RuleID="ID_DENY_A_4E59CC5A59920B1C35C77B7C570AC61D" />
@@ -1739,7 +1740,8 @@
           <FileRuleRef RuleID="ID_DENY_A_200C275F9D3F8D6130260B143656B628" />
           <FileRuleRef RuleID="ID_DENY_A_5A940F575A95381E26B5A2B9FBFF4CBC" />
           <FileRuleRef RuleID="ID_DENY_A_570A5FC5043AE06BB1462537F416B81D" />
-          <FileRuleRef RuleID="ID_DENY_A_D0FE2FD8EDE176E7DEFB1958C652EF32" />
+          <FileRuleRef RuleID="ID_DENY_A_134D20582785527950AA5DD6C7E93C50" />
+          <FileRuleRef RuleID="ID_DENY_A_38F53C0990DB95B98E8CA747DBE75441" />
           <FileRuleRef RuleID="ID_DENY_A_E95E65E810A6543F32D3DDC6CE387F58" />
           <FileRuleRef RuleID="ID_DENY_A_6862A592EFBF2C21D4734125C56FF3E3" />
           <FileRuleRef RuleID="ID_DENY_A_6F5C03BB1EE9A9BBD87CD5025A34C481" />

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.13",
+  "version": "1.0.0.14",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -1375,7 +1375,7 @@
     "Level": {
       "paths": [
         "*\\level\\*",
-        "*\\level.exe",
+        "*\\Level\\level.exe",
         "*\\level-windows-amd64*.exe",
         "*\\level-remote-control-ffmpeg*.exe",
         "*\\osqueryi.exe"
@@ -2716,7 +2716,8 @@
     "Tencent QQ": {
       "paths": [
         "*\\QQProtect*.exe",
-        "*\\qq.exe",
+        "*\\Tencent\\QQ\\qq.exe",
+        "*\\Tencent\\QQIntl\\Bin\\qq.exe",
         "*\\qqpcmgr*.exe"
       ],
       "domains": [
