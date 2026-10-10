@@ -93,7 +93,7 @@ function updateIocs() {
     entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
     entry.iocCount.textContent = "No linked IOCs.";
     entry.checkbox.setAttribute("aria-describedby",
-      [entry.counts, entry.identity, entry.warning, entry.iocCount]
+      [entry.counts, entry.warning, entry.iocCount]
         .filter(element => element && !element.hidden)
         .map(element => element.id).join(" "));
   }
@@ -204,14 +204,6 @@ function makeTool(tool, index) {
   label.append(checkbox, action);
   top.append(heading, label);
   row.append(top);
-  let identity;
-  if (tool.unclassified) {
-    identity = document.createElement("p");
-    identity.id = `identity-${index}`;
-    identity.className = "unclassified-warning";
-    identity.textContent = "Unconfirmed identity. Review the exact rule before excluding.";
-    row.append(identity);
-  }
   const warning = document.createElement("p");
   warning.className = "shared-warning";
   warning.id = `shared-warning-${index}`;
@@ -237,7 +229,7 @@ function makeTool(tool, index) {
   iocDetails.hidden = true;
   row.append(iocCount, iocDetails);
   return {
-    tool, row, checkbox, counts, identity, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
+    tool, row, checkbox, counts, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
     searchText: `${tool.name} ${tool.rules.map(rule => `${rule.path} ${rule.path.replaceAll("*", "")}`).join(" ")}`.toLowerCase(),
   };
 }

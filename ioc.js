@@ -10,80 +10,6 @@ export const iocHeaders = [
   "MitreTechniques", "GenerateAlert",
 ];
 
-const normalize = name => name.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-// Attribution names come from the supplied CSVs, not guesses based on domain substrings.
-const aliases = new Map(`
-247ithelp.com (ConnectWise) | ConnectWise Control / ScreenConnect
-Absolute (Computrace) | Absolute / Computrace
-Acronis Cyber Protect (Remotix) | Acronis Cyber Protect Connect
-AliWangWang Remote Control | AliWangWang
-AweRay | AweSun / Aweray
-BeamYourScreen | Mikogo / BeamYourScreen
-BeAnyWhere | BeAnywhere Support Express
-BeyondTrust (Bomgar) | BeyondTrust / Bomgar
-BreezeRMM | Breeze
-Comodo RMM | ITarian / Comodo
-ConnectWise Automate (LabTech) | ConnectWise Automate / LabTech
-ConnectWise Control (ScreenConnect) | ConnectWise Control / ScreenConnect
-Datto RMM (CentraStage) | Datto RMM / Autotask
-DWService (DWAgent) | DWService
-Ericom AccessNow | Ericom
-Ericom Connect | Ericom
-FleetDeck.io | FleetDeck
-Gorelo RMM | Gorelo
-GoToMyPC | LogMeIn / GoToMyPC / Rescue
-Goverlan | Goverlan / EV Reach
-Guacamole | Apache Guacamole
-IntelliAdmin Remote Control | IntelliAdmin
-ISL Online (ISL Light) | ISL Online
-Itarian | ITarian / Comodo
-Ivanti Remote Control | Ivanti / LANDesk
-Kaseya (VSA) | Kaseya VSA
-LANDesk | Ivanti / LANDesk
-Laplink Everywhere | Laplink
-Level.io | Level
-LightRmmAgent | LightRMM
-LogMeIn | LogMeIn / GoToMyPC / Rescue
-LogMeIn rescue | LogMeIn / GoToMyPC / Rescue
-ManageEngine (Desktop Central) | ManageEngine
-ManageEngine ServiceDesk Plus | ManageEngine
-Microsoft Quick Assist | Quick Assist
-Mikogo | Mikogo / BeamYourScreen
-MSP360 | MSP360 / CloudBerry Backup
-N-Able Advanced Monitoring Agent | N-able / SolarWinds
-N-able N-central | N-able / SolarWinds
-Netop Remote Control (Impero Connect) | Netop Remote Control
-Netviewer (GoToMeet) | Netviewer
-NinjaOne (NinjaRMM) | NinjaOne / NinjaRMM
-NTR Remote | NTRsupport
-OpsBridge Agent | OpsBridge
-Pandora RC (eHorus) | eHorus / Pandora RC
-PDQ Connect | PDQ Connect / Deploy / Inventory
-Pocket Controller (SOTI) | Pocket Controller
-QQ IM Remote Assistance | Tencent QQ
-Rapid7 | Rapid7 Insight
-Remote.it | remote.it
-RemoteAgentAgent | RemoteAgent
-RemoteCall | Rsupport RemoteView / RemoteCall
-RemoteView | Rsupport RemoteView / RemoteCall
-RG System (RG Supervision) | RG Supervision
-Rodex RMM | Rodex
-Royal TS | Royal TS / Royal Server
-RuDesktop | RuDesktop / RMS
-Senso.cloud | Senso
-SetMe PRO | SetMe
-SunLogin | Sunlogin / Oray
-Syspectr | O&O Syspectr
-TightVNC | TightVNC / Remote Ripple
-Vicarius vRx | Vicarius Topia
-VIZOR | Vector / LANutil
-Zoho Assist | Zoho Assist / Meeting
-`.trim().split("\n").map(line => {
-  const [name, tool] = line.split(" | ");
-  return [normalize(name), tool];
-}));
-
 export function parseCsv(source) {
   const text = source.replace(/^\uFEFF/, "");
   const rows = [];
@@ -131,7 +57,6 @@ export function serializeCsv(rows) {
 
 export function combineIocs(sources, toolNames) {
   const knownTools = new Set(toolNames);
-  const exactNames = new Map(toolNames.map(name => [normalize(name), name]));
   const indicators = [];
   const keys = new Set();
   for (const { name, text } of sources) {
@@ -160,13 +85,11 @@ export function combineIocs(sources, toolNames) {
         throw new Error(`${name}: incomplete shared-tool attribution for ${values[1]}.`);
       }
       const primary = values[5].slice("LOLRMM - ".length).replace(/ \(\+\d+ more\)$/, "");
-      if (normalize(primary) !== normalize(names[0])) {
+      if (primary !== names[0]) {
         throw new Error(`${name}: title and description attribution disagree for ${values[1]}.`);
       }
-      const owners = names.map(owner => {
-        const candidate = exactNames.get(normalize(owner)) || aliases.get(normalize(owner));
-        return { name: owner, tool: knownTools.has(candidate) ? candidate : null };
-      });
+      // build.mjs uses the same product names in the XML and the CSVs.
+      const owners = names.map(owner => ({ name: owner, tool: knownTools.has(owner) ? owner : null }));
       indicators.push({
         values,
         type: values[0],

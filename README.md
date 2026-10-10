@@ -1,10 +1,26 @@
 # RMM and Remote Access Tool Blocker
 
 A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
-(policy version `1.0.0.8`, 838 deny rules).
+(policy version `1.0.0.9`, 838 deny rules).
 Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
+
+## Adding or updating products
+
+`products.json` is the only file to edit. Each product lists any of `paths`
+(WDAC wildcard file or folder rules), `domains`, `vendorDomains` (broad vendor-wide
+domains) and `ips`. List a shared path or indicator under every product that owns it.
+Bump `version` whenever the policy changes, then run:
+
+```
+node build.mjs
+```
+
+This regenerates `Blocking_RMMsv5.xml` and the CSVs in `IOC`. Commit all of them.
+Do not edit the generated files by hand. CI runs `node build.mjs --check` and fails
+if they are out of date. If the domains grow past 1,000, the build asks you to add the
+next `Domains_PartN.csv` to `iocSources` in `ioc.js`.
 
 ## Builder workflow
 
@@ -77,8 +93,8 @@ already imported into Defender.
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.
 - Mapping uses the CSV's tool attribution, including the full owners in
-  descriptions marked `(+1 more)`, and explicit product aliases. It never
-  guesses tool identity from a domain substring.
+  descriptions marked `(+1 more)`. `build.mjs` writes the same product names
+  into the XML and the CSVs, so it never guesses identity from a domain substring.
 - Shared indicators are removed if **any** linked owner is excluded. A warning
   lists removed indicators that also affect unselected owners.
 - IOC-only tools without an XML match remain blocked and are listed below the IOC card.
@@ -114,20 +130,16 @@ with no installs; GitHub Actions runs it on every push and pull request.
 - Allow rules, policy IDs, version, settings and unrelated rules are preserved.
   With no selections, export returns the original source text. Modified XML may
   have normalized whitespace and self-closing tag formatting.
-- `catalog.js` maps known path and executable aliases to friendly tool names.
+- Each `Deny` rule's `FriendlyName` holds its product names from `products.json`.
   Shared ConnectWise and SolarWinds folder rules belong to multiple products:
   selecting either removes the shared folder rule and displays an explicit
   warning. Other rules for the unselected product are retained.
-- Unconfirmed identities appear as **Unclassified** entries showing their exact
-  paths; they are not silently assigned to a product. Generic executable names
-  also have an explicit generic group. Inspect matching rules before excluding.
 - Search/filter visibility does not affect selections or export. Counts
   deduplicate shared rules.
 - Nothing is uploaded. Downloaded XML is not an added allow policy, a signed or
   compiled WDAC policy, or a guarantee that a tool can execute. Validate and test
   the result with your normal WDAC deployment workflow before production use.
 
-When replacing the bundled XML, review the mappings and run the regression suite.
-New unmatched rules remain visible for manual inspection. Invalid XML, duplicate
-IDs, unresolved references and ambiguous mappings produce visible errors instead
-of a downloadable partial policy.
+After changing `products.json`, rebuild and run the regression suite. Invalid XML,
+duplicate IDs, unresolved references and rules without a product name produce
+visible errors instead of a downloadable partial policy.

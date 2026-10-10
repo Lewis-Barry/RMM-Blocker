@@ -296,7 +296,7 @@ async function testBuilder(policy, iocs) {
     test("Generated CSV download contains the filtered Defender rows and header", () => {
       assert(JSON.stringify(csvRows[0]) === JSON.stringify(iocHeaders), "Downloaded header incorrect");
       assert(csvRows.length === 455, "Downloaded CSV does not contain 454 indicators");
-      assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM (CentraStage)"),
+      assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM / Autotask"),
         "Downloaded CSV contains selected IOCs or non-Block actions");
     });
     let xmlDownload;
@@ -409,23 +409,18 @@ async function run() {
     const source = await response.text();
     const policy = parsePolicy(source);
     test("Bundled v5 XML contains 838 deny rules and 840 references", () => {
-      assert(policy.version === "1.0.0.8", "Policy version changed");
+      assert(policy.version === "1.0.0.9", "Policy version changed");
       assert(policy.rules.length === 838, "Deny count changed; review source and update test");
       assert(elements(policy.document, "FileRuleRef").length === 840, "Reference count changed");
     });
     test("No exclusions preserves original source exactly", () =>
       assert(exportPolicy(policy, new Set()) === source, "Source text changed"));
-    test("Every deny rule is visible and assigned without ambiguous aliases", () => {
+    test("Every deny rule is visible under its product", () => {
       const grouped = new Set(policy.tools.flatMap(tool => tool.rules.map(rule => rule.id)));
-      assert(grouped.size === policy.rules.length, "Catalog hides deny rules");
-      assert(!policy.tools.some(tool => tool.unclassified), "v5 should contain no unclassified rules");
+      assert(grouped.size === policy.rules.length, "Tool list hides deny rules");
     });
-    test("New unconfirmed identities remain visible and can be excluded", () => {
-      const unknown = parsePolicy(source.replace(policy.rules[0].path, "*\\unknown-test-tool*.exe"));
-      const tool = unknown.tools.find(tool => tool.unclassified);
-      assert(tool?.name === "Unclassified: unknown-test-tool.exe", "Unknown rule identity not explicit");
-      verifyExport(unknown, new Set([tool.name]));
-    });
+    test("Deny rules without a product name fail", () =>
+      expectError(() => parsePolicy(source.replace(/(<Deny [^>]*FriendlyName=")[^"]*/, "$1")), "has no product name"));
     test("TeamViewer selection includes all TeamViewer and TV helper executables", () => {
       const selection = new Set(["TeamViewer"]);
       const ids = excludedRuleIds(policy, selection);
@@ -544,10 +539,10 @@ async function run() {
       assert(result.removed.filter(row => row.type === "IpAddress").length === 3, "Ammyy IPs remain");
       assert(result.removed.filter(row => row.type === "DomainName").length === 1, "Ammyy domain remains");
     });
-    test("Product aliases link Datto and shrink the combined dataset to one 454-row file", () => {
+    test("Datto links its IOCs and shrinks the combined dataset to one 454-row file", () => {
       const result = filterIocs(iocs, new Set(["Datto RMM / Autotask"]));
-      assert(result.removed.length === 121, "Datto alias incomplete");
-      assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM (CentraStage)"), "Incorrect Datto mapping");
+      assert(result.removed.length === 121, "Datto IOCs incomplete");
+      assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM / Autotask"), "Incorrect Datto mapping");
       assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) === "[454]",
         "Batch count not recomputed after filtering");
     });
@@ -615,7 +610,7 @@ async function run() {
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
     await testBuilder(policy, iocs);
-    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries and ${iocs.indicators.length} IOCs tested).`;
+    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
   } catch (error) {
