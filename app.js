@@ -1,5 +1,5 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
-import { loadIocs, filterIocs, exportIocBatches } from "./ioc.js";
+import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 
 const byId = id => document.getElementById(id);
@@ -11,9 +11,10 @@ let iocData;
 let iocLoading = false;
 let iocError;
 let iocExportKey;
-let iocUrls = [];
+let iocBatches = [];
 let iocPromise;
 let kqlText = "";
+let pendingCsv;
 // One shared load for the IOC toggle and the KQL popup; a failure clears it so the next try refetches.
 function loadIocsOnce() {
   return iocPromise ||= loadIocs(policy.tools.map(tool => tool.name)).catch(error => {
@@ -23,10 +24,9 @@ function loadIocsOnce() {
 }
 
 function releaseIocDownloads() {
-  for (const url of iocUrls) URL.revokeObjectURL(url);
-  iocUrls = [];
+  iocBatches = [];
   iocExportKey = undefined;
-  byId("ioc-downloads").replaceChildren();
+  byId("ioc-download").hidden = true;
 }
 
 function showIocError(error) {
@@ -35,7 +35,17 @@ function showIocError(error) {
   releaseIocDownloads();
   byId("ioc-error").textContent = `${error.message} CSVs unavailable; XML unaffected. Disable and re-enable IOC exports to retry.`;
   byId("ioc-error").hidden = false;
-  byId("ioc-unlinked").hidden = true;
+}
+
+function saveFile(text, name, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function makeRuleItem(value, kind) {
@@ -64,27 +74,59 @@ function attachIocDetails() {
     summary.setAttribute("aria-label", `${summary.textContent} for ${entry.tool.name}`);
     entry.iocDetails.replaceChildren(summary, list);
   }
-  const unlinked = new Map();
-  for (const indicator of iocData.indicators) {
-    for (const owner of indicator.owners.filter(owner => !owner.tool)) {
-      unlinked.set(owner.name, (unlinked.get(owner.name) || 0) + 1);
-    }
-  }
-  byId("ioc-unlinked-summary").textContent = `${unlinked.size} unmatched tools stay blocked`;
-  const list = document.createDocumentFragment();
-  for (const [name, count] of [...unlinked].sort(([a], [b]) => a.localeCompare(b))) {
+}
+
+function csvText(indicators) {
+  return serializeCsv([iocHeaders, ...indicators.map(indicator => indicator.values)]);
+}
+
+function updateCsvChoice() {
+  const total = iocBatches.reduce((sum, batch) => sum + batch.count, 0);
+  const skipped = pendingCsv.skipped.size;
+  const files = `${iocBatches.length} CSV${iocBatches.length === 1 ? "" : "s"}`;
+  byId("csv-download").disabled = skipped === total;
+  byId("csv-download").textContent = skipped ? `Download without ${skipped}` : `Download ${files}`;
+}
+
+// Saves every batch, leaving out the skipped indicators. Staggered so browsers don't drop the extra files.
+function downloadCsvs(skipped) {
+  iocBatches.forEach((batch, index) => {
+    const rows = batch.indicators.filter(indicator => !skipped.has(indicator));
+    if (!rows.length) return;
+    const name = skipped.size ? batch.name.replace(/\.csv$/, "_excluded.csv") : batch.name;
+    setTimeout(() => saveFile(csvText(rows), name, "text/csv;charset=utf-8"), index * 500);
+  });
+}
+
+function openCsvChoice(unmatched) {
+  pendingCsv = { skipped: new Set() };
+  byId("csv-modal-desc").textContent = "There is not a WDAC entry for every remote tool domain you could network block. Remove the tools you use within your business. Tick any indicator to leave it out of every CSV.";
+  byId("csv-modal-list").replaceChildren(...unmatched.map(({ indicator, part }) => {
     const item = document.createElement("li");
-    item.textContent = `${name}: ${count} indicator${count === 1 ? "" : "s"}`;
-    list.append(item);
-  }
-  byId("ioc-unlinked-list").replaceChildren(list);
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.setAttribute("aria-label", `Leave ${indicator.value} out of every CSV`);
+    box.addEventListener("change", () => {
+      if (box.checked) pendingCsv.skipped.add(indicator);
+      else pendingCsv.skipped.delete(indicator);
+      updateCsvChoice();
+    });
+    const code = document.createElement("code");
+    code.textContent = indicator.value;
+    const type = document.createElement("span");
+    type.className = "rule-type";
+    type.textContent = `${indicator.type === "IpAddress" ? "IP" : "Domain"} · CSV ${part}`;
+    item.append(box, code, type);
+    return item;
+  }));
+  updateCsvChoice();
+  byId("csv-modal").showModal();
 }
 
 function updateIocs() {
   const enabled = byId("link-iocs").checked;
   byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
   byId("ioc-output").hidden = !enabled;
-  byId("ioc-unlinked").hidden = !enabled || !iocData || !!iocError || !byId("ioc-unlinked-list").childElementCount;
   byId("ioc-status").hidden = !enabled || !!iocError;
   byId("tools").setAttribute("aria-busy", String(iocLoading));
   for (const entry of tools) {
@@ -114,19 +156,16 @@ function updateIocs() {
   const key = JSON.stringify([...excluded].sort());
   if (key === iocExportKey) return;
   try {
-    const { removed, retained, sharedRemoved } = filterIocs(iocData, excluded);
+    const { retained, sharedRemoved } = filterIocs(iocData, excluded);
     const batches = exportIocBatches(retained);
     releaseIocDownloads();
-    byId("ioc-status").textContent = `${retained.length} indicators kept · ${removed.length} removed · ${batches.length} CSV${batches.length === 1 ? "" : "s"}`;
-    for (const [index, batch] of batches.entries()) {
-      const url = URL.createObjectURL(new Blob([batch.csv], { type: "text/csv;charset=utf-8" }));
-      iocUrls.push(url);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Defender_IOCs${excluded.size ? "_custom" : ""}_Part${index + 1}_of${batches.length}.csv`;
-      link.textContent = `CSV ${index + 1} / ${batches.length} · ${batch.count} indicators`;
-      byId("ioc-downloads").append(link);
-    }
+    byId("ioc-status").textContent = `${retained.length} indicators kept · ${iocData.indicators.length - retained.length} removed · ${batches.length} CSV${batches.length === 1 ? "" : "s"}`;
+    iocBatches = batches.map((batch, index) => ({
+      ...batch,
+      name: `Defender_IOCs${excluded.size ? "_custom" : ""}_Part${index + 1}_of${batches.length}.csv`,
+    }));
+    byId("ioc-download").textContent = `Download ${batches.length === 1 ? "1 CSV" : `${batches.length} CSVs`}`;
+    byId("ioc-download").hidden = !batches.length;
     byId("ioc-shared").hidden = !sharedRemoved.length;
     byId("ioc-shared-summary").textContent = `${sharedRemoved.length} shared indicator${sharedRemoved.length === 1 ? "" : "s"} removed for other tools`;
     const list = document.createDocumentFragment();
@@ -278,18 +317,27 @@ window.addEventListener("pageshow", () => { if (policy) update(); });
 byId("download").addEventListener("click", () => {
   try {
     const xml = exportPolicy(policy, excluded);
-    const url = URL.createObjectURL(new Blob([xml], { type: "application/xml;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = excluded.size ? "Blocking_RMMsv5_custom.xml" : "Blocking_RMMsv5.xml";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    saveFile(xml, excluded.size ? "Blocking_RMMsv5_custom.xml" : "Blocking_RMMsv5.xml", "application/xml;charset=utf-8");
     byId("error").hidden = true;
   } catch (error) {
     showError(error);
   }
+});
+
+byId("ioc-download").addEventListener("click", () => {
+  const unmatched = iocBatches.flatMap((batch, index) => batch.indicators
+    .filter(indicator => !indicator.tools.length)
+    .map(indicator => ({ indicator, part: index + 1 })));
+  if (unmatched.length) openCsvChoice(unmatched);
+  else downloadCsvs(new Set());
+});
+byId("csv-download").addEventListener("click", () => {
+  downloadCsvs(pendingCsv.skipped);
+  byId("csv-modal").close();
+});
+byId("csv-close").addEventListener("click", () => byId("csv-modal").close());
+byId("csv-modal").addEventListener("click", event => {
+  if (event.target === byId("csv-modal")) byId("csv-modal").close();
 });
 
 byId("kql-open").addEventListener("click", async () => {

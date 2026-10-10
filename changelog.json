@@ -1,5 +1,115 @@
 [
   {
+    "version": "1.0.0.13",
+    "date": "2026-10-10",
+    "source": "Manual fix",
+    "note": "Executable paths added to domain-only products from lolRMM installer and binary names. Electric AI (Kaseya) uses the Kaseya agent paths, shared with Kaseya VSA.",
+    "products": [
+      {
+        "name": "Centurion",
+        "new": false,
+        "paths": [
+          "*\\ctiserv*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Duet Display",
+        "new": false,
+        "paths": [
+          "*\\duetdisp*.exe",
+          "*\\duetsetup*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "MyIVO",
+        "new": false,
+        "paths": [
+          "*\\myivomgr*.exe",
+          "*\\myivomanager*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "TeleDesktop",
+        "new": false,
+        "paths": [
+          "*\\ptdsk*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "ZeroTier",
+        "new": false,
+        "paths": [
+          "*\\zerotier*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "SkyFex",
+        "new": false,
+        "paths": [
+          "*\\deskroll*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "iDrive",
+        "new": false,
+        "paths": [
+          "*\\idrive\\*",
+          "*\\IDriveWinSetup*.exe",
+          "*\\IDriveEClassic*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Overlord",
+        "new": false,
+        "paths": [
+          "*\\AppData\\Roaming\\Overlord\\agent.exe",
+          "*\\AppData\\Roaming\\Microsoft\\DeviceSync\\ovd_*.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "BlackCrypt RMM Agent",
+        "new": false,
+        "paths": [
+          "*\\BlackCryptAgent*.dll"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Electric AI (Kaseya)",
+        "new": false,
+        "paths": [
+          "*\\kaseya\\*",
+          "*\\kausrtsk*.exe"
+        ],
+        "domains": []
+      }
+    ]
+  },
+  {
+    "version": "1.0.0.12",
+    "date": "2026-10-10",
+    "source": "Manual fix",
+    "note": "ITSupport247 (ConnectWise) merged into ConnectWise Control / ScreenConnect; itsupport247.net now blocked as a ScreenConnect domain.",
+    "products": [
+      {
+        "name": "ConnectWise Control / ScreenConnect",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "itsupport247.net"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.0.11",
     "date": "2026-10-10",
     "source": "Manual fix",

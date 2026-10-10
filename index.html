@@ -71,14 +71,14 @@
             <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
             <section class="export-card" aria-labelledby="wdac-export-title">
               <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
-              <p class="output-description">Blocks execution.</p>
+              <p class="output-description">Blocks execution on Windows.</p>
               <p id="wdac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
               <button id="download" class="primary" type="button">Download XML</button>
               <details class="export-details"><summary>Policy notes</summary><p>Removes selected filename/folder deny rules and references. Preserves policy IDs, settings and other rules.</p><p>No allow rules added. Other policies may still block execution. Validate with WDAC tooling; coverage varies by version and path.</p><p><a href="./Blocking_RMMsv5.xml" download>Original XML</a> <span id="policy-version"></span></p></details>
             </section>
             <section class="export-card ioc-panel" aria-labelledby="ioc-export-title">
               <div class="export-card-heading"><h3 id="ioc-export-title">Defender IOCs</h3><span class="file-badge">CSV</span></div>
-              <p class="output-description">Blocks domains and IPs.</p>
+              <p class="output-description">Blocks domains and IPs on Windows and macOS.</p>
               <label class="ioc-toggle" for="link-iocs">
                 <input id="link-iocs" type="checkbox" autocomplete="off" aria-describedby="ioc-status">
                 <span>Include IOC exports</span>
@@ -86,7 +86,7 @@
               <p id="ioc-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="ioc-output" hidden>
                 <div id="ioc-error" class="error" role="alert" hidden></div>
-                <div id="ioc-downloads" class="ioc-downloads"></div>
+                <button id="ioc-download" class="primary ioc-download" type="button" hidden>Download CSVs</button>
                 <p class="muted">Import all batches. 500-row limit.</p>
                 <details id="ioc-shared" class="warning-details" hidden>
                   <summary id="ioc-shared-summary"></summary>
@@ -97,10 +97,6 @@
               </div>
             </section>
             <button id="kql-open" class="kql-open" type="button">See KQL for network discovery</button>
-            <details id="ioc-unlinked" class="export-details ioc-unlinked" hidden>
-              <summary id="ioc-unlinked-summary"></summary>
-              <ul id="ioc-unlinked-list"></ul>
-            </details>
           </div>
         </section>
       </div>
@@ -118,6 +114,19 @@
       <pre class="kql-code"><code id="kql-code"></code></pre>
       <div class="modal-actions">
         <button id="kql-copy" class="primary" type="button">Copy query</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="csv-modal" class="modal" aria-labelledby="csv-modal-title" aria-describedby="csv-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="csv-modal-title">Unmatched indicators</h2>
+        <button id="csv-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <p id="csv-modal-desc" class="modal-desc"></p>
+      <ul id="csv-modal-list" class="csv-list" role="list"></ul>
+      <div class="modal-actions">
+        <button id="csv-download" class="primary" type="button">Download</button>
       </div>
     </div>
   </dialog>

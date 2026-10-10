@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.11",
+  "version": "1.0.0.13",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -282,6 +282,9 @@
       ]
     },
     "BlackCrypt RMM Agent": {
+      "paths": [
+        "*\\BlackCryptAgent*.dll"
+      ],
       "domains": [
         "blackcryptknight.com"
       ]
@@ -318,6 +321,9 @@
       ]
     },
     "Centurion": {
+      "paths": [
+        "*\\ctiserv*.exe"
+      ],
       "domains": [
         "centuriontech.com"
       ]
@@ -404,7 +410,8 @@
         "247ithelp.com",
         "control.connectwise.com",
         "live.screenconnect.com",
-        "screenconnect.com"
+        "screenconnect.com",
+        "itsupport247.net"
       ]
     },
     "Controlio": {
@@ -653,6 +660,10 @@
       ]
     },
     "Duet Display": {
+      "paths": [
+        "*\\duetdisp*.exe",
+        "*\\duetsetup*.exe"
+      ],
       "domains": [
         "rdp.duetdisplay.com",
         "duetdisplay.com",
@@ -687,6 +698,10 @@
       ]
     },
     "Electric AI (Kaseya)": {
+      "paths": [
+        "*\\kaseya\\*",
+        "*\\kausrtsk*.exe"
+      ],
       "domains": [
         "electric.ai"
       ]
@@ -1103,6 +1118,11 @@
       ]
     },
     "iDrive": {
+      "paths": [
+        "*\\idrive\\*",
+        "*\\IDriveWinSetup*.exe",
+        "*\\IDriveEClassic*.exe"
+      ],
       "domains": [
         "idrive.com",
         "api.idrive.com"
@@ -1224,11 +1244,6 @@
         "one.comodo.com",
         "remoteaccess.itarian.com",
         "servicedesk.itarian.com"
-      ]
-    },
-    "ITSupport247 (ConnectWise)": {
-      "domains": [
-        "itsupport247.net"
       ]
     },
     "Ivanti / LANDesk": {
@@ -1619,6 +1634,10 @@
       ]
     },
     "MyIVO": {
+      "paths": [
+        "*\\myivomgr*.exe",
+        "*\\myivomanager*.exe"
+      ],
       "domains": [
         "myivo-server.software.informer.com"
       ]
@@ -1944,6 +1963,10 @@
       ]
     },
     "Overlord": {
+      "paths": [
+        "*\\AppData\\Roaming\\Overlord\\agent.exe",
+        "*\\AppData\\Roaming\\Microsoft\\DeviceSync\\ovd_*.exe"
+      ],
       "domains": [
         "pandoramods.top"
       ]
@@ -2510,6 +2533,9 @@
       ]
     },
     "SkyFex": {
+      "paths": [
+        "*\\deskroll*.exe"
+      ],
       "domains": [
         "deskroll.com",
         "skyfex.com"
@@ -2669,6 +2695,9 @@
       ]
     },
     "TeleDesktop": {
+      "paths": [
+        "*\\ptdsk*.exe"
+      ],
       "domains": [
         "tele-desk.com"
       ]
@@ -2954,6 +2983,9 @@
       ]
     },
     "ZeroTier": {
+      "paths": [
+        "*\\zerotier*.exe"
+      ],
       "vendorDomains": [
         "zerotier.com"
       ]

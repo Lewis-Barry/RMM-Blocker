@@ -135,6 +135,7 @@ export function exportIocBatches(indicators) {
     const rows = indicators.slice(index, index + 500);
     batches.push({
       count: rows.length,
+      indicators: rows,
       csv: serializeCsv([iocHeaders, ...rows.map(indicator => indicator.values)]),
     });
   }

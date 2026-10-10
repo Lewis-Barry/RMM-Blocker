@@ -63,6 +63,25 @@ async function waitFor(condition, message) {
   }
 }
 
+// Runs an action that saves CSVs and returns each saved file's name and text instead of letting the browser download it.
+async function collectCsvs(doc, action, expected) {
+  const saved = [];
+  const capture = event => {
+    const link = event.target.closest("a[download]");
+    if (!link?.download.endsWith(".csv")) return;
+    event.preventDefault();
+    saved.push(fetch(link.href).then(response => response.text()).then(text => ({ name: link.download, text })));
+  };
+  doc.addEventListener("click", capture, true);
+  try {
+    action();
+    await waitFor(() => saved.length >= expected, "CSV downloads did not start");
+    return await Promise.all(saved);
+  } finally {
+    doc.removeEventListener("click", capture, true);
+  }
+}
+
 // Counts follow the data, so a products.json update changes the expected numbers without editing tests.
 const batchSizes = count => Array.from({ length: Math.ceil(count / 500) }, (_, index) => Math.min(500, count - index * 500));
 const csvCount = count => count === 1 ? "1 CSV" : `${count} CSVs`;
@@ -244,7 +263,7 @@ async function testBuilder(policy, iocs) {
       }
     });
     byId("link-iocs").click();
-    await waitFor(() => byId("ioc-downloads").querySelectorAll("a").length > 0 || !byId("ioc-error").hidden,
+    await waitFor(() => !byId("ioc-download").hidden || !byId("ioc-error").hidden,
       "IOC exports were not prepared");
     test("Enabling IOC exports applies the existing selection to the CSV batches", () => {
       const sizes = batchSizes(keptCount);
@@ -252,20 +271,8 @@ async function testBuilder(policy, iocs) {
       assert(selection.checked && byId("link-iocs").checked, "Enabling IOC exports cleared selection");
       assert(byId("ioc-status").textContent === `${keptCount} indicators kept · ${dattoCount} removed · ${csvCount(sizes.length)}`,
         "IOC summary stale");
-      const links = [...byId("ioc-downloads").querySelectorAll("a")];
-      assert(links.length === sizes.length, "Wrong CSV batch count");
-      assert(links.every((link, index) => link.textContent === `CSV ${index + 1} / ${sizes.length} · ${sizes[index]} indicators`),
-        "Unexpected IOC download label");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(sizes.length)}`, "Wrong CSV batch count or download label");
       assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
-    });
-    test("Unmatched tools appear below and outside the IOC card", () => {
-      const note = byId("ioc-unlinked");
-      const card = byId("link-iocs").closest("section");
-      assert(note.parentElement === card.parentElement && card.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
-        "Unmatched tools remain inside the IOC card or are misplaced");
-      assert(card.nextElementSibling === byId("kql-open"), "KQL action is not directly below the IOC card");
-      const unlinkedOwners = new Set(iocs.indicators.filter(row => !row.tools.length).flatMap(row => row.owners.map(owner => owner.name)));
-      assert(!note.hidden && byId("ioc-unlinked-list").children.length === unlinkedOwners.size, "Unmatched tools are missing");
     });
     test("IOC disclosures identify their tool and show compact value/type rows in a shaded group", () => {
       const details = selection.closest(".tool").querySelectorAll("details")[1];
@@ -301,9 +308,12 @@ async function testBuilder(policy, iocs) {
         "Missing IOC warning is not associated with the control");
     });
     xmlOnlySelection.click();
-    const csvResponse = await fetch(byId("ioc-downloads").querySelector("a").href);
-    assert(csvResponse.ok, "Generated CSV URL unavailable");
-    const csvRows = parseCsv(await csvResponse.text());
+    // Unmatched indicators open the choice first, so accept it with nothing left out.
+    const [firstCsv] = await collectCsvs(document, () => {
+      byId("ioc-download").click();
+      byId("csv-download").click();
+    }, batchSizes(keptCount).length);
+    const csvRows = parseCsv(firstCsv.text);
     test("Generated CSV download contains the filtered Defender rows and header", () => {
       assert(JSON.stringify(csvRows[0]) === JSON.stringify(iocHeaders), "Downloaded header incorrect");
       assert(csvRows.length === batchSizes(keptCount)[0] + 1, "Downloaded CSV batch does not contain its kept indicators");
@@ -339,7 +349,7 @@ async function testBuilder(policy, iocs) {
       assert(document.documentElement.dataset.theme === "light", "Theme did not change");
       assert(byId("theme-toggle").getAttribute("aria-label") === "Switch to dark theme", "Theme label stale");
       assert(selection.checked && byId("link-iocs").checked, "Theme changed export selections");
-      assert(byId("ioc-downloads").querySelectorAll("a").length === batchSizes(keptCount).length, "Theme changed IOC exports");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(batchSizes(keptCount).length)}`, "Theme changed IOC exports");
       assert(byId("wdac-status").textContent.includes(`${expectedRemoved} removed`), "Theme changed XML output");
     });
     byId("search").value = "no-such-tool-regression";
@@ -354,9 +364,8 @@ async function testBuilder(policy, iocs) {
     });
     byId("link-iocs").click();
     test("Disabling IOC exports removes CSV links without changing XML selections", () => {
-      assert(byId("ioc-output").hidden && !byId("ioc-downloads").children.length, "CSV links retained");
+      assert(byId("ioc-output").hidden && byId("ioc-download").hidden, "CSV download retained");
       assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled IOC status remains visible");
-      assert(byId("ioc-unlinked").hidden, "Disabled IOC exports leave unmatched tools visible");
       assert(selection.checked && byId("removed-count").textContent === String(expectedRemoved),
         "Disabling CSVs changed XML exclusions");
     });
@@ -370,10 +379,42 @@ async function testBuilder(policy, iocs) {
       const sizes = batchSizes(iocs.indicators.length);
       assert(byId("ioc-status").textContent === `${iocs.indicators.length} indicators kept · 0 removed · ${csvCount(sizes.length)}`,
         "IOC reset stale");
-      assert(!byId("ioc-unlinked").hidden, "Re-enabling IOC exports leaves unmatched tools hidden");
-      const links = [...byId("ioc-downloads").querySelectorAll("a")];
-      assert(links.length === sizes.length && links.every((link, index) => link.textContent.includes(`${sizes[index]} indicators`)),
-        "Reset batches incorrect");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(sizes.length)}`, "Reset batches incorrect");
+    });
+    const unmatchedRows = iocs.indicators.filter(row => !row.tools.length);
+    byId("ioc-download").click();
+    test("Downloading CSVs with unmatched indicators asks first and lists them all", () => {
+      assert(byId("csv-modal").open, "Unmatched download did not prompt");
+      assert(byId("csv-modal-list").children.length === unmatchedRows.length, "Prompt lists the wrong unmatched rows");
+      assert(byId("csv-modal-desc").textContent.startsWith("There is not a WDAC entry for every remote tool domain"), "Prompt helper text missing");
+    });
+    const leftOutRow = unmatchedRows[0];
+    byId("csv-modal-list").querySelector("input").click();
+    test("Ticking a row relabels Download with the count shown", () => {
+      assert(!byId("csv-download").disabled && byId("csv-download").textContent === "Download without 1",
+        "Download label or state stale after leaving a row out");
+    });
+    const fileCount = batchSizes(iocs.indicators.length).length;
+    const saved = await collectCsvs(document, () => byId("csv-download").click(), fileCount);
+    test("Download saves every CSV without only the ticked row", () => {
+      assert(!byId("csv-modal").open, "Prompt stayed open after Download");
+      assert(saved.length === fileCount && saved.every(file => file.name.endsWith("_excluded.csv")), "Files not saved as excluded");
+      const rows = saved.flatMap(file => parseCsv(file.text).slice(1));
+      assert(rows.length === iocs.indicators.length - 1 && !rows.some(row => row[1] === leftOutRow.value), "Ticked row still in CSVs");
+    });
+    byId("ioc-download").click();
+    for (const box of byId("csv-modal-list").querySelectorAll("input")) box.click();
+    test("Leaving out every unmatched row keeps Download enabled for the matched rows", () => {
+      assert(!byId("csv-download").disabled && byId("csv-download").textContent === `Download without ${unmatchedRows.length}`,
+        "Download label stale after leaving out every unmatched row");
+    });
+    const matchedFileCount = batchSizes(iocs.indicators.length - unmatchedRows.length).length;
+    const matched = await collectCsvs(document, () => byId("csv-download").click(), matchedFileCount);
+    test("Leaving out every unmatched row saves only matched indicators", () => {
+      const rows = matched.flatMap(file => parseCsv(file.text).slice(1));
+      assert(rows.length === iocs.indicators.length - unmatchedRows.length, "Matched-only CSVs have the wrong row count");
+      assert(rows.every(row => row[5].startsWith("LOLRMM - ") && !unmatchedRows.some(item => item.value === row[1])),
+        "Matched-only CSVs still contain unmatched rows");
     });
     byId("kql-open").click();
     await waitFor(() => byId("kql-modal").open && byId("kql-code").textContent.includes("DeviceNetworkEvents"),

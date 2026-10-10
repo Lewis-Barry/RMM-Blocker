@@ -3,6 +3,5 @@
   { "tool": "Faronics Deploy", "reason": "Separate product: cloud RMM with its own remote control, not the classroom Insight product." },
   { "tool": "Faronics Deep Freeze", "reason": "Separate product: endpoint protection (reboot-to-restore), not an RMM or the classroom Insight product." },
   { "tool": "EMCO Remote Console", "reason": "Separate product from EMCO Remote Installer; the lolRMM entries do not say they share a suite." },
-  { "tool": "ITSupport247 (ConnectWise)", "reason": "Separate product; the name fits two ConnectWise products and the entry does not say which." },
   { "tool": "Electric AI (Kaseya)", "reason": "Separate product from Kaseya VSA; the Kaseya branding alone does not make them the same product." }
 ]

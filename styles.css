@@ -138,14 +138,16 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .export-card .primary { width: 100%; justify-content: space-between; }
 .export-details { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
 .export-details summary { min-height: 32px; padding: 4px 0; }
-.ioc-unlinked { margin-top: 0; }
 .export-details p, .warning-details p { color: var(--muted); font-size: 12px; }
 .muted { color: var(--muted); font-size: 12px; }
 .ioc-toggle { display: flex; align-items: center; gap: 8px; font-size: .875rem; cursor: pointer; margin: 4px 0 0; min-height: 44px; }
 .ioc-panel.enabled { border-color: var(--accent); }
-.ioc-downloads { display: flex; flex-direction: column; gap: 8px; }
-.ioc-downloads a { display: block; text-decoration: none; padding: 12px; min-height: 44px; border: 1px solid var(--accent); border-radius: 4px; color: var(--accent); font-size: .875rem; font-weight: 600; }
-.ioc-downloads a:hover { background: var(--accent-fill); color: var(--ink); }
+.ioc-download { width: 100%; justify-content: center; }
+.csv-list { list-style: none; margin: 8px 0 0; padding: 0; overflow: auto; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px; }
+.csv-list li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-alt); font-size: 12px; }
+.csv-list input[type="checkbox"] { width: 16px; height: 16px; flex: none; }
+.csv-list code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+.csv-list .rule-type { color: var(--muted); font-size: 10px; }
 .warning-details { background: var(--warning-fill); padding: 8px; border-radius: 4px; margin-top: 16px; }
 .warning-details summary { color: var(--warning); }
 .error { background: var(--error-fill); color: var(--error); border: 1px solid var(--error); border-radius: 4px; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; font-size: 13px; }
@@ -203,7 +205,6 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .export-panel { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
   .export-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; overflow: visible; }
   .selection-details { grid-column: 1 / -1; margin: 0; }
-  .ioc-unlinked { grid-column: 2; }
   .export-card { margin: 0; }
   footer { margin-top: 16px; }
 }
@@ -221,7 +222,6 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .tool-top { gap: 8px; }
   .export-panel { grid-column: 1; }
   .export-content { grid-template-columns: minmax(0, 1fr); }
-  .ioc-unlinked { grid-column: 1; }
   .footer-content { flex-wrap: wrap; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
   button, select { min-height: 32px; }
 }
@@ -266,7 +266,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .modal-close { min-height: 32px; min-width: 32px; padding: 0; font-size: 20px; line-height: 1; }
 .modal-desc { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
 .kql-code { margin: 0; flex: 1; min-height: 0; overflow: auto; background: var(--page); border: 1px solid var(--line); border-radius: 6px; padding: 16px; font-family: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; line-height: 1.6; white-space: pre; tab-size: 4; }
-.modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .tok-comment { color: var(--tok-comment); }
 .tok-string { color: var(--tok-string); }
 .tok-num { color: var(--tok-num); }
