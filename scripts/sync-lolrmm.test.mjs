@@ -108,3 +108,10 @@ test("candidates skip placeholder names from the API such as <random>.exe", () =
   const found = candidates(tool("Rodex RMM", [exe("C:\\x\\<random-6-9-char>.exe"), exe("C:\\x\\<impersonated-org>Agent.exe"), exe("C:\\x\\RodexAgent.exe")]), none);
   assert.deepEqual([...found.paths], ["*\\RodexAgent.exe"]);
 });
+
+test("a tool decided as a separate product gets no suggestions", () => {
+  const data = { version: "1.0.0.9", products: { "Faronics Insight": { paths: ["*\\FIStudentSvc*.exe"], domains: ["faronics.com"] } } };
+  const suggested = sync(data, [tool("Faronics Core", [exe("C:\\x\\FaronicsCore.exe")], ["faronics.com"])], none, new Set(["faronics core"])).changes[0];
+  assert.deepEqual(suggested.suggested, []);
+  assert.equal(suggested.name, "Faronics Core");
+});

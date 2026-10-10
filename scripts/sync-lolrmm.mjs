@@ -67,7 +67,7 @@ export function candidates(tool, ignore) {
 }
 
 // Adds what no product covers yet. Returns the updated products (sorted like products.json) and the changes made.
-export function sync(data, tools, ignore) {
+export function sync(data, tools, ignore, separate = new Set()) {
   const products = { ...data.products };
   const stored = Object.values(products);
   const patterns = stored.flatMap(product => product.paths || []).map(globToRegExp);
@@ -93,7 +93,7 @@ export function sync(data, tools, ignore) {
     let placement;
     const suggestions = [];
     if (name) placement = "exact";
-    else {
+    else if (!separate.has(lower(tool.Name))) {
       const toolWords = words(tool.Name);
       const toolRoots = new Set([...found.domains].map(rootLabel));
       const toolTokens = tokens(tool.Name);
@@ -154,7 +154,8 @@ async function main() {
   const ignore = new Set(JSON.parse(readFileSync(join(import.meta.dirname, "lolrmm-ignore.json"), "utf8")).map(entry => lower(entry.name)));
   const productsPath = join(root, "products.json");
   const data = JSON.parse(readFileSync(productsPath, "utf8"));
-  const { products, changes } = sync(data, tools, ignore);
+  const separate = new Set(JSON.parse(readFileSync(join(import.meta.dirname, "lolrmm-separate.json"), "utf8")).map(entry => lower(entry.tool)));
+  const { products, changes } = sync(data, tools, ignore, separate);
   const date = new Date().toISOString().slice(0, 10);
   if (!changes.length) {
     console.log("No new lolRMM indicators.");

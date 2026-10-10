@@ -44,6 +44,7 @@ Nothing reaches `main` until you merge that pull request.
   - **R3 Never block accessibility software**, even if it has a remote-support feature.
   - **R4 Don't block on evidence-free entries**. If the lolRMM entry has no description of remote access
     and the name is a common product, leave it out until someone confirms it. Its domain may be the real product.
+  - **Separate products.** When a tool's name suggests an existing product but the lolRMM entry does not show they are the same, keep it separate. Record that in `scripts/lolrmm-separate.json` so future syncs stop suggesting a merge.
   - **Decide in the PR** when the rules do not settle it, such as employee-monitoring or backup products
     with a remote feature. Merge only after a decision, and record it in the ignore file if you exclude it.
 - **Removing a tool from an open PR.** Check out `lolrmm-sync`, run
