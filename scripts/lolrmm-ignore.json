@@ -1,0 +1,9 @@
+[
+  { "name": "NVDA (Non-Visual Desktop Access)", "reason": "R3: screen reader. Accessibility software is never blocked, even though it has a remote-support feature." },
+  { "name": "Freshservice", "reason": "R2: ITSM and asset discovery agents only, no remote session or command feature." },
+  { "name": "VIZOR", "reason": "R2: ITAM and ITSM platform, inventory agent only." },
+  { "name": "Ninite Pro (Ninite Agent)", "reason": "R2: software deployment and patching only." },
+  { "name": "Komari", "reason": "R2: self-hosted server monitoring only." },
+  { "name": "Zabbix Agent", "reason": "R2: monitoring agent. Its lolRMM entry has no description of remote access; reconsider if remote commands are confirmed." },
+  { "name": "Basecamp", "reason": "R4: lolRMM entry has no description, and basecamp.com is the Basecamp project-management product." }
+]

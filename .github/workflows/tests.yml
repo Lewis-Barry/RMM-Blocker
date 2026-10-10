@@ -9,4 +9,5 @@ jobs:
         with:
           node-version: 22
       - run: node build.mjs --check
+      - run: node --test scripts/sync-lolrmm.test.mjs
       - run: node run-tests.mjs google-chrome

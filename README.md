@@ -1,7 +1,7 @@
 # RMM and Remote Access Tool Blocker
 
 A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
-(policy version `1.0.0.9`, 838 deny rules).
+(the version and rule counts are in the editor footer and `products.json`).
 Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
@@ -21,6 +21,32 @@ This regenerates `Blocking_RMMsv5.xml` and the CSVs in `IOC`. Commit all of them
 Do not edit the generated files by hand. CI runs `node build.mjs --check` and fails
 if they are out of date. If the domains grow past 1,000, the build asks you to add the
 next `Domains_PartN.csv` to `iocSources` in `ioc.js`.
+
+## Monthly lolRMM sync
+
+`.github/workflows/lolrmm-sync.yml` runs on the 1st of each month (and on demand from the
+Actions tab). It reads `https://lolrmm.io/api/rmm_tools.json` and adds every Windows `.exe`
+and network domain that no product lists yet, bumps the last part of `version`, regenerates
+the XML and CSVs, runs the checks, and opens a `lolrmm-sync` pull request for review.
+Nothing reaches `main` until you merge that pull request.
+
+- `scripts/sync-lolrmm.mjs` does the work. Generic file names, Windows and everyday app binaries,
+  and shared hosting platforms such as GitHub or Azure are never added.
+- `scripts/lolrmm-ignore.json` lists tools that must never be added, each with its reason.
+  Add a rejected tool there, or the next sync adds it again.
+- Review each new tool against these rules:
+  - **R1 Block** when the tool can open a remote session or desktop, run remote commands or scripts,
+    move files to a device, or tunnel into one. Remote access, tunnelling and RMM products are in this group.
+  - **R2 Don't block** when it only monitors, inventories, runs ITSM or ITAM, deploys or patches software,
+    backs up data or protects endpoints, unless R1 also applies.
+  - **R3 Never block accessibility software**, even if it has a remote-support feature.
+  - **R4 Don't block on evidence-free entries**. If the lolRMM entry has no description of remote access
+    and the name is a common product, leave it out until someone confirms it. Its domain may be the real product.
+  - **Decide in the PR** when the rules do not settle it, such as employee-monitoring or backup products
+    with a remote feature. Merge only after a decision, and record it in the ignore file if you exclude it.
+- `changelog.json` records each release. `changelog.html` displays it.
+- Run `node scripts/sync-lolrmm.mjs --dry-run` to preview a sync without writing files.
+- Repository settings must allow Actions to create pull requests (Settings > Actions > General).
 
 ## Builder workflow
 
