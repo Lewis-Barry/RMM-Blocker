@@ -1,5 +1,539 @@
 [
   {
+    "version": "1.0.0.10",
+    "date": "2026-10-10",
+    "source": "lolrmm.io",
+    "products": [
+      {
+        "name": "Splashtop",
+        "new": false,
+        "paths": [
+          "*\\SRUtility.exe",
+          "*\\SRFeature.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Mouse Without Borders",
+        "new": true,
+        "paths": [
+          "*\\MouseWithoutBorders.exe",
+          "*\\MouseWithoutBordersSvc.exe",
+          "*\\MouseWithoutBordersHelper.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "GoToAssist",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "goto.com"
+        ]
+      },
+      {
+        "name": "Faronics Insight",
+        "new": true,
+        "paths": [
+          "*\\FIStudentSvc.exe",
+          "*\\FIStudentAgent.exe",
+          "*\\FIStudentUI.exe",
+          "*\\STAHelper.exe"
+        ],
+        "domains": [
+          "faronics.com",
+          "support.faronics.com",
+          "docs.faronics.com"
+        ]
+      },
+      {
+        "name": "Duet Display",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "rdp.duetdisplay.com",
+          "duetdisplay.com",
+          "itagent.com"
+        ]
+      },
+      {
+        "name": "Controlio",
+        "new": true,
+        "paths": [
+          "*\\bbl.exe",
+          "*\\wesvc.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Addigy",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "prod.addigy.com",
+          "grtmprod.addigy.com",
+          "agents.addigy.com"
+        ]
+      },
+      {
+        "name": "RunSmart",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "runsmart.io"
+        ]
+      },
+      {
+        "name": "GoToMyPC",
+        "new": true,
+        "paths": [
+          "*\\G2M.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Faronics Core",
+        "new": true,
+        "paths": [
+          "*\\FaronicsCoreAgent.exe",
+          "*\\CoreAgentService.exe"
+        ],
+        "domains": [
+          "upd.faronicslabs.com"
+        ]
+      },
+      {
+        "name": "Encapto",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "encapto.com"
+        ]
+      },
+      {
+        "name": "Dataplicity",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "dataplicity.com"
+        ]
+      },
+      {
+        "name": "TeleDesktop",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "tele-desk.com"
+        ]
+      },
+      {
+        "name": "tmate",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "tmate.io"
+        ]
+      },
+      {
+        "name": "Atera",
+        "new": false,
+        "paths": [
+          "*\\AgentPackageSTRemote.exe",
+          "*\\AgentPackageMonitoring.exe",
+          "*\\AgentPackageHeartbeat.exe",
+          "*\\AgentPackageFileExplorer.exe",
+          "*\\AgentPackageRunCommandInteractive.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "RemotePulse",
+        "new": true,
+        "paths": [
+          "*\\InstallCore.exe"
+        ],
+        "domains": [
+          "remotepulse.io"
+        ]
+      },
+      {
+        "name": "Lavawall",
+        "new": false,
+        "paths": [
+          "*\\remote-agent.exe",
+          "*\\uihelper.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "BlackCrypt RMM Agent",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "blackcryptknight.com"
+        ]
+      },
+      {
+        "name": "N-ABLE Remote Access Software",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "n-able.com"
+        ]
+      },
+      {
+        "name": "iDrive",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "idrive.com",
+          "api.idrive.com"
+        ]
+      },
+      {
+        "name": "Level.io",
+        "new": true,
+        "paths": [
+          "*\\osqueryi.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "HopToDesk",
+        "new": false,
+        "paths": [
+          "*\\privacyhelper.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Kaseya VSA",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "kaseya.com"
+        ]
+      },
+      {
+        "name": "Netreo",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "charon.netreo.net",
+          "activation.netreo.net",
+          "netreo.com"
+        ]
+      },
+      {
+        "name": "N-Able Advanced Monitoring Agent",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "logicnow.com"
+        ]
+      },
+      {
+        "name": "Rodex RMM",
+        "new": true,
+        "paths": [
+          "*\\<random-6-9-char>.exe",
+          "*\\<impersonated-org>Agent.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Barracuda",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "rmm.barracudamsp.com",
+          "barracudamsp.com"
+        ]
+      },
+      {
+        "name": "RMMCRAT",
+        "new": false,
+        "paths": [
+          "*\\rmm.exe",
+          "*\\Notepad++.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "ShellHub",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "shellhub.io",
+          "cloud.shellhub.io"
+        ]
+      },
+      {
+        "name": "HeartbeatRM",
+        "new": false,
+        "paths": [
+          "*\\agent-installer-any.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "NetSupport Manager",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "paternal-angrily.com"
+        ]
+      },
+      {
+        "name": "ngrok",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "ngrok.com"
+        ]
+      },
+      {
+        "name": "baramundi Management Suite",
+        "new": false,
+        "paths": [
+          "*\\bma.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "EMCO Remote Console",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "emcosoftware.com"
+        ]
+      },
+      {
+        "name": "LocalXpose",
+        "new": true,
+        "paths": [
+          "*\\loclx.exe"
+        ],
+        "domains": [
+          "localxpose.io",
+          "api.localxpose.io"
+        ]
+      },
+      {
+        "name": "Bluetrait",
+        "new": false,
+        "paths": [
+          "*\\BluetraitUserAgent.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Teramind",
+        "new": true,
+        "paths": [
+          "*\\tmagentsvc.exe",
+          "*\\Teramind.Setup.Updater.exe"
+        ],
+        "domains": [
+          "teramind.co",
+          "rt.teramind.co",
+          "sentry.dev.teramind.co"
+        ]
+      },
+      {
+        "name": "KickIdler",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "kickidler.com",
+          "my.kickidler.com"
+        ]
+      },
+      {
+        "name": "Teleport Connect",
+        "new": true,
+        "paths": [
+          "*\\Teleport Connect.exe",
+          "*\\tsh.exe"
+        ],
+        "domains": [
+          "cdn.teleport.dev",
+          "reporting-connect.teleportinfra.sh",
+          "usage.teleport.dev"
+        ]
+      },
+      {
+        "name": "PiTunnel",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "pitunnel.com"
+        ]
+      },
+      {
+        "name": "NetBird",
+        "new": true,
+        "paths": [
+          "*\\netbird.exe"
+        ],
+        "domains": [
+          "netbird.io",
+          "api.netbird.io",
+          "app.netbird.io",
+          "signal.netbird.io",
+          "relay.netbird.io",
+          "login.netbird.io",
+          "pkgs.netbird.io",
+          "googl-6c11f.web.app",
+          "googl-165a0.web.app",
+          "my-sharepoint-inc.com",
+          "my1cloudlive.com",
+          "my2cloudlive.com",
+          "web-16fe.app"
+        ]
+      },
+      {
+        "name": "GLPI Agent",
+        "new": true,
+        "paths": [
+          "*\\perl.exe",
+          "*\\wperl.exe"
+        ],
+        "domains": [
+          "glpi-project.org",
+          "nightly.glpi-project.org",
+          "forum.glpi-project.org",
+          "glpi-network.com",
+          "services.glpi-network.com"
+        ]
+      },
+      {
+        "name": "Faronics Deploy",
+        "new": true,
+        "paths": [
+          "*\\FaronicsDeployAgent.exe",
+          "*\\FWAService.exe",
+          "*\\FWA_UI_Agent.exe",
+          "*\\FRCServer.exe"
+        ],
+        "domains": [
+          "deploy.faronics.com",
+          "faronicsdeploy.com",
+          "faronicscloud.com",
+          "remotepro-us-west-2.faronics.com",
+          "remotepro-us-east-1.faronics.com",
+          "remotepro-ca-central-1.faronics.com",
+          "remotepro-eu-west-1.faronicsdeploy.com",
+          "remotepro-ap-southeast-1.faronicsdeploy.com",
+          "remotepro-sa-east-1.faronicsdeploy.com"
+        ]
+      },
+      {
+        "name": "ITSupport247 (ConnectWise)",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "itsupport247.net"
+        ]
+      },
+      {
+        "name": "DeskDay",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "deskday.ai",
+          "app.deskday.ai"
+        ]
+      },
+      {
+        "name": "NinjaRMM",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "ninja-backup.com"
+        ]
+      },
+      {
+        "name": "Monitic",
+        "new": false,
+        "paths": [
+          "*\\amon.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "InvGate",
+        "new": false,
+        "paths": [
+          "*\\DepHlp.exe",
+          "*\\ARPPRODUCTICON.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Electric AI (Kaseya)",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "electric.ai"
+        ]
+      },
+      {
+        "name": "Overlord",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "pandoramods.top"
+        ]
+      },
+      {
+        "name": "MyIVO",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "myivo-server.software.informer.com"
+        ]
+      },
+      {
+        "name": "Faronics Deep Freeze",
+        "new": true,
+        "paths": [
+          "*\\DFServ.exe",
+          "*\\DFServEx.exe",
+          "*\\DFWks.exe"
+        ],
+        "domains": [
+          "deepfreeze.com",
+          "cloud.faronics.com"
+        ]
+      },
+      {
+        "name": "Fortra",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "fortra.com"
+        ]
+      },
+      {
+        "name": "SpyAnywhere",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "spyanywhere.com"
+        ]
+      },
+      {
+        "name": "Centurion",
+        "new": true,
+        "paths": [],
+        "domains": [
+          "centuriontech.com"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.0.9",
     "date": "2026-10-10",
     "source": "Initial list",
