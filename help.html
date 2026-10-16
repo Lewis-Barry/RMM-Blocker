@@ -8,6 +8,7 @@
   <title>Deploy WDAC — RMM and Remote Access Tool Blocker</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
 </head>
 <body class="help-page">
   <a class="skip-link" href="#guide">Skip to guide</a>
@@ -18,7 +19,7 @@
         <span>RMM and Remote Access Tool Blocker</span>
       </a>
       <div class="header-actions">
-        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help.html" aria-current="page">Help</a></nav>
+        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
         <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
@@ -42,8 +43,8 @@
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
-      <div class="page-heading"><div><h1>Deploy WDAC</h1><p><a href="./index.html">Exclude trusted tools</a>, then download XML.</p></div></div>
-      <aside class="help-warning" role="note">Enforced policy. Start with a pilot device group.</aside>
+      <div class="page-heading"><div><h1>Deploy WDAC</h1><p>Creates an XML policy that blocks the remote tools you have not excluded.</p><p>Designed for Windows 11 24H2 and newer. Many rules use several wildcards, which need Windows 11.</p><p><a href="./index.html">Exclude trusted tools</a>, then download XML.</p></div></div>
+      <aside class="help-warning" role="note">Enforced policy. Start with a pilot device group.<br>This guide assumes you have no prior AppLocker/WDAC/App Control For Business policies configured today.</aside>
       <section id="create" class="help-step" aria-labelledby="create-title">
         <h2 id="create-title">1. Create</h2>
         <p><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Endpoint security</strong> → <strong>App Control for Business</strong> → <strong>Create</strong>.</p>
@@ -68,17 +69,14 @@
       <section id="verify" class="help-step" aria-labelledby="verify-title">
         <h2 id="verify-title">5. Verify</h2>
         <ul>
-          <li>Sync the pilot device.</li>
-          <li>Check deployment status in Intune.</li>
+          <li>Allow the policy to sync to the pilot device.</li>
           <li>Test excluded and blocked tools.</li>
-          <li>Check Event Viewer: <strong>Applications and Services Logs → Microsoft → Windows → CodeIntegrity → Operational</strong>.</li>
         </ul>
         <p>Expand assignments after testing.</p>
-        <details class="export-details"><summary>Existing policies</summary><p>Exclusions add no allow rules. Other policies may still block trusted tools.</p></details>
         <p><a href="https://learn.microsoft.com/en-us/intune/device-configuration/endpoint-security/manage-app-control" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a></p>
       </section>
     </article>
   </main>
-  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a></div></footer>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./Blocking_RMMsv5.xml" download>Source policy <span aria-hidden="true">↗</span></a><button id="credits-open" class="footer-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button></div></footer>
 </body>
 </html>

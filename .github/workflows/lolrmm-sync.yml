@@ -1,0 +1,56 @@
+name: lolRMM sync
+# Monthly: adds new lolRMM tools to products.json and opens a pull request for review.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Keep rejections already recorded on the open sync branch
+        run: |
+          git fetch -q origin lolrmm-sync 2>/dev/null || exit 0
+          git show origin/lolrmm-sync:scripts/lolrmm-ignore.json > "$RUNNER_TEMP/branch-ignore.json" 2>/dev/null || exit 0
+          node -e '
+            const fs = require("fs");
+            const path = "scripts/lolrmm-ignore.json";
+            const entries = [...JSON.parse(fs.readFileSync(path, "utf8")), ...JSON.parse(fs.readFileSync(process.argv[1], "utf8"))];
+            const byName = new Map(entries.map(entry => [entry.name.toLowerCase(), entry]));
+            fs.writeFileSync(path, JSON.stringify([...byName.values()], null, 2) + "\n");
+          ' "$RUNNER_TEMP/branch-ignore.json"
+      - name: Pull new tools from lolRMM
+        id: sync
+        run: |
+          node scripts/sync-lolrmm.mjs > "$RUNNER_TEMP/summary.md"
+          if git diff --quiet -- products.json changelog.json; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Regenerate, verify and open pull request
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Pull requests opened with the default token do not start other workflows, so verify here.
+          node build.mjs
+          node build.mjs --check
+          node --test scripts/sync-lolrmm.test.mjs
+          node run-tests.mjs google-chrome
+          VERSION=$(node -p "require('./products.json').version")
+          BRANCH=lolrmm-sync
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A
+          git commit -m "Sync lolRMM tools for policy $VERSION"
+          git push --force origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head "$BRANCH" --title "lolRMM sync: policy $VERSION" --body-file "$RUNNER_TEMP/summary.md"
+          else
+            gh pr edit "$BRANCH" --title "lolRMM sync: policy $VERSION" --body-file "$RUNNER_TEMP/summary.md"
+          fi

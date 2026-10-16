@@ -63,7 +63,33 @@ async function waitFor(condition, message) {
   }
 }
 
+// Runs an action that saves CSVs and returns each saved file's name and text instead of letting the browser download it.
+async function collectCsvs(doc, action, expected) {
+  const saved = [];
+  const capture = event => {
+    const link = event.target.closest("a[download]");
+    if (!link?.download.endsWith(".csv")) return;
+    event.preventDefault();
+    saved.push(fetch(link.href).then(response => response.text()).then(text => ({ name: link.download, text })));
+  };
+  doc.addEventListener("click", capture, true);
+  try {
+    action();
+    await waitFor(() => saved.length >= expected, "CSV downloads did not start");
+    return await Promise.all(saved);
+  } finally {
+    doc.removeEventListener("click", capture, true);
+  }
+}
+
+// Counts follow the data, so a products.json update changes the expected numbers without editing tests.
+const batchSizes = count => Array.from({ length: Math.ceil(count / 500) }, (_, index) => Math.min(500, count - index * 500));
+const csvCount = count => count === 1 ? "1 CSV" : `${count} CSVs`;
+const linkedTo = (iocs, name) => iocs.indicators.filter(row => row.tools.includes(name)).length;
+
 async function testBuilder(policy, iocs) {
+  const dattoCount = linkedTo(iocs, "Datto RMM / Autotask");
+  const keptCount = iocs.indicators.length - dattoCount;
   const frame = document.createElement("iframe");
   frame.hidden = true;
   frame.title = "Builder regression fixture";
@@ -237,28 +263,20 @@ async function testBuilder(policy, iocs) {
       }
     });
     byId("link-iocs").click();
-    await waitFor(() => byId("ioc-downloads").querySelectorAll("a").length > 0 || !byId("ioc-error").hidden,
+    await waitFor(() => !byId("ioc-download").hidden || !byId("ioc-error").hidden,
       "IOC exports were not prepared");
-    test("Enabling IOC exports applies the existing selection to one 454-indicator CSV", () => {
+    test("Enabling IOC exports applies the existing selection to the CSV batches", () => {
+      const sizes = batchSizes(keptCount);
       assert(byId("ioc-error").hidden, byId("ioc-error").textContent);
       assert(selection.checked && byId("link-iocs").checked, "Enabling IOC exports cleared selection");
-      assert(byId("ioc-status").textContent === "454 indicators kept · 121 removed · 1 CSV", "IOC summary stale");
-      assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Wrong CSV batch count");
-      assert(byId("ioc-downloads").querySelector("a").textContent === "CSV 1 / 1 · 454 indicators",
-        "Unexpected IOC download label");
+      assert(byId("ioc-status").textContent === `${keptCount} indicators kept · ${dattoCount} removed · ${csvCount(sizes.length)}`,
+        "IOC summary stale");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(sizes.length)}`, "Wrong CSV batch count or download label");
       assert(!selection.closest(".tool").querySelector("details").hidden, "XML rules not reviewable with IOC exports enabled");
-    });
-    test("Unmatched tools appear below and outside the IOC card", () => {
-      const note = byId("ioc-unlinked");
-      const card = byId("link-iocs").closest("section");
-      assert(note.parentElement === card.parentElement && card.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
-        "Unmatched tools remain inside the IOC card or are misplaced");
-      assert(card.nextElementSibling === byId("kql-open"), "KQL action is not directly below the IOC card");
-      assert(!note.hidden && byId("ioc-unlinked-list").children.length === 7, "Unmatched tools are missing");
     });
     test("IOC disclosures identify their tool and show compact value/type rows in a shaded group", () => {
       const details = selection.closest(".tool").querySelectorAll("details")[1];
-      assert(details.querySelector("summary").getAttribute("aria-label") === "IOCs (121) for Datto RMM / Autotask",
+      assert(details.querySelector("summary").getAttribute("aria-label") === `IOCs (${dattoCount}) for Datto RMM / Autotask`,
         "IOC disclosure name missing context");
       for (const row of byId("tool-list").children) {
         const name = row.querySelector(".tool-title").textContent;
@@ -290,13 +308,16 @@ async function testBuilder(policy, iocs) {
         "Missing IOC warning is not associated with the control");
     });
     xmlOnlySelection.click();
-    const csvResponse = await fetch(byId("ioc-downloads").querySelector("a").href);
-    assert(csvResponse.ok, "Generated CSV URL unavailable");
-    const csvRows = parseCsv(await csvResponse.text());
+    // Unmatched indicators open the choice first, so accept it with nothing left out.
+    const [firstCsv] = await collectCsvs(document, () => {
+      byId("ioc-download").click();
+      byId("csv-download").click();
+    }, batchSizes(keptCount).length);
+    const csvRows = parseCsv(firstCsv.text);
     test("Generated CSV download contains the filtered Defender rows and header", () => {
       assert(JSON.stringify(csvRows[0]) === JSON.stringify(iocHeaders), "Downloaded header incorrect");
-      assert(csvRows.length === 455, "Downloaded CSV does not contain 454 indicators");
-      assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM (CentraStage)"),
+      assert(csvRows.length === batchSizes(keptCount)[0] + 1, "Downloaded CSV batch does not contain its kept indicators");
+      assert(csvRows.slice(1).every(row => row[3] === "Block" && row[5] !== "LOLRMM - Datto RMM / Autotask"),
         "Downloaded CSV contains selected IOCs or non-Block actions");
     });
     let xmlDownload;
@@ -328,7 +349,7 @@ async function testBuilder(policy, iocs) {
       assert(document.documentElement.dataset.theme === "light", "Theme did not change");
       assert(byId("theme-toggle").getAttribute("aria-label") === "Switch to dark theme", "Theme label stale");
       assert(selection.checked && byId("link-iocs").checked, "Theme changed export selections");
-      assert(byId("ioc-downloads").querySelectorAll("a").length === 1, "Theme changed IOC exports");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(batchSizes(keptCount).length)}`, "Theme changed IOC exports");
       assert(byId("wdac-status").textContent.includes(`${expectedRemoved} removed`), "Theme changed XML output");
     });
     byId("search").value = "no-such-tool-regression";
@@ -338,14 +359,13 @@ async function testBuilder(policy, iocs) {
     test("Search and filters never change the final exports", () => {
       assert(!byId("empty").hidden, "Empty search message missing");
       assert(selection.checked && byId("excluded-count").textContent === "1", "Search changed selection");
-      assert(byId("ioc-status").textContent.startsWith("454 indicators kept"), "Search changed IOC output");
+      assert(byId("ioc-status").textContent.startsWith(`${keptCount} indicators kept`), "Search changed IOC output");
       assert(byId("removed-count").textContent === String(expectedRemoved), "Search changed XML output");
     });
     byId("link-iocs").click();
     test("Disabling IOC exports removes CSV links without changing XML selections", () => {
-      assert(byId("ioc-output").hidden && !byId("ioc-downloads").children.length, "CSV links retained");
+      assert(byId("ioc-output").hidden && byId("ioc-download").hidden, "CSV download retained");
       assert(byId("ioc-status").hidden && !byId("ioc-status").textContent, "Disabled IOC status remains visible");
-      assert(byId("ioc-unlinked").hidden, "Disabled IOC exports leave unmatched tools visible");
       assert(selection.checked && byId("removed-count").textContent === String(expectedRemoved),
         "Disabling CSVs changed XML exclusions");
     });
@@ -356,11 +376,45 @@ async function testBuilder(policy, iocs) {
       assert(byId("removed-count").textContent === "0", "Reset left XML removals");
       assert(byId("selection-details").hidden, "Reset left stale review");
       assert(byId("selection-list").children.length === 0, "Reset left stale exclusion items");
-      assert(byId("ioc-status").textContent === "575 indicators kept · 0 removed · 2 CSVs", "IOC reset stale");
-      assert(!byId("ioc-unlinked").hidden, "Re-enabling IOC exports leaves unmatched tools hidden");
-      const links = [...byId("ioc-downloads").querySelectorAll("a")];
-      assert(links.length === 2 && links[0].textContent.includes("500 indicators") &&
-        links[1].textContent.includes("75 indicators"), "Reset batches incorrect");
+      const sizes = batchSizes(iocs.indicators.length);
+      assert(byId("ioc-status").textContent === `${iocs.indicators.length} indicators kept · 0 removed · ${csvCount(sizes.length)}`,
+        "IOC reset stale");
+      assert(byId("ioc-download").textContent === `Download ${csvCount(sizes.length)}`, "Reset batches incorrect");
+    });
+    const unmatchedRows = iocs.indicators.filter(row => !row.tools.length);
+    byId("ioc-download").click();
+    test("Downloading CSVs with unmatched indicators asks first and lists them all", () => {
+      assert(byId("csv-modal").open, "Unmatched download did not prompt");
+      assert(byId("csv-modal-list").children.length === unmatchedRows.length, "Prompt lists the wrong unmatched rows");
+      assert(byId("csv-modal-desc").textContent.startsWith("There is not a WDAC entry for every remote tool domain"), "Prompt helper text missing");
+    });
+    const leftOutRow = unmatchedRows[0];
+    byId("csv-modal-list").querySelector("input").click();
+    test("Ticking a row relabels Download with the count shown", () => {
+      assert(!byId("csv-download").disabled && byId("csv-download").textContent === "Download without 1",
+        "Download label or state stale after leaving a row out");
+    });
+    const fileCount = batchSizes(iocs.indicators.length).length;
+    const saved = await collectCsvs(document, () => byId("csv-download").click(), fileCount);
+    test("Download saves every CSV without only the ticked row", () => {
+      assert(!byId("csv-modal").open, "Prompt stayed open after Download");
+      assert(saved.length === fileCount && saved.every(file => file.name.endsWith("_excluded.csv")), "Files not saved as excluded");
+      const rows = saved.flatMap(file => parseCsv(file.text).slice(1));
+      assert(rows.length === iocs.indicators.length - 1 && !rows.some(row => row[1] === leftOutRow.value), "Ticked row still in CSVs");
+    });
+    byId("ioc-download").click();
+    for (const box of byId("csv-modal-list").querySelectorAll("input")) box.click();
+    test("Leaving out every unmatched row keeps Download enabled for the matched rows", () => {
+      assert(!byId("csv-download").disabled && byId("csv-download").textContent === `Download without ${unmatchedRows.length}`,
+        "Download label stale after leaving out every unmatched row");
+    });
+    const matchedFileCount = batchSizes(iocs.indicators.length - unmatchedRows.length).length;
+    const matched = await collectCsvs(document, () => byId("csv-download").click(), matchedFileCount);
+    test("Leaving out every unmatched row saves only matched indicators", () => {
+      const rows = matched.flatMap(file => parseCsv(file.text).slice(1));
+      assert(rows.length === iocs.indicators.length - unmatchedRows.length, "Matched-only CSVs have the wrong row count");
+      assert(rows.every(row => row[5].startsWith("LOLRMM - ") && !unmatchedRows.some(item => item.value === row[1])),
+        "Matched-only CSVs still contain unmatched rows");
     });
     byId("kql-open").click();
     await waitFor(() => byId("kql-modal").open && byId("kql-code").textContent.includes("DeviceNetworkEvents"),
@@ -370,7 +424,7 @@ async function testBuilder(policy, iocs) {
       assert(!byId("kql-copy").disabled, "Copy disabled after the query loaded");
       assert(byId("kql-error").hidden, "KQL modal reported an error");
       assert(byId("kql-code").querySelector(".tok-table"), "KQL not syntax-highlighted");
-      assert(byId("kql-code").querySelectorAll(".tok-string").length >= 575, "KQL indicators missing from view");
+      assert(byId("kql-code").querySelectorAll(".tok-string").length >= iocs.indicators.length, "KQL indicators missing from view");
       byId("kql-close").click();
       assert(!byId("kql-modal").open, "Modal did not close");
     });
@@ -408,24 +462,26 @@ async function run() {
     assert(response.ok, `Source fetch failed: ${response.status}`);
     const source = await response.text();
     const policy = parsePolicy(source);
-    test("Bundled v5 XML contains 838 deny rules and 840 references", () => {
-      assert(policy.version === "1.0.0.8", "Policy version changed");
-      assert(policy.rules.length === 838, "Deny count changed; review source and update test");
-      assert(elements(policy.document, "FileRuleRef").length === 840, "Reference count changed");
+    const data = await (await fetch("./products.json")).json();
+    const products = Object.values(data.products);
+    const unique = values => new Set(values.map(value => value.toLowerCase())).size;
+    const expectedRules = unique(products.flatMap(product => product.paths || []));
+    const expectedDomains = unique(products.flatMap(product => [...(product.domains || []), ...(product.vendorDomains || [])]));
+    const expectedIps = unique(products.flatMap(product => product.ips || []));
+    test("Bundled v5 XML matches products.json: version, deny rules and references", () => {
+      assert(policy.version === data.version, "Policy version differs from products.json");
+      assert(policy.rules.length === expectedRules, "Deny count differs from products.json");
+      // Each deny rule is referenced once, plus one allow reference per signing scenario.
+      assert(elements(policy.document, "FileRuleRef").length === expectedRules + 2, "Reference count differs from products.json");
     });
     test("No exclusions preserves original source exactly", () =>
       assert(exportPolicy(policy, new Set()) === source, "Source text changed"));
-    test("Every deny rule is visible and assigned without ambiguous aliases", () => {
+    test("Every deny rule is visible under its product", () => {
       const grouped = new Set(policy.tools.flatMap(tool => tool.rules.map(rule => rule.id)));
-      assert(grouped.size === policy.rules.length, "Catalog hides deny rules");
-      assert(!policy.tools.some(tool => tool.unclassified), "v5 should contain no unclassified rules");
+      assert(grouped.size === policy.rules.length, "Tool list hides deny rules");
     });
-    test("New unconfirmed identities remain visible and can be excluded", () => {
-      const unknown = parsePolicy(source.replace(policy.rules[0].path, "*\\unknown-test-tool*.exe"));
-      const tool = unknown.tools.find(tool => tool.unclassified);
-      assert(tool?.name === "Unclassified: unknown-test-tool.exe", "Unknown rule identity not explicit");
-      verifyExport(unknown, new Set([tool.name]));
-    });
+    test("Deny rules without a product name fail", () =>
+      expectError(() => parsePolicy(source.replace(/(<Deny [^>]*FriendlyName=")[^"]*/, "$1")), "has no product name"));
     test("TeamViewer selection includes all TeamViewer and TV helper executables", () => {
       const selection = new Set(["TeamViewer"]);
       const ids = excludedRuleIds(policy, selection);
@@ -492,10 +548,10 @@ async function run() {
       expectError(() => parseCsv('"closed"text'), "Invalid CSV");
       expectError(() => parseCsv('unquoted"quote'), "Invalid CSV");
     });
-    test("Combined sources contain 575 block IOCs: 563 domains and 12 IPs", () => {
-      assert(iocs.indicators.length === 575, "Combined indicator count changed");
-      assert(iocs.indicators.filter(row => row.type === "DomainName").length === 563, "Domain count changed");
-      assert(iocs.indicators.filter(row => row.type === "IpAddress").length === 12, "IP count changed");
+    test("Combined sources contain every products.json domain and IP as a block IOC", () => {
+      assert(iocs.indicators.length === expectedDomains + expectedIps, "Combined indicator count differs from products.json");
+      assert(iocs.indicators.filter(row => row.type === "DomainName").length === expectedDomains, "Domain count differs from products.json");
+      assert(iocs.indicators.filter(row => row.type === "IpAddress").length === expectedIps, "IP count differs from products.json");
       assert(iocs.indicators.every(row => row.values[3] === "Block"), "An indicator changed action");
     });
     test("Network discovery KQL embeds every indicator and both match paths", () => {
@@ -509,7 +565,7 @@ async function run() {
         assert(kql.includes(`"${indicator.value}"`), `KQL omits ${indicator.value}`);
       }
       assert(!/www\./.test(kql), "KQL retained a www. prefix");
-      assert(iocs.indicators.filter(indicator => indicator.type === "DomainName").length === 563,
+      assert(iocs.indicators.filter(indicator => indicator.type === "DomainName").length === expectedDomains,
         "Domain count after removing www. duplicates is incorrect");
     });
     test("KQL highlighting escapes HTML and tags comments, strings and tables", () => {
@@ -520,11 +576,12 @@ async function run() {
       assert(highlighted.includes('class="tok-table"'), "Table name not highlighted");
       assert(!highlighted.includes("<script"), "Unescaped markup leaked");
     });
-    test("No IOC exclusions preserves all metadata in batches of 500 and 75", () => {
+    test("No IOC exclusions preserves all metadata in batches of 500", () => {
       const result = filterIocs(iocs, new Set());
       assert(result.removed.length === 0, "Unexpected exclusions");
       const batches = exportIocBatches(result.retained);
-      assert(JSON.stringify(batches.map(batch => batch.count)) === "[500,75]", "Incorrect initial batches");
+      assert(JSON.stringify(batches.map(batch => batch.count)) === JSON.stringify(batchSizes(iocs.indicators.length)),
+        "Incorrect initial batches");
       const rows = batches.flatMap(batch => {
         const parsed = parseCsv(batch.csv);
         assert(JSON.stringify(parsed[0]) === JSON.stringify(iocHeaders), "Defender header changed");
@@ -532,9 +589,11 @@ async function run() {
       });
       assert(JSON.stringify(rows) === JSON.stringify(iocs.indicators.map(row => row.values)), "IOC metadata changed");
     });
-    test("TeamViewer removes exactly four linked IOCs and retains all other indicators", () => {
+    test("TeamViewer removes exactly its linked IOCs and retains all other indicators", () => {
+      const linked = linkedTo(iocs, "TeamViewer");
       const result = filterIocs(iocs, new Set(["TeamViewer"]));
-      assert(result.removed.length === 4 && result.retained.length === 571, "TeamViewer IOC count incorrect");
+      assert(result.removed.length === linked && result.retained.length === iocs.indicators.length - linked,
+        "TeamViewer IOC count incorrect");
       assert(result.removed.every(row => row.values[5] === "LOLRMM - TeamViewer"), "Unrelated IOC removed");
       assert(!result.retained.some(row => row.values[5] === "LOLRMM - TeamViewer"), "TeamViewer IOC retained");
     });
@@ -544,12 +603,12 @@ async function run() {
       assert(result.removed.filter(row => row.type === "IpAddress").length === 3, "Ammyy IPs remain");
       assert(result.removed.filter(row => row.type === "DomainName").length === 1, "Ammyy domain remains");
     });
-    test("Product aliases link Datto and shrink the combined dataset to one 454-row file", () => {
+    test("Datto links its IOCs and recomputes the batches for the remaining indicators", () => {
       const result = filterIocs(iocs, new Set(["Datto RMM / Autotask"]));
-      assert(result.removed.length === 121, "Datto alias incomplete");
-      assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM (CentraStage)"), "Incorrect Datto mapping");
-      assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) === "[454]",
-        "Batch count not recomputed after filtering");
+      assert(result.removed.length === linkedTo(iocs, "Datto RMM / Autotask"), "Datto IOCs incomplete");
+      assert(result.removed.every(row => row.values[5] === "LOLRMM - Datto RMM / Autotask"), "Incorrect Datto mapping");
+      assert(JSON.stringify(exportIocBatches(result.retained).map(batch => batch.count)) ===
+        JSON.stringify(batchSizes(iocs.indicators.length - result.removed.length)), "Batch count not recomputed after filtering");
     });
     test("Shared descriptions link all owners and warn when an unselected owner is affected", () => {
       const row = iocs.indicators.find(row => row.value === "kabuto.io");
@@ -565,13 +624,14 @@ async function run() {
     });
     test("Unlinked IOC-only tools remain blocked when every XML tool is excluded", () => {
       const result = filterIocs(iocs, new Set(toolNames));
-      assert(result.retained.length === 11, "Unlinked IOC count changed");
+      const unlinked = iocs.indicators.filter(row => !row.tools.length);
+      assert(result.retained.length === unlinked.length, "Unlinked IOC count changed");
       const owners = new Set(result.retained.flatMap(row => row.owners.map(owner => owner.name)));
-      assert(owners.size === 7, "Unlinked identity count changed");
+      assert(owners.size === new Set(unlinked.flatMap(row => row.owners.map(owner => owner.name))).size, "Unlinked identity count changed");
       assert(result.retained.every(row => !row.tools.length && row.values[3] === "Block"), "Unlinked IOC was dropped or allowed");
     });
     test("XML-only selections do not remove unrelated IOCs", () => {
-      assert(filterIocs(iocs, new Set(["PsExec"])).retained.length === 575, "XML-only tool removed IOCs");
+      assert(filterIocs(iocs, new Set(["PsExec"])).retained.length === iocs.indicators.length, "XML-only tool removed IOCs");
       expectError(() => filterIocs(iocs, new Set(["Not a tool"])), "Unknown IOC tool selection");
     });
     test("Every XML selection removes only its linked IOC rows", () => {
@@ -615,7 +675,7 @@ async function run() {
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
     await testBuilder(policy, iocs);
-    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} catalog entries and ${iocs.indicators.length} IOCs tested).`;
+    status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
   } catch (error) {

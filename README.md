@@ -1,10 +1,63 @@
 # RMM and Remote Access Tool Blocker
 
 A dependency-free static GitHub Pages site preloaded with `Blocking_RMMsv5.xml`
-(policy version `1.0.0.8`, 838 deny rules).
+(the version and rule counts are in the editor footer and `products.json`).
 Search friendly tool names, filenames or folders, check the tools you use, and
 download the customized WDAC XML. Checked means **excluded from this block list**.
 Unselected rules remain in place.
+
+The policy is designed for **Windows 11 24H2 and newer** end-user devices. Many rules use more than one
+wildcard or a mid-path wildcard, which older Windows versions do not support.
+
+https://lewis-barry.github.io/RMM-Blocker/
+
+## Adding or updating products
+
+`products.json` is the only file to edit. Each product lists any of `paths`
+(WDAC wildcard file or folder rules), `domains`, `vendorDomains` (broad vendor-wide
+domains) and `ips`. List a shared path or indicator under every product that owns it.
+Bump `version` whenever the policy changes, then run:
+
+```
+node build.mjs
+```
+
+This regenerates `Blocking_RMMsv5.xml` and the CSVs in `IOC`. Commit all of them.
+Do not edit the generated files by hand. CI runs `node build.mjs --check` and fails
+if they are out of date. If the domains grow past 1,000, the build asks you to add the
+next `Domains_PartN.csv` to `iocSources` in `ioc.js`.
+
+## Monthly lolRMM sync
+
+`.github/workflows/lolrmm-sync.yml` runs on the 1st of each month (and on demand from the
+Actions tab). It reads `https://lolrmm.io/api/rmm_tools.json` and adds every Windows `.exe`
+and network domain that no product lists yet, bumps the last part of `version`, regenerates
+the XML and CSVs, runs the checks, and opens a `lolrmm-sync` pull request for review.
+Nothing reaches `main` until you merge that pull request.
+
+- `scripts/sync-lolrmm.mjs` does the work. Generic file names, Windows and everyday app binaries,
+  and shared hosting platforms such as GitHub or Azure are never added.
+- `scripts/lolrmm-ignore.json` lists tools that must never be added, each with its reason.
+  Add a rejected tool there, or the next sync adds it again.
+- Review each new tool against these rules:
+  - **R1 Block** when the tool can open a remote session or desktop, run remote commands or scripts,
+    move files to a device, or tunnel into one. Remote access, tunnelling and RMM products are in this group.
+  - **R2 Don't block** when it only monitors, inventories, runs ITSM or ITAM, deploys or patches software,
+    backs up data or protects endpoints, unless R1 also applies.
+  - **R3 Never block accessibility software**, even if it has a remote-support feature.
+  - **R4 Don't block on evidence-free entries**. If the lolRMM entry has no description of remote access
+    and the name is a common product, leave it out until someone confirms it. Its domain may be the real product.
+  - **Separate products.** When a tool's name suggests an existing product but the lolRMM entry does not show they are the same, keep it separate. Record that in `scripts/lolrmm-separate.json` so future syncs stop suggesting a merge.
+  - **Decide in the PR** when the rules do not settle it, such as employee-monitoring or backup products
+    with a remote feature. Merge only after a decision, and record it in the ignore file if you exclude it.
+- **Removing a tool from an open PR.** Check out `lolrmm-sync`, run
+  `node scripts/lolrmm-reject.mjs "<product name as shown in the PR>" "<reason>"`, then commit and push.
+  It removes that product's additions from the release, adds the tool to the ignore list, and rebuilds
+  the XML and CSVs. Rejections survive the monthly rebuild, because the job merges the branch's ignore list first.
+  The script refuses to run on `main`, so it can't change a merged release.
+- `changelog.json` records each release. `changelog.html` displays it.
+- Run `node scripts/sync-lolrmm.mjs --dry-run` to preview a sync without writing files.
+- Repository settings must allow Actions to create pull requests (Settings > Actions > General).
 
 ## Builder workflow
 
@@ -50,7 +103,8 @@ and verification, using `DefenderScreens`. CSVs default to all devices; set
 
 1. Put these files in a GitHub repository, keeping the XML beside `index.html`
    and including the `IOC`, `WDACScreens` and `DefenderScreens` folders.
-   Keep `help.html`, `help-ioc.html` and `theme.js` alongside the editor.
+   Keep `help.html`, `help-ioc.html`, `theme.js`, `credits.js` and
+   `LOLRMM-LICENSE.txt` alongside the editor.
 2. In **Settings > Pages**, choose **Deploy from a branch**.
 3. Select your branch and **/ (root)**, then save.
 
@@ -77,8 +131,8 @@ already imported into Defender.
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.
 - Mapping uses the CSV's tool attribution, including the full owners in
-  descriptions marked `(+1 more)`, and explicit product aliases. It never
-  guesses tool identity from a domain substring.
+  descriptions marked `(+1 more)`. `build.mjs` writes the same product names
+  into the XML and the CSVs, so it never guesses identity from a domain substring.
 - Shared indicators are removed if **any** linked owner is excluded. A warning
   lists removed indicators that also affect unselected owners.
 - IOC-only tools without an XML match remain blocked and are listed below the IOC card.
@@ -114,20 +168,25 @@ with no installs; GitHub Actions runs it on every push and pull request.
 - Allow rules, policy IDs, version, settings and unrelated rules are preserved.
   With no selections, export returns the original source text. Modified XML may
   have normalized whitespace and self-closing tag formatting.
-- `catalog.js` maps known path and executable aliases to friendly tool names.
+- Each `Deny` rule's `FriendlyName` holds its product names from `products.json`.
   Shared ConnectWise and SolarWinds folder rules belong to multiple products:
   selecting either removes the shared folder rule and displays an explicit
   warning. Other rules for the unselected product are retained.
-- Unconfirmed identities appear as **Unclassified** entries showing their exact
-  paths; they are not silently assigned to a product. Generic executable names
-  also have an explicit generic group. Inspect matching rules before excluding.
 - Search/filter visibility does not affect selections or export. Counts
   deduplicate shared rules.
 - Nothing is uploaded. Downloaded XML is not an added allow policy, a signed or
   compiled WDAC policy, or a guarantee that a tool can execute. Validate and test
   the result with your normal WDAC deployment workflow before production use.
 
-When replacing the bundled XML, review the mappings and run the regression suite.
-New unmatched rules remain visible for manual inspection. Invalid XML, duplicate
-IDs, unresolved references and ambiguous mappings produce visible errors instead
-of a downloadable partial policy.
+After changing `products.json`, rebuild and run the regression suite. Invalid XML,
+duplicate IDs, unresolved references and rules without a product name produce
+visible errors instead of a downloadable partial policy.
+
+## Attribution
+
+Much of the product, path and network indicator data in `products.json` comes from
+[LOLRMM](https://github.com/magicsword-io/LOLRMM) (Living Off the Land RMM),
+licensed under the Apache License 2.0. A copy is in `LOLRMM-LICENSE.txt` (LOLRMM
+ships no NOTICE file). The footer's **Credits & licence** dialog (`credits.js`)
+states the source, that the data was modified, and that this tool is independent
+and provided as is.

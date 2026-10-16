@@ -8,6 +8,7 @@
   <title>Import Defender IOCs — RMM and Remote Access Tool Blocker</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
 </head>
 <body class="help-page">
   <a class="skip-link" href="#guide">Skip to guide</a>
@@ -18,7 +19,7 @@
         <span>RMM and Remote Access Tool Blocker</span>
       </a>
       <div class="header-actions">
-        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help-ioc.html" aria-current="page">Help</a></nav>
+        <nav aria-label="Main navigation"><a href="./index.html">Browse</a><a href="./help-ioc.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
         <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
@@ -41,7 +42,7 @@
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
-      <div class="page-heading"><h1>Import Defender IOCs</h1></div>
+      <div class="page-heading"><div><h1>Import Defender IOCs</h1><p>Creates CSV files of the domains and IPs for the remote tools you have not excluded. Import them into Defender indicators to block network connections to those tools on Windows and macOS devices. Tools that only run on macOS, such as Addigy, are blocked by these indicators alone, because the WDAC policy is Windows-only.</p></div></div>
       <aside class="help-warning" role="note">CSV scope defaults to all devices.</aside>
       <section id="download" class="help-step" aria-labelledby="download-title">
         <h2 id="download-title">1. Download</h2>
@@ -70,12 +71,12 @@
           <li>Confirm device scope and blocking action.</li>
           <li>Test blocked and excluded tools on pilot devices.</li>
         </ul>
+        <p class="help-warning" role="note">Network blocks usually take around 30 mins to apply.</p>
         <p>Expand device scope after testing.</p>
-        <details class="export-details"><summary>Existing indicators</summary><p>Exclusions do not delete existing blocks. Remove obsolete indicators in Defender.</p></details>
         <p><a href="https://learn.microsoft.com/en-us/defender-endpoint/indicator-manage" target="_blank" rel="noopener noreferrer">Import documentation <span aria-hidden="true">↗</span></a> · <a href="https://learn.microsoft.com/en-us/defender-endpoint/indicator-ip-domain" target="_blank" rel="noopener noreferrer">Protection requirements <span aria-hidden="true">↗</span></a></p>
       </section>
     </article>
   </main>
-  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./help.html">WDAC guide</a></div></footer>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./help.html">WDAC guide</a><button id="credits-open" class="footer-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button></div></footer>
 </body>
 </html>

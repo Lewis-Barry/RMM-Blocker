@@ -1,5 +1,3 @@
-import { classifyRule } from "./catalog.js";
-
 const namespace = "urn:schemas-microsoft-com:sipolicy";
 
 export function parsePolicy(source) {
@@ -30,7 +28,9 @@ export function parsePolicy(source) {
   }
   const tools = new Map();
   const rules = Array.from(fileRules[0].children).filter(node => node.localName === "Deny").map(node => {
-    const { names, unclassified } = classifyRule(node);
+    // build.mjs writes each rule's product names into FriendlyName.
+    const names = (node.getAttribute("FriendlyName") || "").split("; ").filter(Boolean);
+    if (!names.length) throw new Error(`Deny rule ${node.getAttribute("ID")} has no product name.`);
     const rule = {
       id: node.getAttribute("ID"),
       path: node.getAttribute("FilePath") || node.getAttribute("FileName") || "",
@@ -39,7 +39,7 @@ export function parsePolicy(source) {
       references: refCounts.get(node.getAttribute("ID")) || 0,
     };
     for (const name of names) {
-      if (!tools.has(name)) tools.set(name, { name, unclassified, rules: [] });
+      if (!tools.has(name)) tools.set(name, { name, rules: [] });
       tools.get(name).rules.push(rule);
     }
     return rule;
@@ -48,8 +48,7 @@ export function parsePolicy(source) {
     source,
     document,
     rules,
-    tools: Array.from(tools.values()).sort((a, b) =>
-      Number(a.unclassified) - Number(b.unclassified) || a.name.localeCompare(b.name)),
+    tools: Array.from(tools.values()).sort((a, b) => a.name.localeCompare(b.name)),
     version: document.getElementsByTagNameNS(namespace, "VersionEx")[0]?.textContent || "Unknown",
   };
 }
