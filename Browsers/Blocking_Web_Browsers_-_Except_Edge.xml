@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.2</VersionEx>
+  <VersionEx>1.0.0.3</VersionEx>
   <PolicyID>{FC11DE42-9B14-4F74-B1DB-F12114B913F7}</PolicyID>
   <BasePolicyID>{FC11DE42-9B14-4F74-B1DB-F12114B913F7}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
@@ -58,6 +58,7 @@
     <Deny ID="ID_DENY_A_00A6E38866C78F1720D988918DA5C33F" FriendlyName="Falkon" FilePath="*\Falkon\*" />
     <Deny ID="ID_DENY_A_E62E5D5FD459C0625A8239D456A70735" FriendlyName="qutebrowser" FilePath="*\qutebrowser\*" />
     <Deny ID="ID_DENY_A_9828FE976F98F564C53F96D03E06617B" FriendlyName="Otter Browser" FilePath="*\Otter Browser\*" />
+    <Deny ID="ID_DENY_A_15EAFF6C609E7EDB22EDDC5D57B5B234" FriendlyName="Island Browser" FilePath="*\Island\Island\Application\*" />
     <Deny ID="ID_DENY_A_DFBE69855581252020B0CCCA08BAC376" FriendlyName="Google Chrome" FilePath="*\chrome.exe" />
     <Deny ID="ID_DENY_A_4678B5DC49B477F3B9AF48737346D6AF" FriendlyName="Google Chrome" FilePath="*\chrome_proxy.exe" />
     <Deny ID="ID_DENY_A_A9834089E9A4A93911E26434BEEB10C6" FriendlyName="Google Chrome" FilePath="*\googlechromeportable.exe" />
@@ -98,6 +99,7 @@
     <Deny ID="ID_DENY_A_3780C4A446F40991D6E8CC59F4254FAC" FriendlyName="QQ Browser" FilePath="*\qqbrowser.exe" />
     <Deny ID="ID_DENY_A_AAFA15684E7FB91004D51F0CF951CD08" FriendlyName="Sogou Explorer" FilePath="*\sogouexplorer.exe" />
     <Deny ID="ID_DENY_A_820A32EA15044759FF74B4998D481B69" FriendlyName="Liebao (Cheetah Browser)" FilePath="*\liebao.exe" />
+    <Deny ID="ID_DENY_A_61A95056EAE8E052EE3D359D9165CAB9" FriendlyName="Island Browser" FilePath="*\island.exe" />
     <Deny ID="ID_DENY_A_EA3A2F02E2B9B0241C52727646CDC2E9" FriendlyName="Mozilla Firefox" FilePath="*\Mozilla Firefox\*" />
     <Deny ID="ID_DENY_A_36013EEA0787C0F4CB68FE1A73968F13" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Developer Edition\*" />
     <Deny ID="ID_DENY_A_8FD684F2D8A6B33143E645C2E3007D13" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Nightly\*" />
@@ -148,6 +150,7 @@
           <FileRuleRef RuleID="ID_DENY_A_00A6E38866C78F1720D988918DA5C33F" />
           <FileRuleRef RuleID="ID_DENY_A_E62E5D5FD459C0625A8239D456A70735" />
           <FileRuleRef RuleID="ID_DENY_A_9828FE976F98F564C53F96D03E06617B" />
+          <FileRuleRef RuleID="ID_DENY_A_15EAFF6C609E7EDB22EDDC5D57B5B234" />
           <FileRuleRef RuleID="ID_DENY_A_DFBE69855581252020B0CCCA08BAC376" />
           <FileRuleRef RuleID="ID_DENY_A_4678B5DC49B477F3B9AF48737346D6AF" />
           <FileRuleRef RuleID="ID_DENY_A_A9834089E9A4A93911E26434BEEB10C6" />
@@ -188,6 +191,7 @@
           <FileRuleRef RuleID="ID_DENY_A_3780C4A446F40991D6E8CC59F4254FAC" />
           <FileRuleRef RuleID="ID_DENY_A_AAFA15684E7FB91004D51F0CF951CD08" />
           <FileRuleRef RuleID="ID_DENY_A_820A32EA15044759FF74B4998D481B69" />
+          <FileRuleRef RuleID="ID_DENY_A_61A95056EAE8E052EE3D359D9165CAB9" />
           <FileRuleRef RuleID="ID_DENY_A_EA3A2F02E2B9B0241C52727646CDC2E9" />
           <FileRuleRef RuleID="ID_DENY_A_36013EEA0787C0F4CB68FE1A73968F13" />
           <FileRuleRef RuleID="ID_DENY_A_8FD684F2D8A6B33143E645C2E3007D13" />
