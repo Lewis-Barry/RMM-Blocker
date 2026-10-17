@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow. Private, browser-only exports.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Web Browser Blocker</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body class="builder-page" data-policy="./Browsers/Blocking_Web_Browsers_-_Except_Edge.xml">
+  <a class="skip-link" href="#selection">Skip to browsers</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM and Remote Access Tool Blocker home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 27 7v9c0 6-5 10-11 13C10 26 5 22 5 16V7Z" stroke="currentColor" stroke-width="2"/><path d="m11 16 3 3 7-7" stroke="currentColor" stroke-width="2"/></svg>
+        <span>RMM and Remote Access Tool Blocker</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html" aria-current="page">Browsers</a><a href="./help.html">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="perfect-open" class="header-button" type="button" aria-haspopup="dialog">Is this perfect?</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <span class="header-byline">by <a href="https://conditionalaccess.uk" target="_blank" rel="noopener noreferrer">Lewis Barry</a></span>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container page-main">
+    <p class="builder-intro">Block every browser except Microsoft Edge. Exclude the ones you allow.</p>
+    <aside class="wip-banner" role="note" aria-label="Work in progress warning"><span class="chip warning-chip">Preview</span><span>This policy is WIP and still undergoing testing. Test on a non-production device.</span></aside>
+    <section class="how-to" aria-labelledby="how-to-title">
+      <p id="how-to-title"><strong>How to use</strong></p>
+      <ol>
+        <li>Find each browser your team allows, then tick <strong>Exclude</strong>.</li>
+        <li>Download the XML and deploy it as a WDAC policy, e.g. through Intune.</li>
+        <li>Pilot on one test device before a wider rollout.</li>
+      </ol>
+    </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="loading" role="status">Loading policy...</p>
+    <div id="editor" hidden>
+      <div class="toolbar">
+        <div class="search-field">
+          <label class="visually-hidden" for="search">Search browsers and rules</label>
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="1.5"/></svg>
+          <input id="search" type="search" placeholder="Search browsers, filenames or folders" autocomplete="off">
+        </div>
+        <div class="filter-field">
+          <label for="filter">Show</label>
+          <select id="filter">
+            <option value="all">All browsers</option>
+            <option value="excluded">Excluded browsers</option>
+            <option value="blocked">Not excluded</option>
+          </select>
+        </div>
+      </div>
+      <div class="workbench">
+        <section id="selection" class="selection-panel" aria-labelledby="selection-title" tabindex="-1">
+          <div class="panel-heading"><div class="tools-heading"><h2 id="selection-title">Browsers</h2><span class="selection-count" role="status" aria-live="polite" aria-atomic="true"><strong id="excluded-count">0</strong> excluded</span></div><button id="reset" class="quiet-button" type="button" disabled>Reset</button></div>
+          <div class="list-heading"><span id="results" role="status" aria-live="polite"></span><span>Exclude</span></div>
+          <div id="tools" class="tool-scroll" tabindex="0" role="region" aria-label="Browsers and exclusions"><ul id="tool-list" class="tool-list" role="list"></ul></div>
+          <p id="empty" class="empty-state" hidden>No matching browsers.</p>
+        </section>
+        <section id="exports" class="export-panel" aria-labelledby="exports-title" tabindex="-1">
+          <div class="panel-heading"><h2 id="exports-title">Downloads</h2></div>
+          <div class="export-content">
+            <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
+            <section class="export-card" aria-labelledby="wdac-export-title">
+              <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
+              <p class="output-description">Blocks execution on Windows 11 24H2 and newer.</p>
+              <p id="wdac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
+              <button id="download" class="primary" type="button">Download XML</button>
+              <details class="export-details"><summary>Policy notes</summary><p>Removes selected filename/folder deny rules and references. Preserves policy IDs, settings and other rules.</p><p>No allow rules added. Other policies may still block execution. Validate with WDAC tooling; coverage varies by version and path.</p><p><a href="./Browsers/Blocking_Web_Browsers_-_Except_Edge.xml" download>Original XML</a> <span id="policy-version"></span></p></details>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+    <noscript><p class="error">Enable JavaScript to edit and download this policy.</p></noscript>
+  </main>
+  <dialog id="perfect-modal" class="modal" aria-labelledby="perfect-modal-title" aria-describedby="perfect-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="perfect-modal-title">Is this perfect?</h2>
+        <button id="perfect-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <div id="perfect-modal-desc" class="modal-desc">
+        <p>No. This policy matches browsers by expected file name and path, not by file hash or publisher signature. Renamed copies or browsers run from unexpected folders can get past it, and other apps in matching folders may be blocked.</p>
+        <p>Many browsers share the Chromium <code>chrome.exe</code> name. That rule belongs to Google Chrome, so excluding another Chromium browser that uses it does not unblock it unless you also exclude Chrome.</p>
+        <p>Treat this as one layer and test on pilot devices first.</p>
+      </div>
+    </div>
+  </dialog>
+  <script type="module">
+    const modal = document.getElementById("perfect-modal");
+    document.getElementById("perfect-open").addEventListener("click", () => modal.showModal());
+    document.getElementById("perfect-close").addEventListener("click", () => modal.close());
+    modal.addEventListener("click", event => {
+      if (event.target === modal) modal.close();
+    });
+  </script>
+  <footer><div class="container footer-content"><span class="footer-warning">It is your responsibility to test appropriately with application blocking tools.</span><a href="./Browsers/Blocking_Web_Browsers_-_Except_Edge.xml" download>Source policy <span aria-hidden="true">↗</span></a><button id="credits-open" class="footer-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button></div></footer>
+</body>
+</html>

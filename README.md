@@ -11,6 +11,11 @@ wildcard or a mid-path wildcard, which older Windows versions do not support.
 
 https://lewis-barry.github.io/RMM-Blocker/
 
+The **Browsers** tab (`browsers.html`) works the same way for
+`Browsers/Blocking_Web_Browsers_-_Except_Edge.xml`, which blocks every browser except Microsoft Edge.
+It has no IOC exports. That XML is edited by hand: each deny rule's `FriendlyName` is the browser
+name the page groups it under.
+
 ## Adding or updating products
 
 `products.json` is the only file to edit. Each product lists any of `paths`

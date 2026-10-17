@@ -456,6 +456,32 @@ function verifyExport(policy, selection) {
     "Non-editable policy content changed");
 }
 
+// The browser page shares app.js without the IOC panel.
+async function testBrowserBuilder() {
+  const frame = document.createElement("iframe");
+  frame.hidden = true;
+  frame.title = "Browser builder regression fixture";
+  frame.src = "./browsers.html";
+  document.body.append(frame);
+  try {
+    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false ||
+      frame.contentDocument?.getElementById("error")?.hidden === false, "Browser builder did not initialize");
+    const doc = frame.contentDocument;
+    test("Browser builder loads its own policy without IOC controls", () => {
+      assert(doc.getElementById("error").hidden, doc.getElementById("error").textContent);
+      assert(!doc.getElementById("link-iocs"), "IOC toggle present");
+      const firefox = doc.querySelector('input[aria-label="Exclude Mozilla Firefox from block list"]');
+      assert(firefox, "Firefox missing");
+      assert(!doc.querySelector('input[aria-label="Exclude Microsoft Edge from block list"]'), "Edge is blocked");
+      firefox.click();
+      assert(doc.getElementById("excluded-count").textContent === "1", "Exclusion not counted");
+      assert(Number(doc.getElementById("removed-count").textContent) > 0, "Firefox rules not removed");
+    });
+  } finally {
+    frame.remove();
+  }
+}
+
 async function run() {
   try {
     const response = await fetch("./Blocking_RMMsv5.xml");
@@ -675,6 +701,7 @@ async function run() {
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
     await testBuilder(policy, iocs);
+    await testBrowserBuilder();
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);

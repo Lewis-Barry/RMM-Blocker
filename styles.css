@@ -214,7 +214,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 @media (max-width: 560px) {
   .brand { font-size: 13px; gap: 4px; }
   .brand-mark { width: 20px; height: 20px; }
-  nav a:first-child { display: none; }
+  .header-content, .header-actions { flex-wrap: wrap; flex-shrink: 1; }
   .toolbar { flex-wrap: wrap; gap: 8px; }
   .search-field { flex-basis: 100%; }
   .filter-field { width: 100%; }

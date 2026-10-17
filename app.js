@@ -4,7 +4,10 @@ import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
-byId("link-iocs").checked = false;
+// The browser page shares this script without the IOC panel; each page's body names the XML to load.
+const hasIocs = !!byId("link-iocs");
+const policyFile = document.body.dataset.policy;
+if (hasIocs) byId("link-iocs").checked = false;
 let policy;
 let tools = [];
 let iocData;
@@ -124,11 +127,13 @@ function openCsvChoice(unmatched) {
 }
 
 function updateIocs() {
-  const enabled = byId("link-iocs").checked;
-  byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
-  byId("ioc-output").hidden = !enabled;
-  byId("ioc-status").hidden = !enabled || !!iocError;
-  byId("tools").setAttribute("aria-busy", String(iocLoading));
+  const enabled = hasIocs && byId("link-iocs").checked;
+  if (hasIocs) {
+    byId("link-iocs").closest("section").classList.toggle("enabled", enabled);
+    byId("ioc-output").hidden = !enabled;
+    byId("ioc-status").hidden = !enabled || !!iocError;
+    byId("tools").setAttribute("aria-busy", String(iocLoading));
+  }
   for (const entry of tools) {
     entry.iocCount.hidden = !enabled || !iocData || !!entry.iocs.length || !excluded.has(entry.tool.name);
     entry.iocDetails.hidden = !enabled || !entry.iocs.length;
@@ -139,6 +144,7 @@ function updateIocs() {
         .filter(element => element && !element.hidden)
         .map(element => element.id).join(" "));
   }
+  if (!hasIocs) return;
   if (!enabled) {
     releaseIocDownloads();
     byId("ioc-status").textContent = "";
@@ -287,7 +293,7 @@ function update() {
     entry.warning.textContent = selected
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
       : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
-    const searchText = `${entry.searchText} ${byId("link-iocs").checked ? entry.iocSearchText : ""}`;
+    const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""}`;
     entry.row.hidden = !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
     if (!entry.row.hidden) visible++;
@@ -311,36 +317,37 @@ function update() {
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());
 byId("reset").addEventListener("click", () => { excluded.clear(); update(); });
-byId("link-iocs").addEventListener("change", enableIocs);
-window.addEventListener("pagehide", releaseIocDownloads);
+byId("link-iocs")?.addEventListener("change", enableIocs);
+if (hasIocs) window.addEventListener("pagehide", releaseIocDownloads);
 window.addEventListener("pageshow", () => { if (policy) update(); });
 byId("download").addEventListener("click", () => {
   try {
     const xml = exportPolicy(policy, excluded);
-    saveFile(xml, excluded.size ? "Blocking_RMMsv5_custom.xml" : "Blocking_RMMsv5.xml", "application/xml;charset=utf-8");
+    const name = policyFile.split("/").pop();
+    saveFile(xml, excluded.size ? name.replace(/\.xml$/, "_custom.xml") : name, "application/xml;charset=utf-8");
     byId("error").hidden = true;
   } catch (error) {
     showError(error);
   }
 });
 
-byId("ioc-download").addEventListener("click", () => {
+byId("ioc-download")?.addEventListener("click", () => {
   const unmatched = iocBatches.flatMap((batch, index) => batch.indicators
     .filter(indicator => !indicator.tools.length)
     .map(indicator => ({ indicator, part: index + 1 })));
   if (unmatched.length) openCsvChoice(unmatched);
   else downloadCsvs(new Set());
 });
-byId("csv-download").addEventListener("click", () => {
+byId("csv-download")?.addEventListener("click", () => {
   downloadCsvs(pendingCsv.skipped);
   byId("csv-modal").close();
 });
-byId("csv-close").addEventListener("click", () => byId("csv-modal").close());
-byId("csv-modal").addEventListener("click", event => {
+byId("csv-close")?.addEventListener("click", () => byId("csv-modal").close());
+byId("csv-modal")?.addEventListener("click", event => {
   if (event.target === byId("csv-modal")) byId("csv-modal").close();
 });
 
-byId("kql-open").addEventListener("click", async () => {
+byId("kql-open")?.addEventListener("click", async () => {
   const errorBox = byId("kql-error");
   errorBox.hidden = true;
   byId("kql-code").textContent = "";
@@ -357,13 +364,13 @@ byId("kql-open").addEventListener("click", async () => {
   byId("kql-modal").showModal();
 });
 
-byId("kql-close").addEventListener("click", () => byId("kql-modal").close());
+byId("kql-close")?.addEventListener("click", () => byId("kql-modal").close());
 // A click on the dialog element itself lands on the backdrop, outside the content box.
-byId("kql-modal").addEventListener("click", event => {
+byId("kql-modal")?.addEventListener("click", event => {
   if (event.target === byId("kql-modal")) byId("kql-modal").close();
 });
 
-byId("kql-copy").addEventListener("click", async () => {
+byId("kql-copy")?.addEventListener("click", async () => {
   const button = byId("kql-copy");
   try {
     await navigator.clipboard.writeText(kqlText);
@@ -377,7 +384,7 @@ byId("kql-copy").addEventListener("click", async () => {
 
 async function initialize() {
   try {
-    const response = await fetch("./Blocking_RMMsv5.xml");
+    const response = await fetch(policyFile);
     if (!response.ok) throw new Error(`Unable to load the bundled XML (HTTP ${response.status}).`);
     policy = parsePolicy(await response.text());
     if (!policy.rules.length) throw new Error("The bundled policy does not contain any deny rules.");

@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
+  <VersionEx>1.0.0.2</VersionEx>
+  <PolicyID>{FC11DE42-9B14-4F74-B1DB-F12114B913F7}</PolicyID>
+  <BasePolicyID>{FC11DE42-9B14-4F74-B1DB-F12114B913F7}</BasePolicyID>
+  <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
+  <Rules>
+    <Rule>
+      <Option>Enabled:UMCI</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Unsigned System Integrity Policy</Option>
+    </Rule>
+    <Rule>
+      <Option>Disabled:Script Enforcement</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Update Policy No Reboot</Option>
+    </Rule>
+  </Rules>
+  <FileRules>
+    <Allow ID="ID_ALLOW_A_3C4D86F8FEBF77D47B5F9A0D9C0B5BDC" FileName="*" />
+    <Allow ID="ID_ALLOW_A_084E35C4F9DE9BF6B82087948981D1FD" FileName="*" />
+    <Deny ID="ID_DENY_A_E535E8B0A789DAF8369BEA43F02F6F05" FriendlyName="Google Chrome" FilePath="*\Google\Chrome\*" />
+    <Deny ID="ID_DENY_A_32AB5D5904BE3A6BC4F552F631FD1844" FriendlyName="Google Chrome" FilePath="*\Google\Chrome Beta\*" />
+    <Deny ID="ID_DENY_A_ED7DEBCE74BED59CB176C4B08438E1C8" FriendlyName="Google Chrome" FilePath="*\Google\Chrome Dev\*" />
+    <Deny ID="ID_DENY_A_92C835652416D8C6CC4AED4BC68504E0" FriendlyName="Google Chrome" FilePath="*\Google\Chrome SxS\*" />
+    <Deny ID="ID_DENY_A_BB74576DA52826F34D475E720726C90E" FriendlyName="Brave" FilePath="*\BraveSoftware\*" />
+    <Deny ID="ID_DENY_A_6F9696D9017CDFAD6FD1BB65F24E512B" FriendlyName="Opera" FilePath="*\Opera Software\*" />
+    <Deny ID="ID_DENY_A_1C9B5E75F035BEAACB696D3A4133A6F9" FriendlyName="Opera" FilePath="*\Programs\Opera\*" />
+    <Deny ID="ID_DENY_A_A8193757E2A8F9046C410612F85B8ED5" FriendlyName="Opera" FilePath="*\Opera GX\*" />
+    <Deny ID="ID_DENY_A_7D7306D81A20A9739993FE835B427784" FriendlyName="Opera" FilePath="*\Opera developer\*" />
+    <Deny ID="ID_DENY_A_46E5F13638ACE0B22B67BF23CA986EC6" FriendlyName="Vivaldi" FilePath="*\Vivaldi\*" />
+    <Deny ID="ID_DENY_A_D02CBF2CBF9B30D54CA261A1F7F5BE84" FriendlyName="Yandex Browser" FilePath="*\Yandex\YandexBrowser\*" />
+    <Deny ID="ID_DENY_A_6340CD94F0F67A6DF226129883972939" FriendlyName="Safari" FilePath="*\Safari\*" />
+    <Deny ID="ID_DENY_A_DC4193A1D190A6A7EE115811AB5987EE" FriendlyName="Tor Browser" FilePath="*\Tor Browser\*" />
+    <Deny ID="ID_DENY_A_0D336E79C0B254DA0EE6FC86187A1C7F" FriendlyName="Waterfox" FilePath="*\Waterfox\*" />
+    <Deny ID="ID_DENY_A_7F321E21DD00B8AFB1A1DED086CAE2C4" FriendlyName="LibreWolf" FilePath="*\LibreWolf\*" />
+    <Deny ID="ID_DENY_A_57744E9168139E9EB5491ACB6B7D59FC" FriendlyName="Pale Moon" FilePath="*\Pale Moon\*" />
+    <Deny ID="ID_DENY_A_7BAD7896532877F3CE3A0A126B8EEB99" FriendlyName="Floorp" FilePath="*\Floorp\*" />
+    <Deny ID="ID_DENY_A_C4E73272CF7256A118D36F2DA321B60F" FriendlyName="Mullvad Browser" FilePath="*\Mullvad Browser\*" />
+    <Deny ID="ID_DENY_A_33C55420D02E166E1B1E9CC360258A2E" FriendlyName="Zen Browser" FilePath="*\Zen Browser\*" />
+    <Deny ID="ID_DENY_A_354DAD1B7D708E871F3964413089AE60" FriendlyName="Basilisk" FilePath="*\Basilisk\*" />
+    <Deny ID="ID_DENY_A_7E2C38C9BF4B8269CCFAE5A3FDAEDC77" FriendlyName="SeaMonkey" FilePath="*\SeaMonkey\*" />
+    <Deny ID="ID_DENY_A_C8DC8E6525B1722417376147354255E2" FriendlyName="K-Meleon" FilePath="*\K-Meleon\*" />
+    <Deny ID="ID_DENY_A_A911106FFFE86D40565830B8B1CE6ED3" FriendlyName="Maxthon" FilePath="*\Maxthon\*" />
+    <Deny ID="ID_DENY_A_5C1E2FA4E2D7E36F5CCCD6F6643E909F" FriendlyName="UC Browser" FilePath="*\UCBrowser\*" />
+    <Deny ID="ID_DENY_A_D8BD79E86982B308C1E2A0EB1D403A0A" FriendlyName="Avast Secure Browser" FilePath="*\AVAST Software\Browser\*" />
+    <Deny ID="ID_DENY_A_D846FC7B1C7BB81356C584F3C6784B5B" FriendlyName="AVG Secure Browser" FilePath="*\AVG\Browser\*" />
+    <Deny ID="ID_DENY_A_EE3FAA3F234761FEDB142B1F4C0EF8B4" FriendlyName="Comodo Dragon" FilePath="*\Comodo\Dragon\*" />
+    <Deny ID="ID_DENY_A_10FAB59EEDD13CA924DD187E0773E618" FriendlyName="Comodo IceDragon" FilePath="*\Comodo\IceDragon\*" />
+    <Deny ID="ID_DENY_A_CFEDE8BA82C12881622291736735F5D0" FriendlyName="Epic Privacy Browser" FilePath="*\Epic Privacy Browser\*" />
+    <Deny ID="ID_DENY_A_21F044D1F3CFFB84C73504000AEB6B64" FriendlyName="SRWare Iron" FilePath="*\SRWare Iron*\*" />
+    <Deny ID="ID_DENY_A_239F94DA49D97E9DE5F69316B894F006" FriendlyName="Slimjet" FilePath="*\Slimjet\*" />
+    <Deny ID="ID_DENY_A_37D716C213FA16385F676EC0DDD1065D" FriendlyName="Torch" FilePath="*\Torch\Application\*" />
+    <Deny ID="ID_DENY_A_D0A27DDA75F262AE05270A09C43C42B1" FriendlyName="Cent Browser" FilePath="*\CentBrowser\*" />
+    <Deny ID="ID_DENY_A_BA0EE8A268D9F9F69BF01C51C23C14C3" FriendlyName="Naver Whale" FilePath="*\Naver\Naver Whale\*" />
+    <Deny ID="ID_DENY_A_00A6E38866C78F1720D988918DA5C33F" FriendlyName="Falkon" FilePath="*\Falkon\*" />
+    <Deny ID="ID_DENY_A_E62E5D5FD459C0625A8239D456A70735" FriendlyName="qutebrowser" FilePath="*\qutebrowser\*" />
+    <Deny ID="ID_DENY_A_9828FE976F98F564C53F96D03E06617B" FriendlyName="Otter Browser" FilePath="*\Otter Browser\*" />
+    <Deny ID="ID_DENY_A_DFBE69855581252020B0CCCA08BAC376" FriendlyName="Google Chrome" FilePath="*\chrome.exe" />
+    <Deny ID="ID_DENY_A_4678B5DC49B477F3B9AF48737346D6AF" FriendlyName="Google Chrome" FilePath="*\chrome_proxy.exe" />
+    <Deny ID="ID_DENY_A_A9834089E9A4A93911E26434BEEB10C6" FriendlyName="Google Chrome" FilePath="*\googlechromeportable.exe" />
+    <Deny ID="ID_DENY_A_6B5D95569C2BE2B172DE7C1EC676A35D" FriendlyName="Google Chrome" FilePath="*\chromesetup.exe" />
+    <Deny ID="ID_DENY_A_11273C143DDAEA2B100D091A2FAAA9A4" FriendlyName="Google Chrome" FilePath="*\chromestandalonesetup.exe" />
+    <Deny ID="ID_DENY_A_42FC697A8EE52D1BAC3E61BFC74BFA3F" FriendlyName="Google Chrome" FilePath="*\chromestandalonesetup64.exe" />
+    <Deny ID="ID_DENY_A_0493AC81A3B18B886866EB66B7EE2607" FriendlyName="Brave" FilePath="*\brave.exe" />
+    <Deny ID="ID_DENY_A_5FA901835B8A29FAA9422BFDB7C21045" FriendlyName="Brave" FilePath="*\bravebrowsersetup.exe" />
+    <Deny ID="ID_DENY_A_BB67B693CB98E2978B44BFFE79227532" FriendlyName="Opera" FilePath="*\opera.exe" />
+    <Deny ID="ID_DENY_A_0B3DB3C7392E7635353D04B93E191481" FriendlyName="Opera" FilePath="*\operasetup.exe" />
+    <Deny ID="ID_DENY_A_D6037376218C8BD8AF8EF2CEDC89A581" FriendlyName="Vivaldi" FilePath="*\vivaldi.exe" />
+    <Deny ID="ID_DENY_A_97A05C2CBE592091FC69AE66D2992096" FriendlyName="Safari" FilePath="*\safari.exe" />
+    <Deny ID="ID_DENY_A_13B21F92AE2B7ED66BBE61596942C8C1" FriendlyName="Waterfox" FilePath="*\waterfox.exe" />
+    <Deny ID="ID_DENY_A_0EC57ED579154A9965BAA6F399EFCB56" FriendlyName="LibreWolf" FilePath="*\librewolf.exe" />
+    <Deny ID="ID_DENY_A_5F73CEE7638C2037C57904D71123C6F9" FriendlyName="Pale Moon" FilePath="*\palemoon.exe" />
+    <Deny ID="ID_DENY_A_35238154408F74B555D080F1AC7EFD3D" FriendlyName="Basilisk" FilePath="*\basilisk.exe" />
+    <Deny ID="ID_DENY_A_45D842479CB32CAAD83037C3085F749B" FriendlyName="Floorp" FilePath="*\floorp.exe" />
+    <Deny ID="ID_DENY_A_E99FC7BCA184ACF2F059252A53C52A6B" FriendlyName="SeaMonkey" FilePath="*\seamonkey.exe" />
+    <Deny ID="ID_DENY_A_126630A5EA3F8BD175AEE44B00D714C7" FriendlyName="K-Meleon" FilePath="*\k-meleon.exe" />
+    <Deny ID="ID_DENY_A_335AAC0BEBF93815008DF3E6846B2CDC" FriendlyName="Comodo IceDragon" FilePath="*\icedragon.exe" />
+    <Deny ID="ID_DENY_A_A616D6E3BCF5CDF87B35D06C12A940A3" FriendlyName="Maxthon" FilePath="*\maxthon.exe" />
+    <Deny ID="ID_DENY_A_E942BEA59964F41459BAA432B95B18E8" FriendlyName="UC Browser" FilePath="*\ucbrowser.exe" />
+    <Deny ID="ID_DENY_A_F1BE4116A34274DB15BC11B0DF5C5E4A" FriendlyName="Avast Secure Browser" FilePath="*\avastbrowser.exe" />
+    <Deny ID="ID_DENY_A_790732818A07370E3BDCC020E89235F8" FriendlyName="AVG Secure Browser" FilePath="*\avgbrowser.exe" />
+    <Deny ID="ID_DENY_A_83D767E5E14D00970C5960D8A251718A" FriendlyName="Slimjet" FilePath="*\slimjet.exe" />
+    <Deny ID="ID_DENY_A_836EDDCCCB704FDD8AEBB0B833CA72AB" FriendlyName="Midori" FilePath="*\midori.exe" />
+    <Deny ID="ID_DENY_A_036DD328860E04513EC17D2E4F3FBB4D" FriendlyName="Falkon" FilePath="*\falkon.exe" />
+    <Deny ID="ID_DENY_A_0F7C3EADE77B1DF44E78601ACA5D0F13" FriendlyName="qutebrowser" FilePath="*\qutebrowser.exe" />
+    <Deny ID="ID_DENY_A_5BD15181CD5C3E118471E1A7FE0AC558" FriendlyName="Otter Browser" FilePath="*\otter-browser.exe" />
+    <Deny ID="ID_DENY_A_8A4FFA3668CF361B0F57F388C1090D80" FriendlyName="Sleipnir" FilePath="*\sleipnir.exe" />
+    <Deny ID="ID_DENY_A_1212FD33170DA72180F97E74056EB285" FriendlyName="Lunascape" FilePath="*\lunascape.exe" />
+    <Deny ID="ID_DENY_A_CA86668EDC313BA9CD7950B53E23E542" FriendlyName="Dooble" FilePath="*\dooble.exe" />
+    <Deny ID="ID_DENY_A_48DFAF179F7BBECE3F4A7E4B3164FFC8" FriendlyName="Iridium" FilePath="*\iridium.exe" />
+    <Deny ID="ID_DENY_A_AD86B34E493C549EF0FFDCE3C6E3E5C5" FriendlyName="Cent Browser" FilePath="*\centbrowser.exe" />
+    <Deny ID="ID_DENY_A_27F81951DEB62CC71B0212C3787FD202" FriendlyName="Naver Whale" FilePath="*\whale.exe" />
+    <Deny ID="ID_DENY_A_CC6022082D2E6728384640DA1F89D57E" FriendlyName="360 Chrome" FilePath="*\360chrome.exe" />
+    <Deny ID="ID_DENY_A_C7695A462565F1EFA24F7F631631CF11" FriendlyName="360 Secure Browser" FilePath="*\360se.exe" />
+    <Deny ID="ID_DENY_A_3780C4A446F40991D6E8CC59F4254FAC" FriendlyName="QQ Browser" FilePath="*\qqbrowser.exe" />
+    <Deny ID="ID_DENY_A_AAFA15684E7FB91004D51F0CF951CD08" FriendlyName="Sogou Explorer" FilePath="*\sogouexplorer.exe" />
+    <Deny ID="ID_DENY_A_820A32EA15044759FF74B4998D481B69" FriendlyName="Liebao (Cheetah Browser)" FilePath="*\liebao.exe" />
+    <Deny ID="ID_DENY_A_EA3A2F02E2B9B0241C52727646CDC2E9" FriendlyName="Mozilla Firefox" FilePath="*\Mozilla Firefox\*" />
+    <Deny ID="ID_DENY_A_36013EEA0787C0F4CB68FE1A73968F13" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Developer Edition\*" />
+    <Deny ID="ID_DENY_A_8FD684F2D8A6B33143E645C2E3007D13" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Nightly\*" />
+    <Deny ID="ID_DENY_A_42144761D06CD3A3144B043EB2E16218" FriendlyName="Mozilla Firefox" FilePath="*\firefox.exe" />
+    <Deny ID="ID_DENY_A_F2D1D5820D70A5DB12A6E96305D3B978" FriendlyName="Mozilla Firefox" FilePath="*\firefoxportable.exe" />
+    <Deny ID="ID_DENY_A_BBAA695D9B579FF5B7BE614D63D978F0" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Installer*.exe" />
+    <Deny ID="ID_DENY_A_40840F9EDBB233B86640D6A5CFDD3B08" FriendlyName="Mozilla Firefox" FilePath="*\Firefox Setup*.exe" />
+  </FileRules>
+  <SigningScenarios>
+    <SigningScenario Value="12" ID="ID_SIGNINGSCENARIO_WINDOWS" FriendlyName="User Mode Code Integrity">
+      <ProductSigners>
+        <FileRulesRef>
+          <FileRuleRef RuleID="ID_ALLOW_A_3C4D86F8FEBF77D47B5F9A0D9C0B5BDC" />
+          <FileRuleRef RuleID="ID_DENY_A_E535E8B0A789DAF8369BEA43F02F6F05" />
+          <FileRuleRef RuleID="ID_DENY_A_32AB5D5904BE3A6BC4F552F631FD1844" />
+          <FileRuleRef RuleID="ID_DENY_A_ED7DEBCE74BED59CB176C4B08438E1C8" />
+          <FileRuleRef RuleID="ID_DENY_A_92C835652416D8C6CC4AED4BC68504E0" />
+          <FileRuleRef RuleID="ID_DENY_A_BB74576DA52826F34D475E720726C90E" />
+          <FileRuleRef RuleID="ID_DENY_A_6F9696D9017CDFAD6FD1BB65F24E512B" />
+          <FileRuleRef RuleID="ID_DENY_A_1C9B5E75F035BEAACB696D3A4133A6F9" />
+          <FileRuleRef RuleID="ID_DENY_A_A8193757E2A8F9046C410612F85B8ED5" />
+          <FileRuleRef RuleID="ID_DENY_A_7D7306D81A20A9739993FE835B427784" />
+          <FileRuleRef RuleID="ID_DENY_A_46E5F13638ACE0B22B67BF23CA986EC6" />
+          <FileRuleRef RuleID="ID_DENY_A_D02CBF2CBF9B30D54CA261A1F7F5BE84" />
+          <FileRuleRef RuleID="ID_DENY_A_6340CD94F0F67A6DF226129883972939" />
+          <FileRuleRef RuleID="ID_DENY_A_DC4193A1D190A6A7EE115811AB5987EE" />
+          <FileRuleRef RuleID="ID_DENY_A_0D336E79C0B254DA0EE6FC86187A1C7F" />
+          <FileRuleRef RuleID="ID_DENY_A_7F321E21DD00B8AFB1A1DED086CAE2C4" />
+          <FileRuleRef RuleID="ID_DENY_A_57744E9168139E9EB5491ACB6B7D59FC" />
+          <FileRuleRef RuleID="ID_DENY_A_7BAD7896532877F3CE3A0A126B8EEB99" />
+          <FileRuleRef RuleID="ID_DENY_A_C4E73272CF7256A118D36F2DA321B60F" />
+          <FileRuleRef RuleID="ID_DENY_A_33C55420D02E166E1B1E9CC360258A2E" />
+          <FileRuleRef RuleID="ID_DENY_A_354DAD1B7D708E871F3964413089AE60" />
+          <FileRuleRef RuleID="ID_DENY_A_7E2C38C9BF4B8269CCFAE5A3FDAEDC77" />
+          <FileRuleRef RuleID="ID_DENY_A_C8DC8E6525B1722417376147354255E2" />
+          <FileRuleRef RuleID="ID_DENY_A_A911106FFFE86D40565830B8B1CE6ED3" />
+          <FileRuleRef RuleID="ID_DENY_A_5C1E2FA4E2D7E36F5CCCD6F6643E909F" />
+          <FileRuleRef RuleID="ID_DENY_A_D8BD79E86982B308C1E2A0EB1D403A0A" />
+          <FileRuleRef RuleID="ID_DENY_A_D846FC7B1C7BB81356C584F3C6784B5B" />
+          <FileRuleRef RuleID="ID_DENY_A_EE3FAA3F234761FEDB142B1F4C0EF8B4" />
+          <FileRuleRef RuleID="ID_DENY_A_10FAB59EEDD13CA924DD187E0773E618" />
+          <FileRuleRef RuleID="ID_DENY_A_CFEDE8BA82C12881622291736735F5D0" />
+          <FileRuleRef RuleID="ID_DENY_A_21F044D1F3CFFB84C73504000AEB6B64" />
+          <FileRuleRef RuleID="ID_DENY_A_239F94DA49D97E9DE5F69316B894F006" />
+          <FileRuleRef RuleID="ID_DENY_A_37D716C213FA16385F676EC0DDD1065D" />
+          <FileRuleRef RuleID="ID_DENY_A_D0A27DDA75F262AE05270A09C43C42B1" />
+          <FileRuleRef RuleID="ID_DENY_A_BA0EE8A268D9F9F69BF01C51C23C14C3" />
+          <FileRuleRef RuleID="ID_DENY_A_00A6E38866C78F1720D988918DA5C33F" />
+          <FileRuleRef RuleID="ID_DENY_A_E62E5D5FD459C0625A8239D456A70735" />
+          <FileRuleRef RuleID="ID_DENY_A_9828FE976F98F564C53F96D03E06617B" />
+          <FileRuleRef RuleID="ID_DENY_A_DFBE69855581252020B0CCCA08BAC376" />
+          <FileRuleRef RuleID="ID_DENY_A_4678B5DC49B477F3B9AF48737346D6AF" />
+          <FileRuleRef RuleID="ID_DENY_A_A9834089E9A4A93911E26434BEEB10C6" />
+          <FileRuleRef RuleID="ID_DENY_A_6B5D95569C2BE2B172DE7C1EC676A35D" />
+          <FileRuleRef RuleID="ID_DENY_A_11273C143DDAEA2B100D091A2FAAA9A4" />
+          <FileRuleRef RuleID="ID_DENY_A_42FC697A8EE52D1BAC3E61BFC74BFA3F" />
+          <FileRuleRef RuleID="ID_DENY_A_0493AC81A3B18B886866EB66B7EE2607" />
+          <FileRuleRef RuleID="ID_DENY_A_5FA901835B8A29FAA9422BFDB7C21045" />
+          <FileRuleRef RuleID="ID_DENY_A_BB67B693CB98E2978B44BFFE79227532" />
+          <FileRuleRef RuleID="ID_DENY_A_0B3DB3C7392E7635353D04B93E191481" />
+          <FileRuleRef RuleID="ID_DENY_A_D6037376218C8BD8AF8EF2CEDC89A581" />
+          <FileRuleRef RuleID="ID_DENY_A_97A05C2CBE592091FC69AE66D2992096" />
+          <FileRuleRef RuleID="ID_DENY_A_13B21F92AE2B7ED66BBE61596942C8C1" />
+          <FileRuleRef RuleID="ID_DENY_A_0EC57ED579154A9965BAA6F399EFCB56" />
+          <FileRuleRef RuleID="ID_DENY_A_5F73CEE7638C2037C57904D71123C6F9" />
+          <FileRuleRef RuleID="ID_DENY_A_35238154408F74B555D080F1AC7EFD3D" />
+          <FileRuleRef RuleID="ID_DENY_A_45D842479CB32CAAD83037C3085F749B" />
+          <FileRuleRef RuleID="ID_DENY_A_E99FC7BCA184ACF2F059252A53C52A6B" />
+          <FileRuleRef RuleID="ID_DENY_A_126630A5EA3F8BD175AEE44B00D714C7" />
+          <FileRuleRef RuleID="ID_DENY_A_335AAC0BEBF93815008DF3E6846B2CDC" />
+          <FileRuleRef RuleID="ID_DENY_A_A616D6E3BCF5CDF87B35D06C12A940A3" />
+          <FileRuleRef RuleID="ID_DENY_A_E942BEA59964F41459BAA432B95B18E8" />
+          <FileRuleRef RuleID="ID_DENY_A_F1BE4116A34274DB15BC11B0DF5C5E4A" />
+          <FileRuleRef RuleID="ID_DENY_A_790732818A07370E3BDCC020E89235F8" />
+          <FileRuleRef RuleID="ID_DENY_A_83D767E5E14D00970C5960D8A251718A" />
+          <FileRuleRef RuleID="ID_DENY_A_836EDDCCCB704FDD8AEBB0B833CA72AB" />
+          <FileRuleRef RuleID="ID_DENY_A_036DD328860E04513EC17D2E4F3FBB4D" />
+          <FileRuleRef RuleID="ID_DENY_A_0F7C3EADE77B1DF44E78601ACA5D0F13" />
+          <FileRuleRef RuleID="ID_DENY_A_5BD15181CD5C3E118471E1A7FE0AC558" />
+          <FileRuleRef RuleID="ID_DENY_A_8A4FFA3668CF361B0F57F388C1090D80" />
+          <FileRuleRef RuleID="ID_DENY_A_1212FD33170DA72180F97E74056EB285" />
+          <FileRuleRef RuleID="ID_DENY_A_CA86668EDC313BA9CD7950B53E23E542" />
+          <FileRuleRef RuleID="ID_DENY_A_48DFAF179F7BBECE3F4A7E4B3164FFC8" />
+          <FileRuleRef RuleID="ID_DENY_A_AD86B34E493C549EF0FFDCE3C6E3E5C5" />
+          <FileRuleRef RuleID="ID_DENY_A_27F81951DEB62CC71B0212C3787FD202" />
+          <FileRuleRef RuleID="ID_DENY_A_CC6022082D2E6728384640DA1F89D57E" />
+          <FileRuleRef RuleID="ID_DENY_A_C7695A462565F1EFA24F7F631631CF11" />
+          <FileRuleRef RuleID="ID_DENY_A_3780C4A446F40991D6E8CC59F4254FAC" />
+          <FileRuleRef RuleID="ID_DENY_A_AAFA15684E7FB91004D51F0CF951CD08" />
+          <FileRuleRef RuleID="ID_DENY_A_820A32EA15044759FF74B4998D481B69" />
+          <FileRuleRef RuleID="ID_DENY_A_EA3A2F02E2B9B0241C52727646CDC2E9" />
+          <FileRuleRef RuleID="ID_DENY_A_36013EEA0787C0F4CB68FE1A73968F13" />
+          <FileRuleRef RuleID="ID_DENY_A_8FD684F2D8A6B33143E645C2E3007D13" />
+          <FileRuleRef RuleID="ID_DENY_A_42144761D06CD3A3144B043EB2E16218" />
+          <FileRuleRef RuleID="ID_DENY_A_F2D1D5820D70A5DB12A6E96305D3B978" />
+          <FileRuleRef RuleID="ID_DENY_A_BBAA695D9B579FF5B7BE614D63D978F0" />
+          <FileRuleRef RuleID="ID_DENY_A_40840F9EDBB233B86640D6A5CFDD3B08" />
+        </FileRulesRef>
+      </ProductSigners>
+    </SigningScenario>
+    <SigningScenario Value="131" ID="ID_SIGNINGSCENARIO_DRIVERS_1" FriendlyName="Kernel Mode Code Integrity">
+      <ProductSigners>
+        <FileRulesRef>
+          <FileRuleRef RuleID="ID_ALLOW_A_084E35C4F9DE9BF6B82087948981D1FD" />
+        </FileRulesRef>
+      </ProductSigners>
+    </SigningScenario>
+  </SigningScenarios>
+  <Settings>
+    <Setting Provider="AllHostIds" Key="AllKeys" ValueName="EnterpriseDefinedClsId">
+      <Value>
+        <Boolean>true</Boolean>
+      </Value>
+    </Setting>
+    <Setting Provider="PolicyInfo" Key="Information" ValueName="Name">
+      <Value>
+        <String>Blocking Web Browsers - Except Edge</String>
+      </Value>
+    </Setting>
+  </Settings>
+</SiPolicy>
