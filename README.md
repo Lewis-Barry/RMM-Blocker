@@ -16,7 +16,8 @@ https://lewis-barry.github.io/RMM-Blocker/
 `products.json` is the only file to edit. Each product lists any of `paths`
 (WDAC wildcard file or folder rules), `domains`, `vendorDomains` (broad vendor-wide
 domains) and `ips`. List a shared path or indicator under every product that owns it.
-Bump `version` whenever the policy changes, then run:
+Bump `version` whenever the policy changes, then run (if you forget on a PR that changes paths,
+`.github/workflows/version-bump.yml` bumps it and regenerates the XML after the merge):
 
 ```
 node build.mjs

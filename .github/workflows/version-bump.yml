@@ -1,0 +1,35 @@
+name: Version bump
+# On merge to main: bumps the policy version when deny paths changed but the version did not, then regenerates the XML.
+# The lolRMM sync already bumps its own PR, so this only acts on manual edits.
+on:
+  push:
+    branches: [main]
+    paths: [products.json]
+permissions:
+  contents: write
+concurrency: version-bump
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Bump, regenerate and push
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A new branch has no previous commit to compare against.
+          git cat-file -e "$BEFORE^{commit}" 2>/dev/null || exit 0
+          node scripts/bump-version.mjs "$BEFORE"
+          git diff --quiet -- products.json && exit 0
+          node build.mjs
+          node build.mjs --check
+          VERSION=$(node -p "require('./products.json').version")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Bump policy to $VERSION"
+          git push origin HEAD:main

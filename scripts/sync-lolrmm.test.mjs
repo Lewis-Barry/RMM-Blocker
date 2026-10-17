@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { candidates, sync } from "./sync-lolrmm.mjs";
 import { reject } from "./lolrmm-reject.mjs";
+import { bump } from "./bump-version.mjs";
 
 const none = new Set();
 const tool = (Name, Disk = [], Domains = []) => ({ Name, Artifacts: { Disk, Network: [{ Domains }] } });
@@ -114,4 +115,13 @@ test("a tool decided as a separate product gets no suggestions", () => {
   const suggested = sync(data, [tool("Faronics Core", [exe("C:\\x\\FaronicsCore.exe")], ["faronics.com"])], none, new Set(["faronics core"])).changes[0];
   assert.deepEqual(suggested.suggested, []);
   assert.equal(suggested.name, "Faronics Core");
+});
+
+test("bump raises the version only when paths changed and the version did not", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\acme.exe"] } } };
+  assert.equal(bump(before, before), null);
+  assert.equal(bump(before, { ...before, products: { Acme: { paths: ["*\ACME.exe"], domains: ["acme.com"] } } }), null);
+  const added = { ...before, products: { Acme: { paths: ["*\acme.exe", "*\acme2.exe"] } } };
+  assert.equal(bump(before, added).version, "1.0.0.10");
+  assert.equal(bump(before, { ...added, version: "1.0.0.10" }), null);
 });

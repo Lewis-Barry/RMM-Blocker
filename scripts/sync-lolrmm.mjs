@@ -33,7 +33,7 @@ const lower = value => value.toLowerCase();
 const normalize = name => lower(name).replace(/[^a-z0-9]/g, "");
 // Matches WDAC wildcards (*) against stored paths, case-insensitively.
 const globToRegExp = pattern => new RegExp(`^${pattern.split("*").map(part => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`, "i");
-const bumpVersion = version => version.replace(/(\d+)$/, number => String(Number(number) + 1));
+export const bumpVersion = version => version.replace(/(\d+)$/, number => String(Number(number) + 1));
 // Words that describe a product type rather than a vendor, so they never link two products.
 const GENERIC_WORDS = new Set(["access", "agent", "client", "connect", "console", "control", "core", "cloud", "deploy", "desktop",
   "insight", "installer", "management", "manager", "monitoring", "remote", "server", "service", "services", "software", "support",
