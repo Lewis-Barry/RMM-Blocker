@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.0.15",
+    "date": "2026-10-17",
+    "source": "Manual fix",
+    "note": "Policy options cut to those the file path rules need: UMCI, unsigned policy, script enforcement off and rebootless updates. Removed WHQL, Store app enforcement, supplemental policies, dynamic code security, revoked-as-unsigned, the unused Inherit Default Policy option and strict HVCI.",
+    "products": []
+  },
+  {
     "version": "1.0.0.13",
     "date": "2026-10-10",
     "source": "Manual fix",

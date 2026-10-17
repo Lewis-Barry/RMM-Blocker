@@ -50,9 +50,11 @@ const xml = `﻿<?xml version="1.0" encoding="utf-8"?>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
   <Rules>
-${["Enabled:UMCI", "Required:WHQL", "Enabled:Inherit Default Policy", "Enabled:Unsigned System Integrity Policy",
-  "Disabled:Script Enforcement", "Required:Enforce Store Applications", "Enabled:Update Policy No Reboot",
-  "Enabled:Allow Supplemental Policies", "Enabled:Dynamic Code Security", "Enabled:Revoked Expired As Unsigned",
+${[
+  // Only what the FilePath deny rules need: UMCI enforces them, and the policy ships unsigned.
+  "Enabled:UMCI", "Enabled:Unsigned System Integrity Policy",
+  // Keeps PowerShell out of Constrained Language Mode, and lets policy updates apply without a reboot.
+  "Disabled:Script Enforcement", "Enabled:Update Policy No Reboot",
 ].map(option => `    <Rule>\n      <Option>${option}</Option>\n    </Rule>\n`).join("")}  </Rules>
   <FileRules>
     <Allow ID="ID_ALLOW_A_01A11AD07D26700D8EDAEAE7BCA230CA" FileName="*" />
@@ -74,7 +76,6 @@ ${rules.map(rule => `          <FileRuleRef RuleID="${rule.id}" />\n`).join("")}
       </ProductSigners>
     </SigningScenario>
   </SigningScenarios>
-  <HvciOptions>2</HvciOptions>
   <Settings>
     <Setting Provider="AllHostIds" Key="AllKeys" ValueName="EnterpriseDefinedClsId">
       <Value>
