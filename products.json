@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.15",
+  "version": "1.0.0.16",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -22,7 +22,9 @@
     "Acronis Cyber Protect Connect": {
       "paths": [
         "*\\AcronisCyberProtectConnectAgent*.exe",
-        "*\\AcronisCyberProtectConnectQuickAssist*.exe"
+        "*\\AcronisCyberProtectConnectQuickAssist*.exe",
+        "*\\Acronis Cyber Protect Connect*\\*",
+        "*\\Remotix\\*"
       ],
       "domains": [
         "cloud.acronis.com",
@@ -118,6 +120,9 @@
       ]
     },
     "Any Support": {
+      "paths": [
+        "*\\AnySupport\\*"
+      ],
       "domains": [
         "anysupport.net"
       ]
@@ -196,7 +201,8 @@
         "*\\auvikagent*.exe",
         "*\\auvik.agent*.exe",
         "*\\auvikservice*.exe",
-        "*\\auvik.engine*.exe"
+        "*\\auvik.engine*.exe",
+        "*\\Auvik\\*"
       ],
       "domains": [
         "auvik.com",
@@ -1203,12 +1209,12 @@
     },
     "ISL Online": {
       "paths": [
-        "*\\ISL Online\\ISL Light\\*",
+        "*\\ISL Online*\\ISL Light*\\*",
+        "*\\ISL Online*\\ISL AlwaysOn*\\*",
         "*\\ISLLight*.exe",
         "*\\isllightservice*.exe",
         "*\\islalwaysonmonitor*.exe",
-        "*\\ISLLightClient*.exe",
-        "*\\ISL Online\\ISL Light*\\*"
+        "*\\ISLLightClient*.exe"
       ],
       "domains": [
         "islonline.com",
@@ -1483,6 +1489,7 @@
       "paths": [
         "*\\manageengine\\uems_agent\\*",
         "*\\DesktopCentral_Agent\\bin\\*",
+        "*\\DesktopCentral_Server\\*",
         "*\\dcagentregister*.exe",
         "*\\AgentlessRC*.exe",
         "*\\MEAgentHelper*.exe",
@@ -1857,6 +1864,7 @@
     "NinjaOne / NinjaRMM": {
       "paths": [
         "*\\ninjaone\\*",
+        "*\\NinjaRMM LLC QC\\*",
         "*\\NinjaRMMAgent*.exe",
         "*\\NinjaRMMAgenPatcher*.exe",
         "*\\ninjarmm-cli*.exe"
@@ -1993,7 +2001,8 @@
         "*\\prl_deskctl_agent*.exe",
         "*\\prl_deskctl_wizard*.exe",
         "*\\prl_pm_service*.exe",
-        "*\\parallelsaccess-*.exe"
+        "*\\parallelsaccess-*.exe",
+        "*\\prlsvcctl*.exe"
       ],
       "vendorDomains": [
         "parallels.com"
@@ -2211,7 +2220,7 @@
     },
     "Remote Utilities": {
       "paths": [
-        "*\\Remote Utilities\\*",
+        "*\\Remote Utilities*\\*",
         "*\\rutview*.exe",
         "*\\rutserv*.exe",
         "*\\rfusclient*.exe"
@@ -2385,7 +2394,7 @@
         "*\\RViewer*.exe",
         "*\\RHost*.exe",
         "*\\rudesktop*.exe",
-        "*\\Remote Manipulator System - Server\\*"
+        "*\\Remote Manipulator System*\\*"
       ],
       "domains": [
         "rudesktop.ru"
@@ -2993,6 +3002,7 @@
     },
     "Zoho Assist / Meeting": {
       "paths": [
+        "*\\zoho-assist-desktop\\*",
         "*\\za_connect*.exe",
         "*\\Zohours*.exe",
         "*\\zohotray*.exe",
