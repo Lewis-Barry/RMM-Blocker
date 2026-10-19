@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.16</VersionEx>
+  <VersionEx>1.0.0.17</VersionEx>
   <PolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</PolicyID>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
