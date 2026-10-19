@@ -437,6 +437,18 @@
         "demo.controlr.app"
       ]
     },
+    "ControlUp": {
+      "paths": [
+        "*\\cuAgent.exe",
+        "*\\cuAgentHelper.exe",
+        "*\\Avacee\\sip_agent\\SIPAgent.exe",
+        "*\\Avacee\\sip_agent\\cu_rc.exe",
+        "*\\ControlUp\\AgentManager\\AgentManager.exe"
+      ],
+      "domains": [
+        "sip.controlup.com"
+      ]
+    },
     "CrossLoop": {
       "paths": [
         "*\\CrossLoopConnect*.exe",

@@ -143,6 +143,11 @@
     <Deny ID="ID_DENY_A_7A07368975445D8C24A569BE169B2B41" FriendlyName="ControlR" FilePath="*\ControlR.Agent*.exe" />
     <Deny ID="ID_DENY_A_783634E3B9CF323FB893D643CBEC29F1" FriendlyName="ControlR" FilePath="*\ControlR.DesktopClient*.exe" />
     <Deny ID="ID_DENY_A_0F21B237C1E227CA8700266F9A9EA66F" FriendlyName="ControlR" FilePath="*\ControlR\*" />
+    <Deny ID="ID_DENY_A_C6A16DF634DFB6979173D0193F99B199" FriendlyName="ControlUp" FilePath="*\cuAgent.exe" />
+    <Deny ID="ID_DENY_A_F0866E21BAFCD4BDF6DB5D613A70BC26" FriendlyName="ControlUp" FilePath="*\cuAgentHelper.exe" />
+    <Deny ID="ID_DENY_A_1D33582FCB3D38E4A3C97C9873BA8ECD" FriendlyName="ControlUp" FilePath="*\Avacee\sip_agent\SIPAgent.exe" />
+    <Deny ID="ID_DENY_A_01BBE8E834B84429B60AB6E7B9CA6EB4" FriendlyName="ControlUp" FilePath="*\Avacee\sip_agent\cu_rc.exe" />
+    <Deny ID="ID_DENY_A_900A59BE07EA6524A3F870D85FC523D1" FriendlyName="ControlUp" FilePath="*\ControlUp\AgentManager\AgentManager.exe" />
     <Deny ID="ID_DENY_A_EE39C5CF38ABB2D0B085E42FEB6DF7CE" FriendlyName="CrossLoop" FilePath="*\CrossLoopConnect*.exe" />
     <Deny ID="ID_DENY_A_3455C204359C22884F6AF0A8A9E36D82" FriendlyName="CrossLoop" FilePath="*\crossloopservice*.exe" />
     <Deny ID="ID_DENY_A_737BCE1291A82C3C713960012652C45F" FriendlyName="Crosstec Remote Control" FilePath="*\crosstec remote control\*" />
@@ -1055,6 +1060,11 @@
           <FileRuleRef RuleID="ID_DENY_A_7A07368975445D8C24A569BE169B2B41" />
           <FileRuleRef RuleID="ID_DENY_A_783634E3B9CF323FB893D643CBEC29F1" />
           <FileRuleRef RuleID="ID_DENY_A_0F21B237C1E227CA8700266F9A9EA66F" />
+          <FileRuleRef RuleID="ID_DENY_A_C6A16DF634DFB6979173D0193F99B199" />
+          <FileRuleRef RuleID="ID_DENY_A_F0866E21BAFCD4BDF6DB5D613A70BC26" />
+          <FileRuleRef RuleID="ID_DENY_A_1D33582FCB3D38E4A3C97C9873BA8ECD" />
+          <FileRuleRef RuleID="ID_DENY_A_01BBE8E834B84429B60AB6E7B9CA6EB4" />
+          <FileRuleRef RuleID="ID_DENY_A_900A59BE07EA6524A3F870D85FC523D1" />
           <FileRuleRef RuleID="ID_DENY_A_EE39C5CF38ABB2D0B085E42FEB6DF7CE" />
           <FileRuleRef RuleID="ID_DENY_A_3455C204359C22884F6AF0A8A9E36D82" />
           <FileRuleRef RuleID="ID_DENY_A_737BCE1291A82C3C713960012652C45F" />
