@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.17",
+  "version": "1.0.0.18",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -1396,7 +1396,8 @@
         "*\\Level\\level.exe",
         "*\\level-windows-amd64*.exe",
         "*\\level-remote-control-ffmpeg*.exe",
-        "*\\osqueryi.exe"
+        "*\\osqueryi.exe",
+        "*\\level.exe"
       ],
       "domains": [
         "agents.level.io",
@@ -2080,6 +2081,15 @@
         "pilixo.com"
       ]
     },
+    "Ping32": {
+      "paths": [
+        "*\\NSecRTS.exe",
+        "*\\NSecDs.exe"
+      ],
+      "domains": [
+        "cloud.nsecsoft.com"
+      ]
+    },
     "PiTunnel": {
       "domains": [
         "pitunnel.com"
@@ -2181,6 +2191,18 @@
       "paths": [
         "*\\tdp2tcp*.exe",
         "*\\rdp2tcp*.exe"
+      ]
+    },
+    "RdViewer": {
+      "paths": [
+        "*\\RdClient.exe",
+        "*\\rdService.exe",
+        "*\\dmservice.exe",
+        "*\\diskmgr.exe",
+        "*\\RdServer.exe"
+      ],
+      "domains": [
+        "rdviewer.oss-cn-hangzhou.aliyuncs.com"
       ]
     },
     "RealVNC": {
@@ -2602,6 +2624,12 @@
         "spyanywhere.com"
       ]
     },
+    "StifleR (2Pint Software)": {
+      "paths": [
+        "*\\StifleR.ClientApp.exe",
+        "*\\TwoPint.ConfigEditor.Wpf.exe"
+      ]
+    },
     "Sunlogin / Oray": {
       "paths": [
         "*\\OrayRemoteService*.exe",
@@ -2931,6 +2959,11 @@
         "vicarius-release.s3.us-east-1.amazonaws.com",
         "vicarius-static-organizationinstallations.vicarius-cdn.com",
         "vicarius.cloud"
+      ]
+    },
+    "VS Code Remote Tunnels": {
+      "paths": [
+        "*\\code-insiders.exe"
       ]
     },
     "Webex PCNow": {
