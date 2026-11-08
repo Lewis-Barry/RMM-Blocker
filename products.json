@@ -142,6 +142,7 @@
             "teamId": "KHRWM533LU"
           }
         ],
+        "cask": "anydesk",
         "source": "https://download.anydesk.com/anydesk.dmg",
         "verified": "2026-11-08"
       }
@@ -399,6 +400,7 @@
             "signingId": "remote_webauthn"
           }
         ],
+        "cask": "chrome-remote-desktop-host",
         "source": "https://dl.google.com/chrome-remote-desktop/chromeremotedesktop.dmg",
         "verified": "2026-11-08"
       }
@@ -1942,6 +1944,7 @@
             "teamId": "TEX8MHRDQ9"
           }
         ],
+        "cask": "ngrok",
         "source": "https://bin.ngrok.com/a/msmi2kd3cjc/ngrok-v3-3.39.13-darwin-arm64.zip",
         "verified": "2026-11-08"
       }
@@ -2110,6 +2113,7 @@
             "teamId": "Y9MY52XZDB"
           }
         ],
+        "cask": "parsec",
         "source": "https://builds.parsec.app/package/parsec-macos.pkg",
         "verified": "2026-11-08"
       }
@@ -2304,6 +2308,7 @@
             "teamId": "ZNCQ8JEH7X"
           }
         ],
+        "cask": "vnc-server",
         "source": "https://downloads.realvnc.com/download/file/vnc.files/VNC-Server-7.18.1-MacOSX-universal.pkg",
         "verified": "2026-11-08"
       },
@@ -2555,6 +2560,7 @@
             "teamId": "HZF9JMC8YN"
           }
         ],
+        "cask": "rustdesk",
         "source": "https://github.com/rustdesk/rustdesk/releases/download/1.5.1/rustdesk-1.5.1-aarch64.dmg",
         "verified": "2026-11-08"
       }
@@ -2731,6 +2737,7 @@
             "teamId": "CPQQ3AW49Y"
           }
         ],
+        "cask": "splashtop-streamer",
         "source": "https://d17kmd0va0f0mp.cloudfront.net/mac/Splashtop_Streamer_Mac_INSTALLER_v3.8.6.3.dmg",
         "verified": "2026-11-08"
       }
@@ -2787,6 +2794,7 @@
             "teamId": "LL93ZLFYJ2"
           }
         ],
+        "cask": "supremo",
         "source": "https://assets.nanosystems.com/AutoUpdateS/macOS/standard/stable/Supremo_4.12.0.3004.dmg",
         "verified": "2026-11-08"
       }
@@ -2844,6 +2852,7 @@
             "teamId": "W5364U7YZB"
           }
         ],
+        "cask": "tailscale-app",
         "source": "https://pkgs.tailscale.com/stable/Tailscale-1.104.5-macos.pkg",
         "verified": "2026-11-08"
       }
@@ -2882,6 +2891,7 @@
             "teamId": "H7UGFBUGV6"
           }
         ],
+        "cask": "teamviewer",
         "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
         "verified": "2026-11-08"
       }
@@ -2910,6 +2920,7 @@
             "teamId": "QH8AA5B8UP"
           }
         ],
+        "cask": "teleport-connect",
         "source": "https://cdn.teleport.dev/teleport-18.11.9.pkg",
         "verified": "2026-11-08"
       }
@@ -2968,6 +2979,7 @@
             "teamId": "S5LX88A9BW"
           }
         ],
+        "cask": "tigervnc-viewer",
         "source": "https://downloads.sourceforge.net/tigervnc/TigerVNC-1.16.2.dmg",
         "verified": "2026-11-08"
       }

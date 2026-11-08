@@ -119,9 +119,11 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
         <p>Send the output and the installer URL through <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">a GitHub issue <span aria-hidden="true">↗</span></a>, or add a <code>macos</code> block to the product in <code>products.json</code>:</p>
         <pre class="kql-code"><code>"macos": {
   "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "cask": "teamviewer",
   "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
   "verified": "2026-11-08"
 }</code></pre>
+        <p>Tools that have a Homebrew cask are picked up by the monthly sync automatically: it reads the installer's signature on a macOS runner and proposes the rule in the lolRMM pull request, and re-checks every existing Team ID each month.</p>
       </section>
     </article>
   </main>

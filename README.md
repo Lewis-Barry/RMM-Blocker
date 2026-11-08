@@ -50,6 +50,7 @@ then add to the product in `products.json`, bump `version`, and run `node build.
 ```json
 "macos": {
   "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "cask": "teamviewer",
   "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
   "verified": "2026-11-08"
 }
@@ -108,6 +109,30 @@ Nothing reaches `main` until you merge that pull request.
 - `changelog.json` records each release. `changelog.html` displays it.
 - Run `node scripts/sync-lolrmm.mjs --dry-run` to preview a sync without writing files.
 - Repository settings must allow Actions to create pull requests (Settings > Actions > General).
+
+## Monthly macOS sync
+
+The lolRMM sync workflow has a second job on a macOS runner, `scripts/sync-macos.mjs`, which does for Team IDs
+what the first job does for Windows paths, on the same `lolrmm-sync` pull request:
+
+1. **Re-verify.** Every product with a `cask` in its `macos` block is downloaded again through Homebrew (which
+   checks the installer's sha256) and read with `codesign`. A Team ID that is no longer present fails the run: a
+   hijacked installer or a vendor that changed its signing identity never reaches a rule silently.
+2. **Join.** Every product without macOS rules is matched to a Homebrew cask whose homepage shares the registrable
+   domain of the product's own indicators or of its lolRMM website, and whose name shares a word with the product.
+   Exactly one cask is required; several, or other casks from the same vendor that share no name with the
+   product, are listed in the PR as "not added" with the reason.
+3. **Read.** The installer is downloaded, every Mach-O binary is read with `codesign`, and a rule is written only
+   when all binaries carry one Team ID that is not in the broad-vendor list and not used by another product.
+   Ad-hoc or unsigned binaries, mixed signers and failed downloads are listed, not added.
+4. **Review.** The PR shows per tool the Team ID, the cask and version, the number of binaries, the installer URL
+   and the Signing IDs of its apps and helpers. Check that those name the remote tool and not another product of
+   the same vendor (ESET's only cask is its antivirus; Parallels' are Parallels Desktop). To reject a tool for macOS
+   while keeping its Windows rules, add it to `scripts/macos-ignore.json` with the reason and delete its `macos`
+   block; the next run skips it. `node scripts/sync-macos.mjs --dry-run` previews a run on any Mac with Homebrew.
+
+Only products already in `products.json` are considered, so the Windows review (R1 to R4) decides which tools are
+remote access at all; the macOS job only decides whether their Mac build can be identified with certainty.
 
 ## Builder workflow
 

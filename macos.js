@@ -12,13 +12,14 @@ const intuneIds = {
 
 const teamIdPattern = /^[A-Z0-9]{10}$/;
 // Team IDs that also sign everyday software. Denying one vendor-wide would stop Edge, Defender or Chrome on every Mac,
-// so these are only accepted together with a Signing ID. Apple's own binaries have no Team ID and never match the pattern.
-const broadTeamIds = new Map([
+// so these are only accepted together with a Signing ID. Each id was read with codesign from the vendor's installer
+// (Defender/Intune, Chrome Remote Desktop host, Acrobat Reader, 1Password, cloudflared). Apple's own binaries have no
+// Team ID and never match the pattern.
+export const broadTeamIds = new Map([
   ["UBF8T346G9", "Microsoft"],
   ["EQHXZ8M8AV", "Google"],
-  ["BQR82RBBHL", "Adobe"],
+  ["JQ525L2MZD", "Adobe"],
   ["2BUA8C4S2C", "1Password"],
-  // Also signs the Cloudflare WARP client, so cloudflared is denied by Signing ID.
   ["68WVV388M8", "Cloudflare"],
 ]);
 
@@ -41,11 +42,12 @@ function validateRule(name, rule) {
 export function validateMacos(name, macos) {
   if (!macos || typeof macos !== "object") throw new Error(`${name}: macOS entry must be an object.`);
   for (const field of Object.keys(macos)) {
-    if (!["rules", "source", "verified"].includes(field)) throw new Error(`${name}: macOS entry has unknown field "${field}".`);
+    if (!["rules", "cask", "source", "verified"].includes(field)) throw new Error(`${name}: macOS entry has unknown field "${field}".`);
   }
   if (!Array.isArray(macos.rules) || !macos.rules.length) throw new Error(`${name}: macOS entry has no rules.`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(macos.verified || "")) throw new Error(`${name}: macOS verified date must be YYYY-MM-DD.`);
   if (typeof macos.source !== "string" || !/^https:\/\//.test(macos.source)) throw new Error(`${name}: macOS source must be an https URL.`);
+  if (macos.cask !== undefined && !/^[a-z0-9@.+-]+$/.test(macos.cask)) throw new Error(`${name}: macOS cask must be a Homebrew cask token.`);
   for (const rule of macos.rules) validateRule(name, rule);
 }
 
