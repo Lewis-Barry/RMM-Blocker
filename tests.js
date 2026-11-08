@@ -796,49 +796,63 @@ async function testMacBuilder() {
   });
   const frame = document.createElement("iframe");
   frame.hidden = true;
-  frame.title = "macOS builder regression fixture";
-  frame.src = "./macos.html";
+  frame.title = "macOS exports regression fixture";
+  frame.src = "./index.html";
   document.body.append(frame);
   try {
-    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false, "macOS builder did not initialize");
+    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false, "Builder did not initialize");
     const doc = frame.contentDocument;
     const byId = id => doc.getElementById(id);
-    test("macOS builder lists every tool, starts without exclusions and enables both downloads", () => {
-      assert(byId("tool-list").children.length === data.tools.length, "Tool list omits entries");
-      assert(byId("excluded-count").textContent === "0" && byId("remaining-count").textContent === String(data.rules.length), "Initial counts wrong");
-      assert(!byId("download-intune").disabled && !byId("download-ddm").disabled, "Downloads disabled at start");
-      assert(byId("report-missing").href.includes("/issues/new?"), "Report link not prefilled");
-      for (const row of byId("tool-list").children) {
-        const checkbox = row.querySelector('input[type="checkbox"]');
-        assert(checkbox.getAttribute("aria-label").includes(row.querySelector(".tool-title").textContent), "Checkbox label does not identify its tool");
-        assert(checkbox.getAttribute("aria-describedby").split(" ").every(id => byId(id) && !byId(id).hidden), "Checkbox references a hidden description");
+    const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
+    test("macOS exports start off and hidden", () => {
+      assert(!byId("link-macos").checked && byId("mac-output").hidden && byId("mac-status").hidden, "macOS exports enabled by default");
+      assert([...doc.querySelectorAll(".tool details")].every(details => !details.textContent.includes("macOS denied")), "macOS details shown while disabled");
+    });
+    byId("link-macos").checked = true;
+    change(byId("link-macos"));
+    await waitFor(() => !byId("mac-status").hidden && byId("mac-status").textContent.includes("rules kept"), "macOS rules did not load");
+    const macRows = () => [...byId("tool-list").children].filter(row => !row.querySelector("details:last-of-type").hidden && row.textContent.includes("macOS denied"));
+    test("Enabling macOS exports shows denied binaries for covered tools and both downloads", () => {
+      assert(byId("mac-status").textContent.startsWith(`${data.rules.length} rules kept · 0 removed · ${data.tools.length} tools covered`), `Status wrong: ${byId("mac-status").textContent}`);
+      assert(macRows().length === data.tools.length, `Covered rows ${macRows().length} differ from ${data.tools.length}`);
+      assert(!byId("mac-download-intune").disabled && !byId("mac-download-ddm").disabled, "Downloads disabled at start");
+      assert(byId("mac-report-missing").href.includes("/issues/new?"), "Report link not prefilled");
+      for (const row of macRows()) {
+        const summary = row.querySelector("details:last-of-type summary");
+        assert(summary.getAttribute("aria-label").endsWith(`for ${row.querySelector(".tool-title").textContent}`), "Disclosure does not identify its tool");
       }
     });
     const teamViewer = doc.querySelector('input[aria-label="Exclude TeamViewer from block list"]');
+    const psExec = doc.querySelector('input[aria-label="Exclude PsExec from block list"]');
     teamViewer.click();
-    test("Excluding TeamViewer updates the counts and the exclusion review", () => {
+    psExec.click();
+    test("Excluding tools updates the macOS counts and marks uncovered exclusions", () => {
       const expected = filterMacRules(data, new Set(["TeamViewer"]));
-      assert(byId("excluded-count").textContent === "1", "Exclusion not counted");
-      assert(byId("removed-count").textContent === String(expected.removed.length), "Removed count wrong");
-      assert(byId("remaining-count").textContent === String(expected.retained.length), "Kept count wrong");
-      assert(byId("selection-list").textContent === "TeamViewer", "Exclusion review missing");
+      assert(byId("mac-status").textContent.startsWith(`${expected.retained.length} rules kept · ${expected.removed.length} removed`), "macOS counts stale");
+      const warning = psExec.closest(".tool").querySelector(".ioc-count:last-of-type, [id^=mac-coverage]");
+      const macCount = psExec.closest(".tool").querySelector("[id^=mac-coverage]");
+      assert(!macCount.hidden && macCount.textContent.includes("No macOS rules"), "Uncovered exclusion not marked");
+      assert(psExec.getAttribute("aria-describedby").split(" ").includes(macCount.id), "Mark not associated with the checkbox");
+      assert(byId("excluded-count").textContent === "2" && byId("removed-count").textContent !== "0", "WDAC selection unaffected by the shared toggle");
+      void warning;
     });
-    test("Excluding every tool disables the downloads instead of exporting an empty deny list", () => {
-      for (const checkbox of doc.querySelectorAll('#tool-list input[type="checkbox"]')) if (!checkbox.checked) checkbox.click();
-      assert(byId("remaining-count").textContent === "0", "Rules still kept");
-      assert(byId("download-intune").disabled && byId("download-ddm").disabled, "Downloads enabled with nothing to deny");
+    test("Excluding every covered tool disables the macOS downloads, Reset restores them", () => {
+      for (const tool of data.tools) {
+        const box = doc.querySelector(`input[aria-label="Exclude ${tool.name} from block list"]`);
+        if (box && !box.checked) box.click();
+      }
+      assert(byId("mac-status").textContent.startsWith("0 rules kept"), "Rules still kept");
+      assert(byId("mac-download-intune").disabled && byId("mac-download-ddm").disabled, "Downloads enabled with nothing to deny");
       byId("reset").click();
-      assert(byId("excluded-count").textContent === "0" && !byId("download-intune").disabled, "Reset did not restore the block list");
+      assert(byId("excluded-count").textContent === "0" && !byId("mac-download-intune").disabled, "Reset did not restore the deny list");
     });
-    test("Search filters rows without changing the exports", () => {
+    test("Disabling macOS exports hides its output without changing selections", () => {
       teamViewer.click();
-      byId("search").value = "anydesk";
-      byId("search").dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
-      const visible = [...byId("tool-list").children].filter(row => !row.hidden);
-      assert(visible.length === 1 && visible[0].textContent.includes("AnyDesk"), "Search did not isolate AnyDesk");
-      assert(byId("excluded-count").textContent === "1", "Search changed the selection");
-      byId("search").value = "";
-      byId("search").dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+      byId("link-macos").checked = false;
+      change(byId("link-macos"));
+      assert(byId("mac-output").hidden && byId("mac-status").hidden, "macOS output still shown");
+      assert(byId("excluded-count").textContent === "1", "Selection changed by the toggle");
+      assert(macRows().length === 0, "macOS details still shown");
       teamViewer.click();
     });
   } finally {

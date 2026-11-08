@@ -1,13 +1,17 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { loadMacProducts, filterMacRules, buildDeclaration, buildIntunePolicy, reportMissingUrl } from "./macos.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
 // The browser page shares this script without the IOC panel; each page's body names the XML to load.
 const hasIocs = !!byId("link-iocs");
+// The macOS card follows the IOC pattern: off by default, loads products.json on first use, shares the selection.
+const hasMac = !!byId("link-macos");
 const policyFile = document.body.dataset.policy;
 if (hasIocs) byId("link-iocs").checked = false;
+if (hasMac) byId("link-macos").checked = false;
 let policy;
 let tools = [];
 let iocData;
@@ -18,6 +22,10 @@ let iocBatches = [];
 let iocPromise;
 let kqlText = "";
 let pendingCsv;
+let macData;
+let macLoading = false;
+let macError;
+let macPromise;
 // One shared load for the IOC toggle and the KQL popup; a failure clears it so the next try refetches.
 function loadIocsOnce() {
   return iocPromise ||= loadIocs(policy.tools.map(tool => tool.name)).catch(error => {
@@ -140,7 +148,7 @@ function updateIocs() {
     entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
     entry.iocCount.textContent = "No linked IOCs.";
     entry.checkbox.setAttribute("aria-describedby",
-      [entry.counts, entry.warning, entry.iocCount]
+      [entry.counts, entry.warning, entry.iocCount, entry.macCount]
         .filter(element => element && !element.hidden)
         .map(element => element.id).join(" "));
   }
@@ -272,9 +280,16 @@ function makeTool(tool, index) {
   iocCount.hidden = true;
   const iocDetails = document.createElement("details");
   iocDetails.hidden = true;
-  row.append(iocCount, iocDetails);
+  const macCount = document.createElement("p");
+  macCount.className = "rule-count ioc-count";
+  macCount.id = `mac-coverage-${index}`;
+  macCount.hidden = true;
+  const macDetails = document.createElement("details");
+  macDetails.hidden = true;
+  row.append(iocCount, iocDetails, macCount, macDetails);
   return {
     tool, row, checkbox, counts, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
+    macCount, macDetails, macRules: [], macSearchText: "",
     searchText: `${tool.name} ${tool.rules.map(rule => `${rule.path} ${rule.path.replaceAll("*", "")}`).join(" ")}`.toLowerCase(),
   };
 }
@@ -293,7 +308,7 @@ function update() {
     entry.warning.textContent = selected
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
       : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
-    const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""}`;
+    const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${hasMac && byId("link-macos").checked ? entry.macSearchText : ""}`;
     entry.row.hidden = !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
     if (!entry.row.hidden) visible++;
@@ -311,8 +326,109 @@ function update() {
     item.textContent = name;
     return item;
   }));
+  // macOS first: updateIocs builds each checkbox's aria-describedby from what is visible, including the macOS mark.
+  updateMacs();
   updateIocs();
 }
+
+// ---- macOS app control (same selection, separate files) ----
+function loadMacOnce() {
+  return macPromise ||= loadMacProducts().catch(error => {
+    macPromise = undefined;
+    throw error;
+  });
+}
+
+function attachMacDetails() {
+  const byName = new Map(macData.tools.map(tool => [tool.name, tool]));
+  for (const entry of tools) {
+    const macTool = byName.get(entry.tool.name);
+    entry.macRules = macTool ? macTool.rules : [];
+    entry.macSearchText = entry.macRules.map(rule => rule.label).join(" ").toLowerCase();
+    if (!macTool) continue;
+    const list = document.createElement("ul");
+    list.className = "compact-rule-list ioc-list";
+    list.setAttribute("role", "list");
+    for (const rule of entry.macRules) list.append(makeRuleItem(rule.label, rule.kind));
+    const source = document.createElement("p");
+    source.className = "muted";
+    const link = document.createElement("a");
+    link.href = macTool.source;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = `installer checked ${macTool.verified}`;
+    source.append("Source: ", link);
+    const summary = document.createElement("summary");
+    summary.textContent = `macOS denied binaries (${entry.macRules.length})`;
+    summary.setAttribute("aria-label", `${summary.textContent} for ${entry.tool.name}`);
+    entry.macDetails.replaceChildren(summary, list, source);
+  }
+}
+
+function showMacError(error) {
+  console.error(error);
+  macError = error;
+  byId("mac-error").textContent = `${error.message} macOS exports unavailable; XML unaffected. Disable and re-enable macOS exports to retry.`;
+  byId("mac-error").hidden = false;
+}
+
+function updateMacs() {
+  if (!hasMac) return;
+  const enabled = byId("link-macos").checked;
+  byId("link-macos").closest("section").classList.toggle("enabled", enabled);
+  byId("mac-output").hidden = !enabled;
+  byId("mac-status").hidden = !enabled || !!macError || !macData;
+  for (const entry of tools) {
+    const covered = entry.macRules.length > 0;
+    entry.macCount.hidden = !enabled || !macData || covered || !excluded.has(entry.tool.name);
+    entry.macDetails.hidden = !enabled || !covered;
+    entry.macCount.classList.toggle("unclassified-warning", !entry.macCount.hidden);
+    entry.macCount.textContent = "No macOS rules: not covered on Mac.";
+  }
+  if (!enabled) { byId("mac-status").textContent = ""; return; }
+  if (macLoading) { byId("mac-status").hidden = false; byId("mac-status").textContent = "Loading macOS rules..."; return; }
+  if (macError || !macData) return;
+  // Only tools in this policy can be excluded, so a tool with macOS rules but no WDAC entry stays blocked.
+  const known = new Set(policy.tools.map(tool => tool.name));
+  const { retained, removed } = filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name))));
+  const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
+  byId("mac-status").textContent = `${retained.length} rules kept · ${removed.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
+  for (const id of ["mac-download-intune", "mac-download-ddm"]) byId(id).disabled = !retained.length;
+}
+
+async function enableMacs() {
+  if (!byId("link-macos").checked || macLoading) { update(); return; }
+  macError = undefined;
+  byId("mac-error").hidden = true;
+  if (macData) { update(); return; }
+  macLoading = true;
+  update();
+  try {
+    macData = await loadMacOnce();
+    attachMacDetails();
+    byId("mac-report-missing").href = reportMissingUrl(document.querySelector(".source-link").href.replace(/\/$/, ""), "<tool name>");
+  } catch (error) {
+    macData = undefined;
+    showMacError(error);
+  } finally {
+    macLoading = false;
+    update();
+  }
+}
+
+function downloadMac(build, name) {
+  try {
+    const { retained } = filterMacRules(macData, new Set([...excluded].filter(n => macData.tools.some(tool => tool.name === n))));
+    saveFile(build(retained, macData.version), excluded.size ? name.replace(/\.json$/, "_custom.json") : name, "application/json;charset=utf-8");
+    byId("mac-error").hidden = true;
+  } catch (error) {
+    showMacError(error);
+  }
+}
+
+byId("link-macos")?.addEventListener("change", enableMacs);
+byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIntunePolicy, "RMM_Denied_Binaries_Intune.json"));
+byId("mac-download-ddm")?.addEventListener("click", () => downloadMac(buildDeclaration, "RMM_Denied_Binaries_macOS.json"));
 
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());

@@ -20,7 +20,7 @@
         <span>RMM Guard</span>
       </a>
       <div class="header-actions">
-        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html">Browsers</a><a href="./macos.html">macOS</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html">Browsers</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
         <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
@@ -46,7 +46,7 @@
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
-      <div class="page-heading"><div><h1>Deploy macOS app control</h1><p>Denies the remote tools you have not excluded, by the vendor's code signature, through Apple's declarative <strong>App Settings</strong> configuration.</p><p><a href="./macos.html">Exclude trusted tools</a>, then download the Intune JSON or the Apple declaration.</p></div></div>
+      <div class="page-heading"><div><h1>Deploy macOS app control</h1><p>Denies the remote tools you have not excluded, by the vendor's code signature, through Apple's declarative <strong>App Settings</strong> configuration.</p><p><a href="./index.html">Exclude trusted tools</a>, turn on <strong>Include macOS exports</strong>, then download the Intune JSON or the Apple declaration.</p></div></div>
       <aside class="help-warning" role="note">Enforced immediately. Apple provides no audit mode for denied binaries. A running app is killed and the user sees "not allowed by your organisation". Start with one pilot Mac.</aside>
       <section id="requirements" class="help-step" aria-labelledby="requirements-title">
         <h2 id="requirements-title">1. Requirements</h2>
@@ -104,6 +104,6 @@ find /Library/PrivilegedHelperTools /Library/LaunchDaemons -newer /Applications/
       </section>
     </article>
   </main>
-  <footer><div class="container footer-content"><a href="./macos.html">Back to macOS tools</a><a href="./products.json" download>Source data <span aria-hidden="true">↗</span></a></div></footer>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./products.json" download>Source data <span aria-hidden="true">↗</span></a></div></footer>
 </body>
 </html>

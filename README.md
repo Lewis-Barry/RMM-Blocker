@@ -18,7 +18,7 @@ name the page groups it under.
 
 ## macOS app control (preview)
 
-The **macOS** tab (`macos.html`) denies the same kind of tools on macOS 27 through Apple's declarative
+**Include macOS exports** on the RMM page denies the same tools on macOS 27 through Apple's declarative
 **App Settings** configuration (`com.apple.configuration.app.settings` → `Allowed.DeniedBinaries`), which Intune
 exposes in the settings catalog under Declarative Device Management. It needs a supervised Mac (Automated Device
 Enrollment) and has no audit mode. Rules match the vendor's code signature, not file paths:
@@ -29,7 +29,8 @@ Enrollment) and has no audit mode. Rules match the vendor's code signature, not 
   binaries). Signing ID alone is not accepted, even though Apple allows it, because one line could deny
   `com.apple.Safari` on every Mac.
 
-Both exports are built in the browser from the `macos` blocks in `products.json`:
+Both exports share the page's exclusions and are built in the browser from the `macos` blocks in `products.json`,
+as separate files next to the WDAC XML:
 
 - **Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
   (the portal cannot import settings catalog JSON). Definition ids: `app_app` → `app_allowed` →
