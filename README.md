@@ -18,22 +18,26 @@ name the page groups it under.
 
 ## macOS app control (preview)
 
-Ticking **macOS** under Platform on the RMM page lists the tools covered on Mac and denies them on macOS 27 through Apple's declarative
+The RMM page covers two platforms, both on by default under **Platform**: Windows (the WDAC XML) and macOS.
+Untick one to leave it out. The macOS half denies the same tools on macOS 27 through Apple's declarative
 **App Settings** configuration (`com.apple.configuration.app.settings` → `Allowed.DeniedBinaries`), which Intune
 exposes in the settings catalog under Declarative Device Management. It needs a supervised Mac (Automated Device
 Enrollment) and has no audit mode. Rules match the vendor's code signature, not file paths:
 
 - `teamId` (required) denies every binary the vendor signs. Use it alone when the vendor only ships remote tools.
 - `teamId` plus `signingId` denies one binary. Required when the Team ID also signs unrelated software:
-  the Microsoft, Google, Adobe, 1Password and Cloudflare Team IDs are refused without a `signingId` (Chrome Remote Desktop lists only its host
-  binaries). Signing ID alone is not accepted, even though Apple allows it, because one line could deny
-  `com.apple.Safari` on every Mac.
+  the Microsoft, Google, Adobe, 1Password and Cloudflare Team IDs are refused without a `signingId` (Chrome Remote
+  Desktop lists only its host binaries, Cloudflare Tunnel only `cloudflared`). Signing ID alone is not accepted, even
+  though Apple allows it, because one line could deny `com.apple.Safari` on every Mac.
 
-The export shares the page's exclusions and is built in the browser from the `macos` blocks in `products.json`, as a
-separate file next to the WDAC XML: **Intune JSON**, a settings catalog policy body for
-`POST /beta/deviceManagement/configurationPolicies` (the portal cannot import settings catalog JSON, so the guide
-uses Graph Explorer, or lists the Team IDs to type in by hand). Definition ids: `app_app` → `app_allowed` →
-`app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
+The macOS card shares the page's exclusions and offers two routes to the same Intune policy, both built in the
+browser from the `macos` blocks in `products.json`:
+
+- **Show rules for the portal**: one block per tool with its Team ID and Signing IDs, click to copy, for typing the
+  entries into the settings catalog by hand.
+- **Download Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
+  (the portal cannot import settings catalog JSON, so the guide uses Graph Explorer). Definition ids: `app_app` →
+  `app_allowed` → `app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
 
 Only tools whose signature was read from the vendor's real installer are listed. To add one:
 
@@ -52,8 +56,9 @@ then add to the product in `products.json`, bump `version`, and run `node build.
 ```
 
 `node build.mjs --check` runs the same validation as the page (`validateMacos` in `macos.js`): a rule without a
-valid `teamId` makes macOS reject the whole policy, or worse, denies the wrong vendor. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
-when network protection runs in block mode, so the macOS tab adds no IOC export of its own.
+valid `teamId` makes macOS reject the whole policy, or worse, denies the wrong vendor. `help-macos.html` is the
+deployment guide. The Defender IOC CSVs already work on macOS when network protection runs in block mode, so the
+macOS half adds no IOC export of its own.
 
 ## Adding or updating products
 

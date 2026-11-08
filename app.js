@@ -7,13 +7,12 @@ const byId = id => document.getElementById(id);
 const excluded = new Set();
 // The browser page shares this script without the IOC panel; each page's body names the XML to load.
 const hasIocs = !!byId("link-iocs");
-// Platform choice: Windows on by default, macOS loads products.json on first use. Both share the one selection.
+// Platform choice: both on by default, macOS loads products.json when ticked. Both share the one selection.
 const hasMac = !!byId("link-macos");
 const windowsOn = () => !byId("link-windows") || byId("link-windows").checked;
 const macOn = () => hasMac && byId("link-macos").checked;
 const policyFile = document.body.dataset.policy;
 if (hasIocs) byId("link-iocs").checked = false;
-if (hasMac) byId("link-macos").checked = false;
 let policy;
 let tools = [];
 let iocData;
@@ -590,6 +589,7 @@ async function initialize() {
     byId("policy-version").textContent = `· v${policy.version}`;
     update();
     byId("editor").hidden = false;
+    if (macOn()) await enableMacs();
   } catch (error) {
     showError(error);
   } finally {

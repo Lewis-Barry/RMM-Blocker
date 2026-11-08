@@ -791,14 +791,11 @@ async function testMacBuilder(policy) {
     const doc = frame.contentDocument;
     const byId = id => doc.getElementById(id);
     const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
-    test("Windows is the only platform chosen at start and the macOS card is hidden", () => {
-      assert(byId("link-windows").checked && !byId("link-macos").checked, "Platform defaults wrong");
-      assert(byId("mac-card").hidden && !byId("wdac-card").hidden, "Cards do not follow the platform choice");
-      assert([...doc.querySelectorAll(".tool details")].every(details => !details.textContent.includes("macOS denied")), "macOS details shown while disabled");
-    });
-    byId("link-macos").checked = true;
-    change(byId("link-macos"));
     await waitFor(() => !byId("mac-status").hidden && byId("mac-status").textContent.includes("rules kept"), "macOS rules did not load");
+    test("Both platforms are chosen at start and both cards show", () => {
+      assert(byId("link-windows").checked && byId("link-macos").checked, "Platform defaults wrong");
+      assert(!byId("mac-card").hidden && !byId("wdac-card").hidden, "Cards do not follow the platform choice");
+    });
     const macRows = () => [...byId("tool-list").children].filter(row => !row.querySelector("details:last-of-type").hidden && row.textContent.includes("macOS denied"));
     test("Enabling macOS exports shows denied binaries for covered tools and both downloads", () => {
       assert(byId("mac-status").textContent.startsWith(`${data.rules.length} rules kept · 0 removed · ${data.tools.length} tools covered`), `Status wrong: ${byId("mac-status").textContent}`);
