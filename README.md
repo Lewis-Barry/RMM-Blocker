@@ -124,7 +124,7 @@ The **Include IOC exports** checkbox defaults to **off**. Off means XML-only;
 IOC CSVs are not loaded or prepared. Enable them in the output panel.
 
 When enabled, the three supplied CSVs in `IOC` are combined locally into one
-575-indicator dataset (563 domains and 12 IPs). The same trusted-tool selections
+661-indicator dataset (649 domains and 12 IPs). The same trusted-tool selections
 remove matching indicators; all remaining rows retain their original **Block**
 action and metadata. This does not create Allow indicators or delete indicators
 already imported into Defender.
@@ -132,7 +132,7 @@ already imported into Defender.
 - Download the XML separately, then download and import **every IOC CSV batch**.
   Batches are regenerated after filtering, with at most **500 data rows per
   file**, plus the original Defender header. No selections produces batches of
-  500 and 75; excluding Datto RMM produces a single 454-indicator batch.
+  500 and 161; excluding Datto RMM produces a single 540-indicator batch.
 - Each tool shows its matching IOCs when the toggle is on. Search also matches
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.
@@ -149,6 +149,9 @@ already imported into Defender.
   after reload.
 - A CSV load/validation failure visibly disables IOC downloads, not XML export.
   Turn the toggle off and on to retry. Sources are kept unchanged.
+- The network discovery KQL is generated from all bundled IOC CSVs and includes
+  every current domain and IP. When IOCs change, regenerate the CSVs and verify
+  the generated KQL includes them.
 
 Review domain-wide/shared indicators before importing. The export cannot
 guarantee that a selected tool can connect under other network controls.

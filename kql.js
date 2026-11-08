@@ -11,7 +11,7 @@ export function buildNetworkDiscoveryKql(indicators) {
   return [
     "// RMM and Remote Access Tool Blocker - network discovery",
     "// Matches LOLRMM domains and IPs (Defender IOCs) against endpoint network connections.",
-    "// Run in Microsoft Defender > Advanced hunting. Source: IOC/Defender_IOC_LOLRMM_*.csv",
+    "// Run in Microsoft Defender > Advanced hunting. Lists include every indicator from the bundled IOC CSVs.",
     "// Domains match the hostname in RemoteUrl; a domain resolved to an IP not listed in RMMIPs is",
     "// only found when RemoteUrl carries the hostname.",
     `let RMMDomains = ${list(domains)};`,
