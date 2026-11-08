@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Block RMM and remote access tools on macOS 27 with Apple app control. Exclude the tools you trust and download an Apple DDM declaration or Intune settings catalog policy. Private, browser-only exports.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>macOS RMM Blocker</title>
+  <link rel="icon" type="image/png" href="./RMMBlocker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+  <script type="module" src="./macos-app.js"></script>
+</head>
+<body class="builder-page">
+  <a class="skip-link" href="#selection">Skip to tools</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Guard home">
+        <img class="brand-mark" src="./RMMBlocker.png" alt="">
+        <span>RMM Guard</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html">Browsers</a><a href="./macos.html" aria-current="page">macOS</a><a href="./help.html">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="perfect-open" class="header-button" type="button" aria-haspopup="dialog">Is this perfect?</button>
+        <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <span class="header-byline">by <a href="https://conditionalaccess.uk" target="_blank" rel="noopener noreferrer">Lewis Barry</a></span>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container page-main">
+    <p class="builder-intro">Block remote tools on macOS 27 by code signature. Exclude the ones you trust.</p>
+    <aside class="wip-banner" role="note" aria-label="Work in progress warning"><span class="chip warning-chip">Preview</span><span>New. Requires macOS 27 and a supervised Mac (Automated Device Enrollment). There is no audit mode: a deployed rule blocks immediately. Test on a non-production device.</span></aside>
+    <section class="how-to" aria-labelledby="how-to-title">
+      <p id="how-to-title"><strong>How to use</strong></p>
+      <ol>
+        <li>Find each remote tool your team uses, then tick <strong>Exclude</strong>.</li>
+        <li>Download the Intune JSON and create the policy through Graph, or download the Apple declaration for another MDM. <a href="./help-macos.html">Deployment guide</a>.</li>
+        <li>Pilot on one test Mac before a wider rollout. The <a href="./index.html">Defender IOCs</a> on the RMM tab also block these tools' domains on macOS.</li>
+      </ol>
+    </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="loading" role="status">Loading tools...</p>
+    <div id="editor" hidden>
+      <div class="toolbar">
+        <div class="search-field">
+          <label class="visually-hidden" for="search">Search tools, Team IDs and Signing IDs</label>
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="1.5"/></svg>
+          <input id="search" type="search" placeholder="Search tools, Team IDs or Signing IDs" autocomplete="off">
+        </div>
+        <div class="filter-field">
+          <label for="filter">Show</label>
+          <select id="filter">
+            <option value="all">All tools</option>
+            <option value="excluded">Excluded tools</option>
+            <option value="blocked">Not excluded</option>
+          </select>
+        </div>
+      </div>
+      <div class="workbench">
+        <section id="selection" class="selection-panel" aria-labelledby="selection-title" tabindex="-1">
+          <div class="panel-heading"><div class="tools-heading"><h2 id="selection-title">Tools</h2><span class="selection-count" role="status" aria-live="polite" aria-atomic="true"><strong id="excluded-count">0</strong> excluded</span></div><button id="reset" class="quiet-button" type="button" disabled>Reset</button></div>
+          <div class="list-heading"><span id="results" role="status" aria-live="polite"></span><span>Exclude</span></div>
+          <div id="tools" class="tool-scroll" tabindex="0" role="region" aria-label="Tools and exclusions"><ul id="tool-list" class="tool-list" role="list"></ul></div>
+          <p id="empty" class="empty-state" hidden>No matching tools.</p>
+        </section>
+        <section id="exports" class="export-panel" aria-labelledby="exports-title" tabindex="-1">
+          <div class="panel-heading"><h2 id="exports-title">Downloads</h2></div>
+          <div class="export-content">
+            <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
+            <section class="export-card" aria-labelledby="intune-export-title">
+              <div class="export-card-heading"><h3 id="intune-export-title">Intune settings catalog</h3><span class="file-badge">JSON</span></div>
+              <p class="output-description">Policy body for the Graph API. Blocks execution on macOS 27 and newer.</p>
+              <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
+              <button id="download-intune" class="primary" type="button">Download Intune JSON</button>
+              <details class="export-details"><summary>Policy notes</summary><p>Creates a Declarative Device Management &gt; App Settings &gt; Denied Binaries policy. POST it to <code>/beta/deviceManagement/configurationPolicies</code>, then assign it. The settings catalog has no JSON import in the portal.</p><p>No allow rules added. Deny wins over any allow list on the device. <span id="policy-version"></span></p></details>
+            </section>
+            <section class="export-card" aria-labelledby="ddm-export-title">
+              <div class="export-card-heading"><h3 id="ddm-export-title">Apple declaration</h3><span class="file-badge">JSON</span></div>
+              <p class="output-description">Raw <code>com.apple.configuration.app.settings</code> declaration for MDMs that accept custom declarations.</p>
+              <button id="download-ddm" class="primary" type="button">Download declaration</button>
+              <details class="export-details"><summary>Declaration notes</summary><p>Each download gets a new Identifier and ServerToken. Keep the Identifier when you update an existing declaration in your MDM.</p></details>
+            </section>
+            <section class="export-card" aria-labelledby="missing-title">
+              <div class="export-card-heading"><h3 id="missing-title">Tool missing?</h3></div>
+              <p class="output-description">Only tools with a verified Mac code signature are listed. Send the Team ID and Signing IDs of a tool that is not here.</p>
+              <a id="report-missing" class="button" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report missing Mac data <span aria-hidden="true">↗</span></a>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+    <noscript><p class="error">Enable JavaScript to build and download this policy.</p></noscript>
+  </main>
+  <dialog id="perfect-modal" class="modal" aria-labelledby="perfect-modal-title" aria-describedby="perfect-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="perfect-modal-title">Is this perfect?</h2>
+        <button id="perfect-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <div id="perfect-modal-desc" class="modal-desc">
+        <p>No. Rules match the vendor's code signature, so renaming or moving an app does not get past them, but a tool that ships unsigned or ad-hoc signed has no Team ID to match. Open-source tools built from source are the usual gap.</p>
+        <p>Where a vendor's Team ID also signs unrelated software, such as Google, only the remote desktop binaries are denied by Signing ID. A new helper binary with a new Signing ID is not covered until the list is updated.</p>
+        <p>The list is far shorter than the Windows one: every entry was verified against a real installer. Pair it with the Defender IOCs, which also work on macOS, and test on pilot devices first.</p>
+      </div>
+    </div>
+  </dialog>
+  <script type="module">
+    const modal = document.getElementById("perfect-modal");
+    document.getElementById("perfect-open").addEventListener("click", () => modal.showModal());
+    document.getElementById("perfect-close").addEventListener("click", () => modal.close());
+    modal.addEventListener("click", event => {
+      if (event.target === modal) modal.close();
+    });
+  </script>
+  <footer><div class="container footer-content"><span class="footer-warning">It is your responsibility to test appropriately with application blocking tools.</span><a href="./help-macos.html">Deployment guide</a></div></footer>
+</body>
+</html>

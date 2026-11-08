@@ -1,6 +1,7 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { parseMacProducts, filterMacRules, buildDeclaration, buildIntunePolicy, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -702,6 +703,7 @@ async function run() {
     });
     await testBuilder(policy, iocs);
     await testBrowserBuilder();
+    await testMacBuilder();
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
@@ -714,3 +716,120 @@ async function run() {
 }
 
 run();
+
+// macOS app control: pure generator checks, then the macos.html builder in a frame.
+async function testMacBuilder() {
+  const data = parseMacProducts(await (await fetch("./products.json")).json());
+  test("macOS products parse with at least 7 verified tools and attributed rules", () => {
+    assert(data.tools.length >= 7, `Only ${data.tools.length} macOS tools`);
+    for (const tool of data.tools) {
+      assert(tool.rules.length && tool.source.startsWith("https://") && /^\d{4}-\d{2}-\d{2}$/.test(tool.verified), `${tool.name} lacks rules, source or date`);
+      for (const rule of tool.rules) assert(rule.names.includes(tool.name) && (rule.teamId || rule.signingId), `${tool.name} rule invalid`);
+    }
+  });
+  test("Rules without a Team ID or Signing ID, bad Team IDs and unknown fields are rejected", () => {
+    const sample = product => ({ version: "1.0.0.1", products: { Sample: { macos: { rules: [product], source: "https://x", verified: "2026-01-01" } } } });
+    expectError(() => parseMacProducts(sample({})), "needs a Team ID or Signing ID");
+    expectError(() => parseMacProducts(sample({ teamId: "short" })), "invalid Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", cdHash: "x" })), "unknown macOS rule field");
+    expectError(() => parseMacProducts({ version: "1", products: {} }), "not valid");
+  });
+  test("Excluding a tool removes exactly its rules and warns about shared ones", () => {
+    const all = filterMacRules(data, new Set());
+    assert(all.removed.length === 0 && all.retained.length === data.rules.length, "Unexpected initial removal");
+    for (const tool of data.tools) {
+      const result = filterMacRules(data, new Set([tool.name]));
+      assert(result.removed.length === tool.rules.length, `${tool.name} removed count`);
+      assert(result.removed.every(rule => rule.names.includes(tool.name)), `${tool.name} removed an unrelated rule`);
+      assert(result.sharedRemoved.every(rule => rule.names.length > 1), "Shared warning for an unshared rule");
+    }
+    expectError(() => filterMacRules(data, new Set(["Not a tool"])), "Unknown tool selection");
+  });
+  test("Declaration uses Apple's app.settings shape and refuses an empty deny list", () => {
+    const declaration = JSON.parse(buildDeclaration(data.rules, data.version));
+    assert(declaration.Type === "com.apple.configuration.app.settings", "Wrong declaration type");
+    assert(declaration.Identifier && declaration.ServerToken, "Identifier or ServerToken missing");
+    const denied = declaration.Payload.Allowed.DeniedBinaries;
+    assert(denied.length === data.rules.length, "Denied count differs");
+    for (const entry of denied) {
+      assert(Object.keys(entry).every(key => ["TeamID", "SigningID"].includes(key)), "Unexpected identifier key");
+      assert(entry.TeamID || entry.SigningID, "Identifier without TeamID or SigningID");
+    }
+    assert(JSON.parse(buildDeclaration(data.rules, data.version)).ServerToken !== declaration.ServerToken, "ServerToken repeats");
+    expectError(() => buildDeclaration([], data.version), "deny nothing");
+  });
+  test("Intune body nests app_app > app_allowed > app_allowed_deniedbinaries with one child per field", () => {
+    const policy = JSON.parse(buildIntunePolicy(data.rules, data.version));
+    assert(policy.platforms === "macOS" && policy.technologies === "appleRemoteManagement", "Platform or technology wrong");
+    const root = policy.settings[0].settingInstance;
+    const allowed = root.groupSettingCollectionValue[0].children[0];
+    const denied = allowed.groupSettingCollectionValue[0].children[0];
+    assert(root.settingDefinitionId === "app_app" && allowed.settingDefinitionId === "app_allowed" &&
+      denied.settingDefinitionId === "app_allowed_deniedbinaries", "Definition chain wrong");
+    assert(denied.groupSettingCollectionValue.length === data.rules.length, "Intune rule count differs");
+    for (const [index, item] of denied.groupSettingCollectionValue.entries()) {
+      const expected = [data.rules[index].teamId && "app_allowed_deniedbinaries_item_teamid", data.rules[index].signingId && "app_allowed_deniedbinaries_item_signingid"].filter(Boolean);
+      assert(JSON.stringify(item.children.map(child => child.settingDefinitionId)) === JSON.stringify(expected), "Child definitions differ");
+    }
+    expectError(() => buildIntunePolicy([], data.version), "deny nothing");
+  });
+  test("Vendor Team IDs that also sign unrelated software are only denied with a Signing ID", () => {
+    const google = data.rules.filter(rule => rule.teamId === "EQHXZ8M8AV");
+    assert(google.length && google.every(rule => rule.signingId), "Google Team ID denied vendor-wide");
+  });
+  test("Missing-data report link is a prefilled GitHub issue", () => {
+    const url = new URL(reportMissingUrl("https://github.com/example/repo", "Tool <X>"));
+    assert(url.pathname === "/example/repo/issues/new" && url.searchParams.get("title") === "macOS rules for Tool <X>", "Issue URL wrong");
+    assert(url.searchParams.get("body").includes("codesign -dvvv"), "Issue body lacks the codesign command");
+  });
+  const frame = document.createElement("iframe");
+  frame.hidden = true;
+  frame.title = "macOS builder regression fixture";
+  frame.src = "./macos.html";
+  document.body.append(frame);
+  try {
+    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false, "macOS builder did not initialize");
+    const doc = frame.contentDocument;
+    const byId = id => doc.getElementById(id);
+    test("macOS builder lists every tool, starts without exclusions and enables both downloads", () => {
+      assert(byId("tool-list").children.length === data.tools.length, "Tool list omits entries");
+      assert(byId("excluded-count").textContent === "0" && byId("remaining-count").textContent === String(data.rules.length), "Initial counts wrong");
+      assert(!byId("download-intune").disabled && !byId("download-ddm").disabled, "Downloads disabled at start");
+      assert(byId("report-missing").href.includes("/issues/new?"), "Report link not prefilled");
+      for (const row of byId("tool-list").children) {
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        assert(checkbox.getAttribute("aria-label").includes(row.querySelector(".tool-title").textContent), "Checkbox label does not identify its tool");
+        assert(checkbox.getAttribute("aria-describedby").split(" ").every(id => byId(id) && !byId(id).hidden), "Checkbox references a hidden description");
+      }
+    });
+    const teamViewer = doc.querySelector('input[aria-label="Exclude TeamViewer from block list"]');
+    teamViewer.click();
+    test("Excluding TeamViewer updates the counts and the exclusion review", () => {
+      const expected = filterMacRules(data, new Set(["TeamViewer"]));
+      assert(byId("excluded-count").textContent === "1", "Exclusion not counted");
+      assert(byId("removed-count").textContent === String(expected.removed.length), "Removed count wrong");
+      assert(byId("remaining-count").textContent === String(expected.retained.length), "Kept count wrong");
+      assert(byId("selection-list").textContent === "TeamViewer", "Exclusion review missing");
+    });
+    test("Excluding every tool disables the downloads instead of exporting an empty deny list", () => {
+      for (const checkbox of doc.querySelectorAll('#tool-list input[type="checkbox"]')) if (!checkbox.checked) checkbox.click();
+      assert(byId("remaining-count").textContent === "0", "Rules still kept");
+      assert(byId("download-intune").disabled && byId("download-ddm").disabled, "Downloads enabled with nothing to deny");
+      byId("reset").click();
+      assert(byId("excluded-count").textContent === "0" && !byId("download-intune").disabled, "Reset did not restore the block list");
+    });
+    test("Search filters rows without changing the exports", () => {
+      teamViewer.click();
+      byId("search").value = "anydesk";
+      byId("search").dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+      const visible = [...byId("tool-list").children].filter(row => !row.hidden);
+      assert(visible.length === 1 && visible[0].textContent.includes("AnyDesk"), "Search did not isolate AnyDesk");
+      assert(byId("excluded-count").textContent === "1", "Search changed the selection");
+      byId("search").value = "";
+      byId("search").dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+      teamViewer.click();
+    });
+  } finally {
+    frame.remove();
+  }
+}

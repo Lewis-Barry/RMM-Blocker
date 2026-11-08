@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.19",
+  "version": "1.0.0.20",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -135,7 +135,16 @@
       "domains": [
         "boot.net.anydesk.com",
         "net.anydesk.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "KHRWM533LU"
+          }
+        ],
+        "source": "https://download.anydesk.com/anydesk.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "Anyplace Control": {
       "paths": [
@@ -353,7 +362,37 @@
         "chromoting-oauth.talkgadget.google.com",
         "remotedesktop-pa.googleapis.com",
         "remotedesktop.google.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "com.google.chromeremotedesktop.me2me-host"
+          },
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "com.google.chrome.remote_desktop.native-messaging-host"
+          },
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "com.google.chrome.remote_desktop.remote-assistance-host-v2"
+          },
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "remoting_me2me_host_service"
+          },
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "remoting_agent_process_broker"
+          },
+          {
+            "teamId": "EQHXZ8M8AV",
+            "signingId": "remote_webauthn"
+          }
+        ],
+        "source": "https://dl.google.com/chrome-remote-desktop/chromeremotedesktop.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "Cloud RAS": {
       "paths": [
@@ -1877,7 +1916,16 @@
         "ngrok.pizza",
         "ngrok.pro",
         "ngrok.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "TEX8MHRDQ9"
+          }
+        ],
+        "source": "https://bin.ngrok.com/a/msmi2kd3cjc/ngrok-v3-3.39.13-darwin-arm64.zip",
+        "verified": "2026-11-08"
+      }
     },
     "NinjaOne / NinjaRMM": {
       "paths": [
@@ -2036,7 +2084,16 @@
       "domains": [
         "parsec.app",
         "parsec.gg"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "Y9MY52XZDB"
+          }
+        ],
+        "source": "https://builds.parsec.app/package/parsec-macos.pkg",
+        "verified": "2026-11-08"
+      }
     },
     "pcAnywhere": {
       "paths": [
@@ -2221,7 +2278,16 @@
         "*\\vncviewer*.exe",
         "*\\vncagent*.exe",
         "*\\vncguihelper*.exe"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "ZNCQ8JEH7X"
+          }
+        ],
+        "source": "https://downloads.realvnc.com/download/file/realvnc-connect-viewer/RealVNC-Connect-Viewer-8.6.0-MacOSX-universal.pkg",
+        "verified": "2026-11-08"
+      }
     },
     "RemCom": {
       "paths": [
@@ -2455,7 +2521,16 @@
         "rs-ny.rustdesk.com",
         "rustdesk.com",
         "web.rustdesk.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "HZF9JMC8YN"
+          }
+        ],
+        "source": "https://github.com/rustdesk/rustdesk/releases/download/1.5.1/rustdesk-1.5.1-aarch64.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "S3 Browser": {
       "paths": [
@@ -2622,7 +2697,16 @@
         "api.splashtop.eu",
         "relay.splashtop.com",
         "splashtop.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "CPQQ3AW49Y"
+          }
+        ],
+        "source": "https://d17kmd0va0f0mp.cloudfront.net/mac/Splashtop_Streamer_Mac_INSTALLER_v3.8.6.3.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "SpyAnywhere": {
       "domains": [
@@ -2669,7 +2753,16 @@
       ],
       "domains": [
         "supremocontrol.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "LL93ZLFYJ2"
+          }
+        ],
+        "source": "https://assets.nanosystems.com/AutoUpdateS/macOS/standard/stable/Supremo_4.12.0.3004.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "Syncro": {
       "paths": [
@@ -2746,7 +2839,16 @@
         "router15.teamviewer.com",
         "taf.teamviewer.com",
         "teamviewer.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "H7UGFBUGV6"
+          }
+        ],
+        "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "TeleDesktop": {
       "paths": [
@@ -2765,7 +2867,16 @@
         "cdn.teleport.dev",
         "reporting-connect.teleportinfra.sh",
         "usage.teleport.dev"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "QH8AA5B8UP"
+          }
+        ],
+        "source": "https://cdn.teleport.dev/teleport-18.11.9.pkg",
+        "verified": "2026-11-08"
+      }
     },
     "Tencent QQ": {
       "paths": [

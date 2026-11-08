@@ -16,6 +16,44 @@ The **Browsers** tab (`browsers.html`) works the same way for
 It has no IOC exports. That XML is edited by hand: each deny rule's `FriendlyName` is the browser
 name the page groups it under.
 
+## macOS app control (preview)
+
+The **macOS** tab (`macos.html`) denies the same kind of tools on macOS 27 through Apple's declarative
+**App Settings** configuration (`com.apple.configuration.app.settings` → `Allowed.DeniedBinaries`), which Intune
+exposes in the settings catalog under Declarative Device Management. It needs a supervised Mac (Automated Device
+Enrollment) and has no audit mode. Rules match the vendor's code signature, not file paths:
+
+- `teamId` denies every binary the vendor signs. Use it when the vendor only ships remote tools.
+- `teamId` plus `signingId` denies one binary. Use it when the Team ID also signs unrelated software
+  (Chrome Remote Desktop is signed with Google's Team ID, so only its host binaries are listed).
+
+Both exports are built in the browser from the `macos` blocks in `products.json`:
+
+- **Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
+  (the portal cannot import settings catalog JSON). Definition ids: `app_app` → `app_allowed` →
+  `app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
+- **Apple declaration**: the raw declaration for MDMs that accept custom declarations.
+
+Only tools whose signature was read from the vendor's real installer are listed. To add one:
+
+```
+codesign -dvvv "/Applications/Example.app" 2>&1 | grep -E "^(Identifier|TeamIdentifier)="
+```
+
+then add to the product in `products.json`, bump `version`, and run `node build.mjs`:
+
+```json
+"macos": {
+  "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
+  "verified": "2026-11-08"
+}
+```
+
+`node build.mjs --check` rejects a rule without `teamId` or `signingId`, because such a rule makes macOS reject
+the whole declaration. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
+when network protection runs in block mode, so the macOS tab adds no IOC export of its own.
+
 ## Adding or updating products
 
 `products.json` is the only file to edit. Each product lists any of `paths`

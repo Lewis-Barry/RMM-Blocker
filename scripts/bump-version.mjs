@@ -6,7 +6,11 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { bumpVersion } from "./sync-lolrmm.mjs";
 
-const pathSet = data => JSON.stringify(Object.values(data.products).flatMap(product => product.paths || []).map(path => path.toLowerCase()).sort());
+// Deny paths and macOS rules both change what devices block, so either bumps the version.
+const pathSet = data => JSON.stringify(Object.values(data.products).flatMap(product => [
+  ...(product.paths || []).map(path => path.toLowerCase()),
+  ...(product.macos?.rules || []).map(rule => JSON.stringify(rule)),
+]).sort());
 
 export function bump(before, after) {
   if (after.version !== before.version || pathSet(after) === pathSet(before)) return null;

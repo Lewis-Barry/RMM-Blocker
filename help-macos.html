@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Deploy the macOS RMM deny list through Microsoft Intune or another MDM. Requirements, Graph import steps and how to verify a block on macOS 27.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Deploy macOS app control — RMM Guard</title>
+  <link rel="icon" type="image/png" href="./RMMBlocker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="#guide">Skip to guide</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Guard home">
+        <img class="brand-mark" src="./RMMBlocker.png" alt="">
+        <span>RMM Guard</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html">Browsers</a><a href="./macos.html">macOS</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container help-layout">
+    <aside class="help-sidebar">
+      <nav class="help-nav" aria-labelledby="guides-title">
+        <h2 id="guides-title">Guides</h2>
+        <a href="./help.html">WDAC</a>
+        <a href="./help-ioc.html">Defender IOCs</a>
+        <a href="./help-macos.html" aria-current="page">macOS</a>
+      </nav>
+      <nav class="help-nav help-sections" aria-labelledby="sections-title">
+        <h2 id="sections-title">On this page</h2>
+        <a href="#requirements">1. Requirements</a>
+        <a href="#intune">2. Intune</a>
+        <a href="#other-mdm">3. Other MDM</a>
+        <a href="#verify">4. Verify</a>
+        <a href="#contribute">5. Add a tool</a>
+      </nav>
+    </aside>
+    <article id="guide" class="help-guide" tabindex="-1">
+      <div class="page-heading"><div><h1>Deploy macOS app control</h1><p>Denies the remote tools you have not excluded, by the vendor's code signature, through Apple's declarative <strong>App Settings</strong> configuration.</p><p><a href="./macos.html">Exclude trusted tools</a>, then download the Intune JSON or the Apple declaration.</p></div></div>
+      <aside class="help-warning" role="note">Enforced immediately. Apple provides no audit mode for denied binaries. A running app is killed and the user sees "not allowed by your organisation". Start with one pilot Mac.</aside>
+      <section id="requirements" class="help-step" aria-labelledby="requirements-title">
+        <h2 id="requirements-title">1. Requirements</h2>
+        <ul>
+          <li><strong>macOS 27</strong> or newer. Older Macs ignore the declaration.</li>
+          <li>A <strong>supervised</strong> Mac, enrolled through Automated Device Enrollment (Apple Business Manager). User-enrolled Macs do not receive it.</li>
+          <li>Intune: the setting lives in the settings catalog under <strong>Declarative Device Management (DDM)</strong> → <strong>App Settings</strong> → <strong>Denied Binaries</strong>. Other MDMs need support for custom declarations.</li>
+        </ul>
+        <p>Each rule names a Team ID (every binary the vendor signs) or a Team ID plus Signing ID (one binary). Apple requires at least one of the two; a rule with neither makes the Mac reject the whole declaration, which is why the builder refuses to generate one.</p>
+      </section>
+      <section id="intune" class="help-step" aria-labelledby="intune-title">
+        <h2 id="intune-title">2. Intune</h2>
+        <p>The Intune portal cannot import settings catalog JSON, so the policy is created through Microsoft Graph. The downloaded file is the request body.</p>
+        <ol>
+          <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a> and sign in with an Intune administrator. Consent to <code>DeviceManagementConfiguration.ReadWrite.All</code>.</li>
+          <li>Set the method to <strong>POST</strong> and the URL to <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>.</li>
+          <li>Paste the contents of <code>RMM_Denied_Binaries_Intune.json</code> as the request body and run it. The response is the new policy.</li>
+          <li>In <a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>Configuration</strong>, open <strong>Block RMM tools (macOS)</strong>, review the Denied Binaries, and assign your pilot device group.</li>
+        </ol>
+        <p>Or from PowerShell with the Graph SDK:</p>
+        <pre class="kql-code"><code>Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
+$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
+Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
+        <p>To update the list later, download a new JSON and create a new policy, or edit the Denied Binaries in the portal. Keep one deny policy per Mac; several are merged as a union, so a tool excluded in one is still denied by the other.</p>
+      </section>
+      <section id="other-mdm" class="help-step" aria-labelledby="other-mdm-title">
+        <h2 id="other-mdm-title">3. Other MDM</h2>
+        <p><code>RMM_Denied_Binaries_macOS.json</code> is the raw <code>com.apple.configuration.app.settings</code> declaration. Upload it where your MDM accepts a custom declaration and scope it to supervised Macs on macOS 27.</p>
+        <p>Every download carries a fresh <strong>Identifier</strong> and <strong>ServerToken</strong>. When you replace an existing declaration, keep its Identifier and change only the ServerToken, otherwise the device treats it as a second declaration.</p>
+        <p>Schema: <a href="https://github.com/apple/device-management/blob/release/declarative/declarations/configurations/app.settings.yaml" target="_blank" rel="noopener noreferrer">Apple device-management repository <span aria-hidden="true">↗</span></a>.</p>
+      </section>
+      <section id="verify" class="help-step" aria-labelledby="verify-title">
+        <h2 id="verify-title">4. Verify</h2>
+        <ul>
+          <li>Sync the pilot Mac. In Intune the per-setting status shows <strong>Succeeded</strong>; an invalid rule shows every setting as Noncompliant and does not name the rule.</li>
+          <li>Launch a denied tool. macOS closes it and shows that the app is not allowed by your organisation.</li>
+          <li>Launch an excluded tool. It must start normally.</li>
+          <li>On the Mac, <code>log show --last 10m --predicate 'subsystem == "com.apple.ManagedClient"' | grep -i DENIED</code> lists the blocked executions.</li>
+        </ul>
+        <p>Expand assignments after testing.</p>
+        <p><a href="https://learn.microsoft.com/intune/device-configuration/templates/apple-ddm-app-settings" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a> · <a href="https://support.apple.com/guide/deployment/dep001044b08/web" target="_blank" rel="noopener noreferrer">Apple Deployment Guide <span aria-hidden="true">↗</span></a></p>
+      </section>
+      <section id="contribute" class="help-step" aria-labelledby="contribute-title">
+        <h2 id="contribute-title">5. Add a tool</h2>
+        <p>Only tools whose Mac code signature was checked against a real installer are listed. To add one, install it on a Mac and read the signature of the app and of every helper, agent or service it installs:</p>
+        <pre class="kql-code"><code>codesign -dvvv "/Applications/Example.app" 2>&amp;1 | grep -E "^(Identifier|TeamIdentifier)="
+find /Library/PrivilegedHelperTools /Library/LaunchDaemons -newer /Applications/Example.app</code></pre>
+        <p><strong>TeamIdentifier</strong> is the Team ID. Use it alone when the vendor only makes remote tools. When the same Team ID also signs unrelated software (Google, Microsoft, Apple), list the <strong>Identifier</strong> of each remote binary as a Signing ID instead, otherwise every app from that vendor is blocked.</p>
+        <p>Send the output and the installer URL through <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">a GitHub issue <span aria-hidden="true">↗</span></a>, or add a <code>macos</code> block to the product in <code>products.json</code>:</p>
+        <pre class="kql-code"><code>"macos": {
+  "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
+  "verified": "2026-11-08"
+}</code></pre>
+      </section>
+    </article>
+  </main>
+  <footer><div class="container footer-content"><a href="./macos.html">Back to macOS tools</a><a href="./products.json" download>Source data <span aria-hidden="true">↗</span></a></div></footer>
+</body>
+</html>
