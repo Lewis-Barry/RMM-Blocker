@@ -109,14 +109,13 @@
             </section>
             <section id="mac-card" class="export-card mac-panel" aria-labelledby="mac-export-title" hidden>
               <div class="export-card-heading"><h3 id="mac-export-title">macOS app control</h3><span class="file-badge">JSON</span></div>
-              <p class="output-description">Blocks execution on macOS 27 (supervised) by code signature. Preview: no audit mode, test on a pilot Mac.</p>
+              <p class="output-description">Intune settings catalog policy for macOS 27 (supervised). Preview: no audit mode, test on a pilot Mac.</p>
               <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="mac-output" hidden>
                 <div id="mac-error" class="error" role="alert" hidden></div>
                 <button id="mac-rules-open" class="primary" type="button">Show rules for the portal</button>
                 <button id="mac-download-intune" class="primary mac-secondary" type="button">Download Intune JSON</button>
-                <button id="mac-download-ddm" class="primary mac-secondary" type="button">Download Apple declaration</button>
-                <p class="muted">Separate from the WDAC XML. Enter the rules in the Intune settings catalog, or import the JSON through Graph; the declaration is for other MDMs.</p>
+                <p class="muted">Separate from the WDAC XML. Post the JSON once in Graph Explorer, or type the rules into the settings catalog.</p>
                 <details class="export-details"><summary>Deploy notes</summary><p>Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires macOS 27 and Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
               </div>
             </section>

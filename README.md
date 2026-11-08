@@ -29,13 +29,11 @@ Enrollment) and has no audit mode. Rules match the vendor's code signature, not 
   binaries). Signing ID alone is not accepted, even though Apple allows it, because one line could deny
   `com.apple.Safari` on every Mac.
 
-Both exports share the page's exclusions (Windows and macOS can be chosen together or alone) and are built in the browser from the `macos` blocks in `products.json`,
-as separate files next to the WDAC XML:
-
-- **Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
-  (the portal cannot import settings catalog JSON). Definition ids: `app_app` → `app_allowed` →
-  `app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
-- **Apple declaration**: the raw declaration for MDMs that accept custom declarations.
+The export shares the page's exclusions and is built in the browser from the `macos` blocks in `products.json`, as a
+separate file next to the WDAC XML: **Intune JSON**, a settings catalog policy body for
+`POST /beta/deviceManagement/configurationPolicies` (the portal cannot import settings catalog JSON, so the guide
+uses Graph Explorer, or lists the Team IDs to type in by hand). Definition ids: `app_app` → `app_allowed` →
+`app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
 
 Only tools whose signature was read from the vendor's real installer are listed. To add one:
 
@@ -54,7 +52,7 @@ then add to the product in `products.json`, bump `version`, and run `node build.
 ```
 
 `node build.mjs --check` runs the same validation as the page (`validateMacos` in `macos.js`): a rule without a
-valid `teamId` makes macOS reject the whole declaration, or worse, denies the wrong vendor. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
+valid `teamId` makes macOS reject the whole policy, or worse, denies the wrong vendor. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
 when network protection runs in block mode, so the macOS tab adds no IOC export of its own.
 
 ## Adding or updating products

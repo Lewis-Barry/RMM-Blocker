@@ -22,7 +22,7 @@
     "version": "1.0.0.20",
     "date": "2026-11-08",
     "source": "manual",
-    "note": "New macOS platform option on the RMM page: Apple DDM app control (macOS 27, supervised) deny lists by Team ID and Signing ID, exported as an Intune settings catalog policy body or a raw Apple declaration. Code signatures verified against the vendors' installers for 10 tools: TeamViewer, AnyDesk, RustDesk, Splashtop, Chrome Remote Desktop, Parsec, Supremo, RealVNC, Teleport Connect and ngrok. Windows rules and IOCs are unchanged.",
+    "note": "New macOS platform option on the RMM page: Apple DDM app control (macOS 27, supervised) deny lists by Team ID and Signing ID, exported as an Intune settings catalog policy body for Graph, or typed into the portal from the rule list. Code signatures verified against the vendors' installers for 10 tools: TeamViewer, AnyDesk, RustDesk, Splashtop, Chrome Remote Desktop, Parsec, Supremo, RealVNC, Teleport Connect and ngrok. Windows rules and IOCs are unchanged.",
     "products": []
   },
   {

@@ -1,7 +1,7 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
-import { loadMacProducts, filterMacRules, buildDeclaration, buildIntunePolicy, reportMissingUrl } from "./macos.js";
+import { loadMacProducts, filterMacRules, buildIntunePolicy, reportMissingUrl } from "./macos.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
@@ -399,7 +399,7 @@ function updateMacs() {
   const { retained, removed } = filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name))));
   const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
   byId("mac-status").textContent = `${retained.length} rules kept · ${removed.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
-  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ddm"]) byId(id).disabled = !retained.length;
+  for (const id of ["mac-rules-open", "mac-download-intune"]) byId(id).disabled = !retained.length;
 }
 
 async function enableMacs() {
@@ -466,7 +466,6 @@ byId("mac-copy")?.addEventListener("click", async () => {
   setTimeout(() => { byId("mac-copy").textContent = "Copy list"; }, 1500);
 });
 byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIntunePolicy, "RMM_Denied_Binaries_Intune.json"));
-byId("mac-download-ddm")?.addEventListener("click", () => downloadMac(buildDeclaration, "RMM_Denied_Binaries_macOS.json"));
 
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());

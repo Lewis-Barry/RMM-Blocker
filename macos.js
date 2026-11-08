@@ -1,7 +1,6 @@
-// Builds macOS 27 app control (Apple DDM com.apple.configuration.app.settings) deny lists from products.json.
+// Builds the Intune settings catalog policy (Apple DDM com.apple.configuration.app.settings, Denied Binaries) from products.json.
 // A denied binary is matched by Team ID (vendor-wide) or Team ID + Signing ID (one binary) and must carry at least one of the two.
 
-const declarationType = "com.apple.configuration.app.settings";
 // Intune settings catalog definition ids for the same declaration, from /beta/deviceManagement/configurationSettings.
 const intuneIds = {
   root: "app_app",
@@ -108,27 +107,6 @@ export function filterMacRules(data, excludedTools) {
     retained,
     sharedRemoved: removed.filter(rule => rule.names.some(name => !excludedTools.has(name))),
   };
-}
-
-function binaryIdentifier(rule) {
-  const identifier = {};
-  if (rule.teamId) identifier.TeamID = rule.teamId;
-  if (rule.signingId) identifier.SigningID = rule.signingId;
-  return identifier;
-}
-
-const randomId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`).toUpperCase();
-
-// The raw Apple declaration, for any MDM that accepts custom declarations. Identifier and ServerToken are fresh per download:
-// a new ServerToken is what makes a device re-apply a changed declaration.
-export function buildDeclaration(rules, version) {
-  if (!rules.length) throw new Error("Every tool is excluded; the declaration would deny nothing.");
-  return JSON.stringify({
-    Type: declarationType,
-    Identifier: randomId(),
-    ServerToken: `rmm-guard-${version}-${randomId()}`,
-    Payload: { Allowed: { DeniedBinaries: rules.map(binaryIdentifier) } },
-  }, null, 2);
 }
 
 const stringValue = (settingDefinitionId, value) => ({

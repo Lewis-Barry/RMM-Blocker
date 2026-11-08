@@ -1,7 +1,7 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
-import { parseMacProducts, filterMacRules, buildDeclaration, buildIntunePolicy, reportMissingUrl } from "./macos.js";
+import { parseMacProducts, filterMacRules, buildIntunePolicy, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -757,19 +757,6 @@ async function testMacBuilder(policy) {
     }
     expectError(() => filterMacRules(data, new Set(["Not a tool"])), "Unknown tool selection");
   });
-  test("Declaration uses Apple's app.settings shape and refuses an empty deny list", () => {
-    const declaration = JSON.parse(buildDeclaration(data.rules, data.version));
-    assert(declaration.Type === "com.apple.configuration.app.settings", "Wrong declaration type");
-    assert(declaration.Identifier && declaration.ServerToken, "Identifier or ServerToken missing");
-    const denied = declaration.Payload.Allowed.DeniedBinaries;
-    assert(denied.length === data.rules.length, "Denied count differs");
-    for (const entry of denied) {
-      assert(Object.keys(entry).every(key => ["TeamID", "SigningID"].includes(key)), "Unexpected identifier key");
-      assert(typeof entry.TeamID === "string" && /^[A-Z0-9]{10}$/.test(entry.TeamID), "Identifier without a string TeamID");
-    }
-    assert(JSON.parse(buildDeclaration(data.rules, data.version)).ServerToken !== declaration.ServerToken, "ServerToken repeats");
-    expectError(() => buildDeclaration([], data.version), "deny nothing");
-  });
   test("Intune body nests app_app > app_allowed > app_allowed_deniedbinaries with one child per field", () => {
     const policy = JSON.parse(buildIntunePolicy(data.rules, data.version));
     assert(policy.platforms === "macOS" && policy.technologies === "appleRemoteManagement", "Platform or technology wrong");
@@ -816,7 +803,7 @@ async function testMacBuilder(policy) {
     test("Enabling macOS exports shows denied binaries for covered tools and both downloads", () => {
       assert(byId("mac-status").textContent.startsWith(`${data.rules.length} rules kept · 0 removed · ${data.tools.length} tools covered`), `Status wrong: ${byId("mac-status").textContent}`);
       assert(macRows().length === data.tools.length, `Covered rows ${macRows().length} differ from ${data.tools.length}`);
-      assert(!byId("mac-download-intune").disabled && !byId("mac-download-ddm").disabled, "Downloads disabled at start");
+      assert(!byId("mac-download-intune").disabled && !byId("mac-rules-open").disabled, "Downloads disabled at start");
       assert(byId("mac-report-missing").href.includes("/issues/new?"), "Report link not prefilled");
       for (const row of macRows()) {
         const summary = row.querySelector("details:last-of-type summary");
@@ -843,7 +830,7 @@ async function testMacBuilder(policy) {
         if (box && !box.checked) box.click();
       }
       assert(byId("mac-status").textContent.startsWith("0 rules kept"), "Rules still kept");
-      assert(byId("mac-download-intune").disabled && byId("mac-download-ddm").disabled, "Downloads enabled with nothing to deny");
+      assert(byId("mac-download-intune").disabled && byId("mac-rules-open").disabled, "Downloads enabled with nothing to deny");
       byId("reset").click();
       assert(byId("excluded-count").textContent === "0" && !byId("mac-download-intune").disabled, "Reset did not restore the deny list");
     });
