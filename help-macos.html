@@ -55,7 +55,7 @@
           <li>A <strong>supervised</strong> Mac, enrolled through Automated Device Enrollment (Apple Business Manager). User-enrolled Macs do not receive it.</li>
           <li>Intune: the setting lives in the settings catalog under <strong>Declarative Device Management (DDM)</strong> → <strong>App Settings</strong> → <strong>Denied Binaries</strong>. Other MDMs need support for custom declarations.</li>
         </ul>
-        <p>Each rule names a Team ID (every binary the vendor signs) or a Team ID plus Signing ID (one binary). Apple requires at least one of the two; a rule with neither makes the Mac reject the whole declaration, which is why the builder refuses to generate one.</p>
+        <p>Each rule names a Team ID (every binary the vendor signs) or a Team ID plus Signing ID (one binary). Apple would also accept a Signing ID alone, but this list never does: one careless entry could deny Safari or Teams on every Mac, so every rule carries a Team ID and the Microsoft and Google Team IDs are only accepted with a Signing ID.</p>
       </section>
       <section id="intune" class="help-step" aria-labelledby="intune-title">
         <h2 id="intune-title">2. Intune</h2>

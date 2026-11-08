@@ -4,29 +4,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { iocHeaders, iocSources, serializeCsv } from "./ioc.js";
+// The page validates the same way, so a rule macOS would reject fails here before it is committed.
+import { validateMacos } from "./macos.js";
 
 const root = import.meta.dirname;
 const { version, products } = JSON.parse(readFileSync(join(root, "products.json"), "utf8"));
 if (!/^\d+\.\d+\.\d+\.\d+$/.test(version)) throw new Error(`products.json: invalid version ${version}`);
-
-// macOS rules feed macos.js directly; the editor rejects a rule the Mac would reject, so the check lives here too.
-function validateMacos(name, macos) {
-  for (const field of Object.keys(macos)) {
-    if (!["rules", "source", "verified"].includes(field)) throw new Error(`products.json: ${name}.macos has unknown field "${field}"`);
-  }
-  if (!Array.isArray(macos.rules) || !macos.rules.length) throw new Error(`products.json: ${name}.macos needs at least one rule`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(macos.verified || "")) throw new Error(`products.json: ${name}.macos.verified must be a YYYY-MM-DD date`);
-  if (!/^https:\/\//.test(macos.source || "")) throw new Error(`products.json: ${name}.macos.source must be an https URL`);
-  for (const rule of macos.rules) {
-    for (const field of Object.keys(rule)) {
-      if (!["teamId", "signingId"].includes(field)) throw new Error(`products.json: ${name}.macos rule has unknown field "${field}"`);
-    }
-    // A denied binary needs a Team ID or Signing ID; a rule with neither makes macOS reject the whole declaration.
-    if (!rule.teamId && !rule.signingId) throw new Error(`products.json: ${name}.macos rule needs a teamId or signingId`);
-    if (rule.teamId !== undefined && !/^[A-Z0-9]{10}$/.test(rule.teamId)) throw new Error(`products.json: ${name}.macos has invalid teamId ${rule.teamId}`);
-    if (rule.signingId !== undefined && !/^[^\s"]+$/.test(rule.signingId)) throw new Error(`products.json: ${name}.macos has invalid signingId ${rule.signingId}`);
-  }
-}
 
 // Collect owners per path and per indicator so shared entries are emitted once.
 const paths = new Map();
@@ -43,7 +26,9 @@ for (const [name, product] of Object.entries(products)) {
   for (const field of Object.keys(product)) {
     if (!["paths", "domains", "vendorDomains", "ips", "macos"].includes(field)) throw new Error(`products.json: ${name} has unknown field "${field}"`);
   }
-  if (product.macos) validateMacos(name, product.macos);
+  if (product.macos) {
+    try { validateMacos(name, product.macos); } catch (error) { throw new Error(`products.json: ${error.message}`); }
+  }
   for (const path of product.paths || []) {
     if (!path.startsWith("*\\")) throw new Error(`products.json: ${name} path must start with *\\: ${path}`);
     add(paths, path, name);

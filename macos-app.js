@@ -106,12 +106,13 @@ function update() {
   for (const entry of tools) {
     const selected = excluded.has(entry.tool.name);
     const shared = entry.tool.rules.filter(rule => sharedRemoved.includes(rule));
+    const left = entry.tool.rules.filter(rule => retained.includes(rule)).length;
     entry.checkbox.checked = selected;
     entry.row.classList.toggle("excluded", selected);
     entry.warning.hidden = !shared.length;
     entry.warning.textContent = selected
-      ? `Shared rule also removed for ${[...new Set(shared.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}.`
-      : `${shared.length} shared rule${shared.length === 1 ? "" : "s"} removed by another exclusion.`;
+      ? `Shared rule also removed for ${[...new Set(shared.flatMap(rule => rule.names).filter(name => !excluded.has(name)))].join(", ")}.`
+      : `${shared.length} shared rule${shared.length === 1 ? "" : "s"} removed by another exclusion.${left ? "" : " No rules left: this tool is no longer blocked."}`;
     entry.checkbox.setAttribute("aria-describedby", [`rule-count-${tools.indexOf(entry)}`, entry.warning.hidden ? "" : entry.warning.id].filter(Boolean).join(" "));
     entry.row.hidden = !entry.searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);

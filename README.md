@@ -23,9 +23,11 @@ The **macOS** tab (`macos.html`) denies the same kind of tools on macOS 27 throu
 exposes in the settings catalog under Declarative Device Management. It needs a supervised Mac (Automated Device
 Enrollment) and has no audit mode. Rules match the vendor's code signature, not file paths:
 
-- `teamId` denies every binary the vendor signs. Use it when the vendor only ships remote tools.
-- `teamId` plus `signingId` denies one binary. Use it when the Team ID also signs unrelated software
-  (Chrome Remote Desktop is signed with Google's Team ID, so only its host binaries are listed).
+- `teamId` (required) denies every binary the vendor signs. Use it alone when the vendor only ships remote tools.
+- `teamId` plus `signingId` denies one binary. Required when the Team ID also signs unrelated software:
+  Microsoft's and Google's Team IDs are refused without a `signingId` (Chrome Remote Desktop lists only its host
+  binaries). Signing ID alone is not accepted, even though Apple allows it, because one line could deny
+  `com.apple.Safari` on every Mac.
 
 Both exports are built in the browser from the `macos` blocks in `products.json`:
 
@@ -50,8 +52,8 @@ then add to the product in `products.json`, bump `version`, and run `node build.
 }
 ```
 
-`node build.mjs --check` rejects a rule without `teamId` or `signingId`, because such a rule makes macOS reject
-the whole declaration. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
+`node build.mjs --check` runs the same validation as the page (`validateMacos` in `macos.js`): a rule without a
+valid `teamId` makes macOS reject the whole declaration, or worse, denies the wrong vendor. `help-macos.html` is the deployment guide. The Defender IOC CSVs already work on macOS
 when network protection runs in block mode, so the macOS tab adds no IOC export of its own.
 
 ## Adding or updating products

@@ -1,7 +1,7 @@
 // Builds macOS 27 app control (Apple DDM com.apple.configuration.app.settings) deny lists from products.json.
 // A denied binary is matched by Team ID (vendor-wide) or Team ID + Signing ID (one binary) and must carry at least one of the two.
 
-export const declarationType = "com.apple.configuration.app.settings";
+const declarationType = "com.apple.configuration.app.settings";
 // Intune settings catalog definition ids for the same declaration, from /beta/deviceManagement/configurationSettings.
 const intuneIds = {
   root: "app_app",
@@ -12,15 +12,40 @@ const intuneIds = {
 };
 
 const teamIdPattern = /^[A-Z0-9]{10}$/;
+// Team IDs that also sign everyday software. Denying one vendor-wide would stop Edge, Defender or Chrome on every Mac,
+// so these are only accepted together with a Signing ID. Apple's own binaries have no Team ID and never match the pattern.
+export const broadTeamIds = new Map([
+  ["UBF8T346G9", "Microsoft"],
+  ["EQHXZ8M8AV", "Google"],
+  ["BQR82RBBHL", "Adobe"],
+  ["2BUA8C4S2C", "1Password"],
+]);
 
-function validateRule(name, rule) {
+// Every rule needs a Team ID: Apple accepts Signing ID alone, but that would let a one-line products.json change deny
+// com.apple.Safari or com.microsoft.teams2 on every supervised Mac, with no audit mode to catch it.
+export function validateRule(name, rule) {
+  if (!rule || typeof rule !== "object" || Array.isArray(rule)) throw new Error(`${name}: a macOS rule must be an object.`);
   const fields = Object.keys(rule);
   if (fields.some(field => !["teamId", "signingId"].includes(field))) throw new Error(`${name}: unknown macOS rule field.`);
-  if (!rule.teamId && !rule.signingId) throw new Error(`${name}: a macOS rule needs a Team ID or Signing ID.`);
-  if (rule.teamId !== undefined && !teamIdPattern.test(rule.teamId)) throw new Error(`${name}: invalid Team ID ${rule.teamId}.`);
-  if (rule.signingId !== undefined && (typeof rule.signingId !== "string" || !/^[^\s"]+$/.test(rule.signingId))) {
-    throw new Error(`${name}: invalid Signing ID ${rule.signingId}.`);
+  if (typeof rule.teamId !== "string" || !teamIdPattern.test(rule.teamId)) throw new Error(`${name}: invalid or missing Team ID ${JSON.stringify(rule.teamId)}.`);
+  if (rule.signingId !== undefined && (typeof rule.signingId !== "string" || !/^[^\s"*]+$/.test(rule.signingId))) {
+    throw new Error(`${name}: invalid Signing ID ${JSON.stringify(rule.signingId)}.`);
   }
+  if (broadTeamIds.has(rule.teamId) && !rule.signingId) {
+    throw new Error(`${name}: Team ID ${rule.teamId} belongs to ${broadTeamIds.get(rule.teamId)} and signs unrelated software; add a Signing ID.`);
+  }
+}
+
+// The whole macos block of one product, shared by build.mjs and the page.
+export function validateMacos(name, macos) {
+  if (!macos || typeof macos !== "object") throw new Error(`${name}: macOS entry must be an object.`);
+  for (const field of Object.keys(macos)) {
+    if (!["rules", "source", "verified"].includes(field)) throw new Error(`${name}: macOS entry has unknown field "${field}".`);
+  }
+  if (!Array.isArray(macos.rules) || !macos.rules.length) throw new Error(`${name}: macOS entry has no rules.`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(macos.verified || "")) throw new Error(`${name}: macOS verified date must be YYYY-MM-DD.`);
+  if (typeof macos.source !== "string" || !/^https:\/\//.test(macos.source)) throw new Error(`${name}: macOS source must be an https URL.`);
+  for (const rule of macos.rules) validateRule(name, rule);
 }
 
 // Reads the products that have macOS rules. Shared rules are emitted once with every owner, like shared WDAC folders.
@@ -33,10 +58,9 @@ export function parseMacProducts(data) {
   for (const [name, product] of Object.entries(data.products)) {
     if (!product.macos) continue;
     const { macos } = product;
-    if (!Array.isArray(macos.rules) || !macos.rules.length) throw new Error(`${name}: macOS entry has no rules.`);
+    validateMacos(name, macos);
     const toolRules = [];
     for (const rule of macos.rules) {
-      validateRule(name, rule);
       const key = JSON.stringify([rule.teamId || "", rule.signingId || ""]);
       const entry = rules.get(key) || rules.set(key, {
         id: key,

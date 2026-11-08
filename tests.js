@@ -727,11 +727,23 @@ async function testMacBuilder() {
       for (const rule of tool.rules) assert(rule.names.includes(tool.name) && (rule.teamId || rule.signingId), `${tool.name} rule invalid`);
     }
   });
-  test("Rules without a Team ID or Signing ID, bad Team IDs and unknown fields are rejected", () => {
-    const sample = product => ({ version: "1.0.0.1", products: { Sample: { macos: { rules: [product], source: "https://x", verified: "2026-01-01" } } } });
-    expectError(() => parseMacProducts(sample({})), "needs a Team ID or Signing ID");
-    expectError(() => parseMacProducts(sample({ teamId: "short" })), "invalid Team ID");
+  test("Rules without a string Team ID, broad vendor Team IDs, bad sources and unknown fields are rejected", () => {
+    const sample = (product, extra = {}) => ({ version: "1.0.0.1", products: { Sample: { macos: { rules: [product], source: "https://x", verified: "2026-01-01", ...extra } } } });
+    expectError(() => parseMacProducts(sample({})), "invalid or missing Team ID");
+    // Signing ID alone is valid for Apple but could deny com.apple.Safari fleet-wide from one products.json line.
+    expectError(() => parseMacProducts(sample({ signingId: "com.apple.Safari" })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: "short" })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: 1234567890 })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: ["ABCDEFGHIJ"] })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample(null)), "must be an object");
     expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", cdHash: "x" })), "unknown macOS rule field");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", signingId: "com.*" })), "invalid Signing ID");
+    for (const teamId of ["UBF8T346G9", "EQHXZ8M8AV"]) {
+      expectError(() => parseMacProducts(sample({ teamId })), "signs unrelated software");
+      assert(parseMacProducts(sample({ teamId, signingId: "com.example.agent" })).rules.length === 1, "Broad Team ID with Signing ID refused");
+    }
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ" }, { source: "javascript:alert(1)" })), "https URL");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ" }, { verified: "yesterday" })), "YYYY-MM-DD");
     expectError(() => parseMacProducts({ version: "1", products: {} }), "not valid");
   });
   test("Excluding a tool removes exactly its rules and warns about shared ones", () => {
@@ -753,7 +765,7 @@ async function testMacBuilder() {
     assert(denied.length === data.rules.length, "Denied count differs");
     for (const entry of denied) {
       assert(Object.keys(entry).every(key => ["TeamID", "SigningID"].includes(key)), "Unexpected identifier key");
-      assert(entry.TeamID || entry.SigningID, "Identifier without TeamID or SigningID");
+      assert(typeof entry.TeamID === "string" && /^[A-Z0-9]{10}$/.test(entry.TeamID), "Identifier without a string TeamID");
     }
     assert(JSON.parse(buildDeclaration(data.rules, data.version)).ServerToken !== declaration.ServerToken, "ServerToken repeats");
     expectError(() => buildDeclaration([], data.version), "deny nothing");
