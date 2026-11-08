@@ -443,40 +443,52 @@ let macListText = "";
 byId("mac-rules-open")?.addEventListener("click", () => {
   const retained = macRetained();
   macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
-  // One table row per Denied Binaries entry; each value has its own copy button for the portal form.
-  const cell = value => {
-    const td = document.createElement("td");
-    if (!value) {
-      const empty = document.createElement("span");
-      empty.className = "empty";
-      empty.textContent = "leave empty";
-      td.append(empty);
-      return td;
-    }
-    const wrap = document.createElement("span");
-    wrap.className = "value";
-    const code = document.createElement("code");
+  // One block per tool: the Team ID once, then its Signing IDs. Clicking a value copies it for the portal form.
+  const chip = value => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy-chip";
+    button.setAttribute("aria-label", `Copy ${value}`);
+    const code = document.createElement("span");
     code.textContent = value;
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "copy-button";
-    copy.textContent = "Copy";
-    copy.setAttribute("aria-label", `Copy ${value}`);
-    copy.addEventListener("click", async () => {
+    button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>');
+    button.prepend(code);
+    button.addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(value); } catch (error) { console.error(error); return; }
-      copy.textContent = "Copied";
-      setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+      button.classList.add("copied");
+      setTimeout(() => button.classList.remove("copied"), 1500);
     });
-    wrap.append(code, copy);
-    td.append(wrap);
-    return td;
+    return button;
   };
-  byId("mac-modal-list").replaceChildren(...retained.map(rule => {
-    const row = document.createElement("tr");
-    const tool = document.createElement("td");
-    tool.textContent = rule.names.join("; ");
-    row.append(tool, cell(rule.teamId), cell(rule.signingId));
-    return row;
+  const line = (label, values) => {
+    const name = document.createElement("span");
+    name.className = "rule-label";
+    name.textContent = label;
+    const row = document.createElement("div");
+    row.className = "chip-row";
+    row.append(...values.map(chip));
+    return [name, row];
+  };
+  const groups = new Map();
+  for (const rule of retained) {
+    const key = rule.names.join("; ");
+    (groups.get(key) || groups.set(key, []).get(key)).push(rule);
+  }
+  byId("mac-modal-list").replaceChildren(...[...groups].map(([name, rules]) => {
+    const item = document.createElement("li");
+    item.className = "rule-group";
+    const heading = document.createElement("div");
+    heading.className = "rule-group-name";
+    const count = document.createElement("span");
+    count.className = "muted";
+    count.textContent = `${rules.length} ${rules.length === 1 ? "entry" : "entries"}`;
+    heading.append(document.createTextNode(name), count);
+    item.append(heading);
+    const teamIds = [...new Set(rules.map(rule => rule.teamId))];
+    item.append(...line(teamIds.length === 1 ? "Team ID" : "Team IDs", teamIds));
+    const signingIds = rules.map(rule => rule.signingId).filter(Boolean);
+    if (signingIds.length) item.append(...line(signingIds.length === 1 ? "Signing ID" : "Signing IDs", signingIds));
+    return item;
   }));
   byId("mac-copy").textContent = `Copy ${retained.length} rule${retained.length === 1 ? "" : "s"}`;
   byId("mac-modal").showModal();

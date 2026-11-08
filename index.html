@@ -146,11 +146,8 @@
         <h2 id="mac-modal-title">Denied Binaries to enter in Intune</h2>
         <button id="mac-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
       </div>
-      <p id="mac-modal-desc" class="modal-desc">Intune → Devices → macOS → Configuration → Settings catalog → Declarative Device Management → App Settings → Denied Binaries. Add one entry per row; leave Signing ID empty unless shown. <a href="./help-macos.html#rules">Step by step</a>.</p>
-      <div class="rule-table-wrap"><table id="mac-modal-table" class="rule-table">
-        <thead><tr><th scope="col">Tool</th><th scope="col">Team ID</th><th scope="col">Signing ID</th></tr></thead>
-        <tbody id="mac-modal-list"></tbody>
-      </table></div>
+      <p id="mac-modal-desc" class="modal-desc">Intune → Devices → macOS → Configuration → Settings catalog → Declarative Device Management → App Settings → Denied Binaries. Click a value to copy it. One entry per Team ID; a tool with Signing IDs needs one entry per Signing ID, each with the same Team ID. <a href="./help-macos.html#portal">Step by step</a>.</p>
+      <ul id="mac-modal-list" class="rule-groups" role="list"></ul>
       <div class="modal-actions">
         <button id="mac-copy" class="primary" type="button">Copy list</button>
       </div>
