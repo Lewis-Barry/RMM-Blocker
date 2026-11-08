@@ -54,10 +54,11 @@ test("sync adds to a matching product, creates new products and lists shared ind
 });
 
 test("the current products.json re-serialises unchanged, so a sync diff only shows real additions", () => {
-  const data = JSON.parse(readFileSync(join(import.meta.dirname, "..", "products.json"), "utf8"));
+  const source = readFileSync(join(import.meta.dirname, "..", "products.json"), "utf8");
+  const data = JSON.parse(source);
   const { products, changes } = sync(data, [], none);
   assert.deepEqual(changes, []);
-  assert.equal(JSON.stringify(Object.keys(products)), JSON.stringify(Object.keys(data.products)));
+  assert.equal(`${JSON.stringify({ ...data, products }, null, 2)}\n`, source);
 });
 
 test("reject removes a product's additions from the latest release and drops a release left empty", () => {
