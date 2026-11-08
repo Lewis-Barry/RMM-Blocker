@@ -84,6 +84,11 @@ input[type="search"], select { color: var(--ink); background: var(--surface); bo
 input[type="search"] { width: 100%; padding-left: 40px; }
 input::placeholder { color: var(--muted); opacity: 1; }
 .filter-field { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.platform-field { display: flex; align-items: center; gap: 4px; margin: 0; padding: 0 4px 0 0; border: 0; flex-shrink: 0; }
+.platform-field legend { float: left; color: var(--muted); font-size: 13px; padding: 0 8px 0 0; }
+.platform-option { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 8px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); cursor: pointer; font-size: 13px; }
+.platform-option:has(:checked) { border-color: var(--accent); background: var(--accent-fill); }
+.platform-option input[type="checkbox"] { width: 18px; height: 18px; }
 .filter-field label { color: var(--muted); font-size: 13px; }
 .filter-field select { min-width: 152px; }
 .workbench { display: grid; grid-template-columns: minmax(0, 1fr) 352px; flex: 1; min-height: 0; border: 1px solid var(--line); border-bottom: 0; }
@@ -221,6 +226,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
   .toolbar { flex-wrap: wrap; gap: 8px; }
   .search-field { flex-basis: 100%; }
   .filter-field { width: 100%; }
+  .platform-field { width: 100%; }
   .filter-field select { flex: 1; }
   .workbench { grid-template-columns: minmax(0, 1fr); }
   .selection-panel { min-height: 400px; }

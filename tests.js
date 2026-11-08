@@ -804,8 +804,9 @@ async function testMacBuilder(policy) {
     const doc = frame.contentDocument;
     const byId = id => doc.getElementById(id);
     const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
-    test("macOS exports start off and hidden", () => {
-      assert(!byId("link-macos").checked && byId("mac-output").hidden && byId("mac-status").hidden, "macOS exports enabled by default");
+    test("Windows is the only platform chosen at start and the macOS card is hidden", () => {
+      assert(byId("link-windows").checked && !byId("link-macos").checked, "Platform defaults wrong");
+      assert(byId("mac-card").hidden && !byId("wdac-card").hidden, "Cards do not follow the platform choice");
       assert([...doc.querySelectorAll(".tool details")].every(details => !details.textContent.includes("macOS denied")), "macOS details shown while disabled");
     });
     byId("link-macos").checked = true;
@@ -846,23 +847,26 @@ async function testMacBuilder(policy) {
       byId("reset").click();
       assert(byId("excluded-count").textContent === "0" && !byId("mac-download-intune").disabled, "Reset did not restore the deny list");
     });
-    test("Show filter isolates macOS-covered and Windows-only tools", () => {
-      byId("filter").value = "mac";
-      change(byId("filter"));
+    test("Choosing only macOS lists just the covered tools and hides the WDAC card", () => {
+      byId("link-windows").checked = false;
+      change(byId("link-windows"));
       const visible = () => [...byId("tool-list").children].filter(row => !row.hidden);
-      assert(visible().length === data.tools.length, `macOS filter shows ${visible().length}, expected ${data.tools.length}`);
-      byId("filter").value = "nomac";
-      change(byId("filter"));
-      assert(visible().length === policy.tools.length - data.tools.length, "Windows-only filter count wrong");
-      assert(visible().every(row => !row.textContent.includes("macOS denied")), "Windows-only filter shows a covered tool");
-      byId("filter").value = "all";
-      change(byId("filter"));
+      assert(visible().length === data.tools.length, `macOS-only shows ${visible().length}, expected ${data.tools.length}`);
+      assert(byId("wdac-card").hidden && !byId("mac-card").hidden, "Cards do not follow a macOS-only choice");
+      assert(visible().every(row => row.querySelector(".execution-rule-list").closest("details").hidden), "Windows rules shown while Windows is off");
+      assert(byId("results").textContent.startsWith(`${data.tools.length} / `), "Result count ignores the platform");
+      byId("link-macos").checked = false;
+      change(byId("link-macos"));
+      assert(byId("link-windows").checked, "Both platforms could be turned off");
+      assert(visible().length === policy.tools.length, "Windows list not restored");
+      byId("link-macos").checked = true;
+      change(byId("link-macos"));
     });
-    test("Disabling macOS exports hides its output without changing selections", () => {
+    test("Unticking macOS hides its card without changing selections", () => {
       teamViewer.click();
       byId("link-macos").checked = false;
       change(byId("link-macos"));
-      assert(byId("mac-output").hidden && byId("mac-status").hidden, "macOS output still shown");
+      assert(byId("mac-card").hidden && byId("mac-status").hidden, "macOS output still shown");
       assert(byId("excluded-count").textContent === "1", "Selection changed by the toggle");
       assert(macRows().length === 0, "macOS details still shown");
       teamViewer.click();

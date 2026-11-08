@@ -7,8 +7,10 @@ const byId = id => document.getElementById(id);
 const excluded = new Set();
 // The browser page shares this script without the IOC panel; each page's body names the XML to load.
 const hasIocs = !!byId("link-iocs");
-// The macOS card follows the IOC pattern: off by default, loads products.json on first use, shares the selection.
+// Platform choice: Windows on by default, macOS loads products.json on first use. Both share the one selection.
 const hasMac = !!byId("link-macos");
+const windowsOn = () => !byId("link-windows") || byId("link-windows").checked;
+const macOn = () => hasMac && byId("link-macos").checked;
 const policyFile = document.body.dataset.policy;
 if (hasIocs) byId("link-iocs").checked = false;
 if (hasMac) byId("link-macos").checked = false;
@@ -308,11 +310,12 @@ function update() {
     entry.warning.textContent = selected
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
       : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
-    const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${hasMac && byId("link-macos").checked ? entry.macSearchText : ""}`;
-    const onMac = entry.macRules.length > 0;
-    entry.row.hidden = !searchText.includes(query) ||
-      (filter === "excluded" && !selected) || (filter === "blocked" && selected) ||
-      (filter === "mac" && !onMac) || (filter === "nomac" && onMac);
+    const searchText = `${windowsOn() ? entry.searchText : entry.tool.name.toLowerCase()} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${macOn() ? entry.macSearchText : ""}`;
+    // A row stays when a chosen platform covers it; with only macOS chosen, Windows-only tools drop out.
+    const onPlatform = windowsOn() || (macOn() && entry.macRules.length > 0);
+    entry.row.hidden = !onPlatform || !searchText.includes(query) ||
+      (filter === "excluded" && !selected) || (filter === "blocked" && selected);
+    entry.row.querySelector(".execution-rule-list").closest("details").hidden = !windowsOn();
     if (!entry.row.hidden) visible++;
   }
   byId("remaining-count").textContent = policy.rules.length - ids.size;
@@ -375,9 +378,10 @@ function showMacError(error) {
 }
 
 function updateMacs() {
+  if (byId("wdac-card")) byId("wdac-card").hidden = !windowsOn();
   if (!hasMac) return;
   const enabled = byId("link-macos").checked;
-  byId("link-macos").closest("section").classList.toggle("enabled", enabled);
+  byId("mac-card").hidden = !enabled;
   byId("mac-output").hidden = !enabled;
   byId("mac-status").hidden = !enabled || !!macError || !macData;
   for (const entry of tools) {
@@ -399,6 +403,7 @@ function updateMacs() {
 }
 
 async function enableMacs() {
+  if (!byId("link-macos").checked && !windowsOn()) byId("link-windows").checked = true;
   if (!byId("link-macos").checked || macLoading) { update(); return; }
   macError = undefined;
   byId("mac-error").hidden = true;
@@ -433,13 +438,10 @@ byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIn
 byId("mac-download-ddm")?.addEventListener("click", () => downloadMac(buildDeclaration, "RMM_Denied_Binaries_macOS.json"));
 
 byId("search").addEventListener("input", () => update());
-byId("filter").addEventListener("change", () => {
-  // The macOS filters need the Mac rules, so picking one turns the macOS exports on.
-  if (hasMac && ["mac", "nomac"].includes(byId("filter").value) && !byId("link-macos").checked) {
-    byId("link-macos").checked = true;
-    enableMacs();
-    return;
-  }
+byId("filter").addEventListener("change", () => update());
+// At least one platform stays chosen, otherwise the list and every download would be empty.
+byId("link-windows")?.addEventListener("change", () => {
+  if (!byId("link-windows").checked && !macOn()) byId("link-windows").checked = true;
   update();
 });
 byId("reset").addEventListener("click", () => { excluded.clear(); update(); });

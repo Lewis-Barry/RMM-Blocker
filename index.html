@@ -33,7 +33,7 @@
   </header>
   <main class="container page-main">
     <div class="builder-intro-row">
-      <p class="builder-intro">Exclude trusted tools from XML and CSV exports.</p>
+      <p class="builder-intro">Exclude trusted tools from the Windows, macOS and IOC exports.</p>
       <span class="chip updated-chip">Last updated Nov 8, 2026</span>
     </div>
     <section class="how-to" aria-labelledby="how-to-title">
@@ -42,7 +42,7 @@
         <li>Find each remote tool your team uses, then tick <strong>Exclude</strong>.</li>
         <li>Download the XML and deploy it as a WDAC policy, e.g. through Intune.</li>
         <li>Optional: turn on <strong>Include IOC exports</strong> and import every CSV batch into Defender indicators.</li>
-        <li>Optional: turn on <strong>Include macOS exports</strong> for an Intune or Apple deny list of the same tools on macOS 27. <a href="./help-macos.html">macOS guide</a>.</li>
+        <li>Tick <strong>macOS</strong> under Platform to see which tools are covered on Mac and to download an Intune or Apple deny list. <a href="./help-macos.html">macOS guide</a>.</li>
         <li>Pilot on one test device before a wider rollout.</li>
       </ol>
     </section>
@@ -55,14 +55,17 @@
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="1.5"/></svg>
           <input id="search" type="search" placeholder="Search tools, filenames or folders" autocomplete="off">
         </div>
+        <fieldset class="platform-field" aria-label="Platforms">
+          <legend>Platform</legend>
+          <label class="platform-option"><input id="link-windows" type="checkbox" checked autocomplete="off"><span>Windows</span></label>
+          <label class="platform-option"><input id="link-macos" type="checkbox" autocomplete="off" aria-describedby="mac-status"><span>macOS</span></label>
+        </fieldset>
         <div class="filter-field">
           <label for="filter">Show</label>
           <select id="filter">
             <option value="all">All tools</option>
             <option value="excluded">Excluded tools</option>
             <option value="blocked">Not excluded</option>
-            <option value="mac">Covered on macOS</option>
-            <option value="nomac">Windows only</option>
           </select>
         </div>
       </div>
@@ -77,7 +80,7 @@
           <div class="panel-heading"><h2 id="exports-title">Downloads</h2></div>
           <div class="export-content">
             <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
-            <section class="export-card" aria-labelledby="wdac-export-title">
+            <section id="wdac-card" class="export-card" aria-labelledby="wdac-export-title">
               <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
               <p class="output-description">Blocks execution on Windows 11 24H2 and newer.</p>
               <p id="wdac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
@@ -104,13 +107,9 @@
                 <details class="export-details"><summary>Import notes</summary><p>No Allow indicators added. Delete existing imports separately. Other network controls may still block connections; endpoint coverage is incomplete.</p><p><a href="./help-ioc.html">Upload guide</a></p></details>
               </div>
             </section>
-            <section class="export-card mac-panel" aria-labelledby="mac-export-title">
+            <section id="mac-card" class="export-card mac-panel" aria-labelledby="mac-export-title" hidden>
               <div class="export-card-heading"><h3 id="mac-export-title">macOS app control</h3><span class="file-badge">JSON</span></div>
               <p class="output-description">Blocks execution on macOS 27 (supervised) by code signature. Preview: no audit mode, test on a pilot Mac.</p>
-              <label class="ioc-toggle" for="link-macos">
-                <input id="link-macos" type="checkbox" autocomplete="off" aria-describedby="mac-status">
-                <span>Include macOS exports</span>
-              </label>
               <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="mac-output" hidden>
                 <div id="mac-error" class="error" role="alert" hidden></div>
