@@ -856,7 +856,9 @@ async function testMacBuilder(policy) {
       const rows = [...byId("mac-modal-list").children];
       assert(byId("mac-modal").open, "Rule dialog did not open");
       assert(rows.length === expected.length, `Rows ${rows.length} differ from ${expected.length}`);
-      assert(rows.every(row => /^[A-Z0-9]{10}/.test(row.querySelector("code").textContent)), "Row without a Team ID");
+      assert(rows.every(row => row.tagName === "TR" && /^[A-Z0-9]{10}$/.test(row.children[1].querySelector("code").textContent)), "Row without a Team ID");
+      assert(rows.every(row => row.children[1].querySelector("button.copy-button")), "Team ID without a copy button");
+      assert(rows.some(row => row.children[2].textContent.includes("leave empty")), "Empty Signing ID not labelled");
       assert(!rows.some(row => row.textContent.includes("TeamViewer")), "Excluded tool still listed");
       assert(rows.some(row => row.textContent.includes("cloudflared")), "Signing ID rule not shown");
       byId("mac-close").click();

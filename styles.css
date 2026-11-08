@@ -159,6 +159,15 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .csv-list input[type="checkbox"] { width: 16px; height: 16px; flex: none; }
 .csv-list code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
 .csv-list .rule-type { color: var(--muted); font-size: 10px; }
+.rule-table-wrap { overflow: auto; min-height: 0; border: 1px solid var(--line); border-radius: 6px; }
+.rule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rule-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 8px 12px; background: var(--surface-alt); position: sticky; top: 0; }
+.rule-table td { padding: 6px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+.rule-table td:first-child { color: var(--ink); }
+.rule-table .value { display: inline-flex; align-items: center; gap: 8px; }
+.rule-table code { font-size: 13px; }
+.rule-table .empty { color: var(--muted); }
+.copy-button { min-height: 28px; padding: 2px 10px; font-size: 12px; font-weight: 400; }
 .warning-details { background: var(--warning-fill); padding: 8px; border-radius: 4px; margin-top: 16px; }
 .warning-details summary { color: var(--warning); }
 .error { background: var(--error-fill); color: var(--error); border: 1px solid var(--error); border-radius: 4px; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; font-size: 13px; }

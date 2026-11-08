@@ -443,15 +443,40 @@ let macListText = "";
 byId("mac-rules-open")?.addEventListener("click", () => {
   const retained = macRetained();
   macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
-  byId("mac-modal-list").replaceChildren(...retained.map(rule => {
-    const item = document.createElement("li");
+  // One table row per Denied Binaries entry; each value has its own copy button for the portal form.
+  const cell = value => {
+    const td = document.createElement("td");
+    if (!value) {
+      const empty = document.createElement("span");
+      empty.className = "empty";
+      empty.textContent = "leave empty";
+      td.append(empty);
+      return td;
+    }
+    const wrap = document.createElement("span");
+    wrap.className = "value";
     const code = document.createElement("code");
-    code.textContent = rule.signingId ? `${rule.teamId}  +  ${rule.signingId}` : rule.teamId;
-    const owner = document.createElement("span");
-    owner.className = "rule-type";
-    owner.textContent = rule.names.join("; ");
-    item.append(code, owner);
-    return item;
+    code.textContent = value;
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy-button";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", `Copy ${value}`);
+    copy.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(value); } catch (error) { console.error(error); return; }
+      copy.textContent = "Copied";
+      setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+    });
+    wrap.append(code, copy);
+    td.append(wrap);
+    return td;
+  };
+  byId("mac-modal-list").replaceChildren(...retained.map(rule => {
+    const row = document.createElement("tr");
+    const tool = document.createElement("td");
+    tool.textContent = rule.names.join("; ");
+    row.append(tool, cell(rule.teamId), cell(rule.signingId));
+    return row;
   }));
   byId("mac-copy").textContent = `Copy ${retained.length} rule${retained.length === 1 ? "" : "s"}`;
   byId("mac-modal").showModal();
