@@ -113,9 +113,10 @@
               <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="mac-output" hidden>
                 <div id="mac-error" class="error" role="alert" hidden></div>
-                <button id="mac-download-intune" class="primary" type="button">Download Intune JSON</button>
+                <button id="mac-rules-open" class="primary" type="button">Show rules for the portal</button>
+                <button id="mac-download-intune" class="primary mac-secondary" type="button">Download Intune JSON</button>
                 <button id="mac-download-ddm" class="primary mac-secondary" type="button">Download Apple declaration</button>
-                <p class="muted">Separate from the WDAC XML. Intune JSON is a settings catalog body for Graph; the declaration is for other MDMs.</p>
+                <p class="muted">Separate from the WDAC XML. Enter the rules in the Intune settings catalog, or import the JSON through Graph; the declaration is for other MDMs.</p>
                 <details class="export-details"><summary>Deploy notes</summary><p>Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires macOS 27 and Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
               </div>
             </section>
@@ -137,6 +138,19 @@
       <pre class="kql-code"><code id="kql-code"></code></pre>
       <div class="modal-actions">
         <button id="kql-copy" class="primary" type="button">Copy query</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="mac-modal" class="modal" aria-labelledby="mac-modal-title" aria-describedby="mac-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="mac-modal-title">Denied Binaries to enter in Intune</h2>
+        <button id="mac-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <p id="mac-modal-desc" class="modal-desc">Intune → Devices → macOS → Configuration → Settings catalog → Declarative Device Management → App Settings → Denied Binaries. Add one entry per row; leave Signing ID empty unless shown. <a href="./help-macos.html#rules">Step by step</a>.</p>
+      <ul id="mac-modal-list" class="csv-list" role="list"></ul>
+      <div class="modal-actions">
+        <button id="mac-copy" class="primary" type="button">Copy list</button>
       </div>
     </div>
   </dialog>

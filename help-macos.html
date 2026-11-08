@@ -39,10 +39,14 @@
       <nav class="help-nav help-sections" aria-labelledby="sections-title">
         <h2 id="sections-title">On this page</h2>
         <a href="#requirements">1. Requirements</a>
-        <a href="#intune">2. Intune</a>
-        <a href="#other-mdm">3. Other MDM</a>
-        <a href="#verify">4. Verify</a>
-        <a href="#contribute">5. Add a tool</a>
+        <a href="#create">2. Create</a>
+        <a href="#settings">3. Settings</a>
+        <a href="#rules">4. Rules</a>
+        <a href="#assign">5. Assign</a>
+        <a href="#verify">6. Verify</a>
+        <a href="#graph">7. Graph import</a>
+        <a href="#other-mdm">8. Other MDM</a>
+        <a href="#contribute">9. Add a tool</a>
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
@@ -57,31 +61,39 @@
         </ul>
         <p>Each rule names a Team ID (every binary the vendor signs) or a Team ID plus Signing ID (one binary). Apple would also accept a Signing ID alone, but this list never does: one careless entry could deny Safari or Teams on every Mac, so every rule carries a Team ID and the Microsoft and Google Team IDs are only accepted with a Signing ID.</p>
       </section>
-      <section id="intune" class="help-step" aria-labelledby="intune-title">
-        <h2 id="intune-title">2. Intune</h2>
-        <p>The Intune portal cannot import settings catalog JSON, so the policy is created through Microsoft Graph. The downloaded file is the request body.</p>
-        <ol>
-          <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a> and sign in with an Intune administrator. Consent to <code>DeviceManagementConfiguration.ReadWrite.All</code>.</li>
-          <li>Set the method to <strong>POST</strong> and the URL to <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>.</li>
-          <li>Paste the contents of <code>RMM_Denied_Binaries_Intune.json</code> as the request body and run it. The response is the new policy.</li>
-          <li>In <a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>Configuration</strong>, open <strong>Block RMM tools (macOS)</strong>, review the Denied Binaries, and assign your pilot device group.</li>
-        </ol>
-        <p>Or from PowerShell with the Graph SDK:</p>
-        <pre class="kql-code"><code>Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
-$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
-Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
-        <p>To update the list later, download a new JSON and create a new policy, or edit the Denied Binaries in the portal. Keep one deny policy per Mac; several are merged as a union, so a tool excluded in one is still denied by the other.</p>
+      <section id="create" class="help-step" aria-labelledby="create-title">
+        <h2 id="create-title">2. Create</h2>
+        <p><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong> → <strong>Create</strong> → <strong>New policy</strong>.</p>
+        <p>Platform <strong>macOS</strong>, profile type <strong>Settings catalog</strong>. Select <strong>Create</strong>.</p>
+        <p>Name the policy, for example <strong>Block RMM (macOS)</strong>. Select <strong>Next</strong>.</p>
       </section>
-      <section id="other-mdm" class="help-step" aria-labelledby="other-mdm-title">
-        <h2 id="other-mdm-title">3. Other MDM</h2>
-        <p><code>RMM_Denied_Binaries_macOS.json</code> is the raw <code>com.apple.configuration.app.settings</code> declaration. Upload it where your MDM accepts a custom declaration and scope it to supervised Macs on macOS 27.</p>
-        <p>Every download carries a fresh <strong>Identifier</strong> and <strong>ServerToken</strong>. When you replace an existing declaration, keep its Identifier and change only the ServerToken, otherwise the device treats it as a second declaration.</p>
-        <p>Schema: <a href="https://github.com/apple/device-management/blob/release/declarative/declarations/configurations/app.settings.yaml" target="_blank" rel="noopener noreferrer">Apple device-management repository <span aria-hidden="true">↗</span></a>.</p>
+      <section id="settings" class="help-step" aria-labelledby="settings-title">
+        <h2 id="settings-title">3. Settings</h2>
+        <p>On <strong>Configuration settings</strong>, select <strong>Add settings</strong>. In the settings picker, expand <strong>Declarative Device Management (DDM)</strong> and select <strong>App Settings</strong>.</p>
+        <p>Under the <strong>Allowed</strong> group, tick only <strong>Denied Binaries</strong>. Close the picker.</p>
+        <aside class="help-warning" role="note">Do not tick the whole Allowed group or Allowed Binaries. An allow list quits every app that is not on it, and a Denied Binaries entry with no Team ID makes the Mac reject the entire policy, without naming the entry.</aside>
+      </section>
+      <section id="rules" class="help-step" aria-labelledby="rules-title">
+        <h2 id="rules-title">4. Rules</h2>
+        <p>On the RMM page, tick <strong>macOS</strong> under Platform and select <strong>Show rules for the portal</strong> in the macOS card. It lists every rule left after your exclusions.</p>
+        <p>For each rule, select <strong>Add</strong> (or <strong>Edit instance</strong>) under Denied Binaries and fill in:</p>
+        <ul>
+          <li><strong>Team ID</strong>: the 10-character value from the list, for example <code>H7UGFBUGV6</code> for TeamViewer.</li>
+          <li><strong>Signing ID</strong>: only when the list shows one (Chrome Remote Desktop, Cloudflare Tunnel). Leave it empty otherwise.</li>
+          <li>Leave <strong>CD Hash</strong> and <strong>Path Prefix</strong> empty and <strong>Signing State</strong> on its default. Intune rejects an empty field you have ticked, so do not tick fields you leave blank.</li>
+        </ul>
+        <p>Repeat until every rule from the list is entered, then select <strong>Next</strong>.</p>
+      </section>
+      <section id="assign" class="help-step" aria-labelledby="assign-title">
+        <h2 id="assign-title">5. Assign</h2>
+        <p>Set scope tags if needed. Assign your pilot device group of supervised Macs.</p>
+        <p><strong>Review + create</strong> → <strong>Create</strong>.</p>
+        <p>Keep one deny policy per Mac. Several are merged into one list, so a tool you excluded in one policy is still denied by the other.</p>
       </section>
       <section id="verify" class="help-step" aria-labelledby="verify-title">
-        <h2 id="verify-title">4. Verify</h2>
+        <h2 id="verify-title">6. Verify</h2>
         <ul>
-          <li>Sync the pilot Mac. In Intune the per-setting status shows <strong>Succeeded</strong>; an invalid rule shows every setting as Noncompliant and does not name the rule.</li>
+          <li>Sync the pilot Mac. In Intune, the policy's <strong>Per-setting status</strong> shows <strong>Succeeded</strong>. If every setting shows <strong>Noncompliant</strong>, one entry is missing its Team ID: open each entry and check.</li>
           <li>Launch a denied tool. macOS closes it and shows that the app is not allowed by your organisation.</li>
           <li>Launch an excluded tool. It must start normally.</li>
           <li>On the Mac, <code>log show --last 10m --predicate 'subsystem == "com.apple.ManagedClient"' | grep -i DENIED</code> lists the blocked executions.</li>
@@ -89,8 +101,27 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
         <p>Expand assignments after testing.</p>
         <p><a href="https://learn.microsoft.com/intune/device-configuration/templates/apple-ddm-app-settings" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a> · <a href="https://support.apple.com/guide/deployment/dep001044b08/web" target="_blank" rel="noopener noreferrer">Apple Deployment Guide <span aria-hidden="true">↗</span></a></p>
       </section>
+      <section id="graph" class="help-step" aria-labelledby="graph-title">
+        <h2 id="graph-title">7. Graph import (optional)</h2>
+        <p>Instead of typing the rules, download <strong>Intune JSON</strong> and create the same policy in one request. The portal has no import for settings catalog JSON, so this goes through Microsoft Graph.</p>
+        <ol>
+          <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a>, sign in as an Intune administrator and consent to <code>DeviceManagementConfiguration.ReadWrite.All</code>.</li>
+          <li>Method <strong>POST</strong>, URL <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>.</li>
+          <li>Paste the file as the request body and run it. The policy appears under <strong>Devices</strong> → <strong>Configuration</strong>, unassigned.</li>
+          <li>Open it, check the Denied Binaries, and assign your pilot group as in step 5.</li>
+        </ol>
+        <pre class="kql-code"><code>Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
+$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
+Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
+      </section>
+      <section id="other-mdm" class="help-step" aria-labelledby="other-mdm-title">
+        <h2 id="other-mdm-title">8. Other MDM</h2>
+        <p><code>RMM_Denied_Binaries_macOS.json</code> is the raw <code>com.apple.configuration.app.settings</code> declaration. Upload it where your MDM accepts a custom declaration and scope it to supervised Macs on macOS 27.</p>
+        <p>Every download carries a fresh <strong>Identifier</strong> and <strong>ServerToken</strong>. When you replace an existing declaration, keep its Identifier and change only the ServerToken, otherwise the device treats it as a second declaration.</p>
+        <p>Schema: <a href="https://github.com/apple/device-management/blob/release/declarative/declarations/configurations/app.settings.yaml" target="_blank" rel="noopener noreferrer">Apple device-management repository <span aria-hidden="true">↗</span></a>.</p>
+      </section>
       <section id="contribute" class="help-step" aria-labelledby="contribute-title">
-        <h2 id="contribute-title">5. Add a tool</h2>
+        <h2 id="contribute-title">9. Add a tool</h2>
         <p>Only tools whose Mac code signature was checked against a real installer are listed. To add one, install it on a Mac and read the signature of the app and of every helper, agent or service it installs:</p>
         <pre class="kql-code"><code>codesign -dvvv "/Applications/Example.app" 2>&amp;1 | grep -E "^(Identifier|TeamIdentifier)="
 find /Library/PrivilegedHelperTools /Library/LaunchDaemons -newer /Applications/Example.app</code></pre>

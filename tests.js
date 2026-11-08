@@ -862,6 +862,19 @@ async function testMacBuilder(policy) {
       byId("link-macos").checked = true;
       change(byId("link-macos"));
     });
+    test("Portal rule list shows one row per retained rule with its tools", () => {
+      teamViewer.click();
+      byId("mac-rules-open").click();
+      const expected = filterMacRules(data, new Set(["TeamViewer"])).retained;
+      const rows = [...byId("mac-modal-list").children];
+      assert(byId("mac-modal").open, "Rule dialog did not open");
+      assert(rows.length === expected.length, `Rows ${rows.length} differ from ${expected.length}`);
+      assert(rows.every(row => /^[A-Z0-9]{10}/.test(row.querySelector("code").textContent)), "Row without a Team ID");
+      assert(!rows.some(row => row.textContent.includes("TeamViewer")), "Excluded tool still listed");
+      assert(rows.some(row => row.textContent.includes("cloudflared")), "Signing ID rule not shown");
+      byId("mac-close").click();
+      teamViewer.click();
+    });
     test("Unticking macOS hides its card without changing selections", () => {
       teamViewer.click();
       byId("link-macos").checked = false;

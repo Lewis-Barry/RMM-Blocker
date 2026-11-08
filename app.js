@@ -399,7 +399,7 @@ function updateMacs() {
   const { retained, removed } = filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name))));
   const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
   byId("mac-status").textContent = `${retained.length} rules kept · ${removed.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
-  for (const id of ["mac-download-intune", "mac-download-ddm"]) byId(id).disabled = !retained.length;
+  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ddm"]) byId(id).disabled = !retained.length;
 }
 
 async function enableMacs() {
@@ -434,6 +434,37 @@ function downloadMac(build, name) {
 }
 
 byId("link-macos")?.addEventListener("change", enableMacs);
+
+// The portal route: one row per Denied Binaries entry, with the tool names so the admin knows what each Team ID is.
+function macRetained() {
+  return filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name)))).retained;
+}
+let macListText = "";
+byId("mac-rules-open")?.addEventListener("click", () => {
+  const retained = macRetained();
+  macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
+  byId("mac-modal-list").replaceChildren(...retained.map(rule => {
+    const item = document.createElement("li");
+    const code = document.createElement("code");
+    code.textContent = rule.signingId ? `${rule.teamId}  +  ${rule.signingId}` : rule.teamId;
+    const owner = document.createElement("span");
+    owner.className = "rule-type";
+    owner.textContent = rule.names.join("; ");
+    item.append(code, owner);
+    return item;
+  }));
+  byId("mac-copy").textContent = `Copy ${retained.length} rule${retained.length === 1 ? "" : "s"}`;
+  byId("mac-modal").showModal();
+});
+byId("mac-close")?.addEventListener("click", () => byId("mac-modal").close());
+byId("mac-modal")?.addEventListener("click", event => {
+  if (event.target === byId("mac-modal")) byId("mac-modal").close();
+});
+byId("mac-copy")?.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(macListText); } catch (error) { console.error(error); return; }
+  byId("mac-copy").textContent = "Copied";
+  setTimeout(() => { byId("mac-copy").textContent = "Copy list"; }, 1500);
+});
 byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIntunePolicy, "RMM_Denied_Binaries_Intune.json"));
 byId("mac-download-ddm")?.addEventListener("click", () => downloadMac(buildDeclaration, "RMM_Denied_Binaries_macOS.json"));
 
