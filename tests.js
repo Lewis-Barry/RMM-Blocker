@@ -738,7 +738,7 @@ async function testMacBuilder(policy) {
     expectError(() => parseMacProducts(sample(null)), "must be an object");
     expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", cdHash: "x" })), "unknown macOS rule field");
     expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", signingId: "com.*" })), "invalid Signing ID");
-    for (const teamId of ["UBF8T346G9", "EQHXZ8M8AV"]) {
+    for (const teamId of ["UBF8T346G9", "EQHXZ8M8AV", "68WVV388M8"]) {
       expectError(() => parseMacProducts(sample({ teamId })), "signs unrelated software");
       assert(parseMacProducts(sample({ teamId, signingId: "com.example.agent" })).rules.length === 1, "Broad Team ID with Signing ID refused");
     }

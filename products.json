@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.20",
+  "version": "1.0.0.21",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -176,7 +176,16 @@
       "paths": [
         "*\\aspia_client*.exe",
         "*\\Aspia\\*"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "B4CLUJLVCY"
+          }
+        ],
+        "source": "https://github.com/dchapyshev/aspia/releases/download/v3.3.5/aspia-host-3.3.5-universal.pkg",
+        "verified": "2026-11-08"
+      }
     },
     "Atera": {
       "paths": [
@@ -417,7 +426,17 @@
         "update.argotunnel.com",
         "us-region1.v2.argotunnel.com",
         "us-region2.v2.argotunnel.com"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "68WVV388M8",
+            "signingId": "cloudflared"
+          }
+        ],
+        "source": "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz",
+        "verified": "2026-11-08"
+      }
     },
     "Connect / Support tools (generic names)": {
       "paths": [
@@ -2285,9 +2304,17 @@
             "teamId": "ZNCQ8JEH7X"
           }
         ],
-        "source": "https://downloads.realvnc.com/download/file/realvnc-connect-viewer/RealVNC-Connect-Viewer-8.6.0-MacOSX-universal.pkg",
+        "source": "https://downloads.realvnc.com/download/file/vnc.files/VNC-Server-7.18.1-MacOSX-universal.pkg",
         "verified": "2026-11-08"
-      }
+      },
+      "domains": [
+        "services.vnc.com",
+        "manage.realvnc.com",
+        "update-check.realvnc.com"
+      ],
+      "vendorDomains": [
+        "realvnc.com"
+      ]
     },
     "RemCom": {
       "paths": [
@@ -2810,7 +2837,16 @@
       "vendorDomains": [
         "tailscale.com",
         "tailscale.io"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "W5364U7YZB"
+          }
+        ],
+        "source": "https://pkgs.tailscale.com/stable/Tailscale-1.104.5-macos.pkg",
+        "verified": "2026-11-08"
+      }
     },
     "Tanium": {
       "paths": [
@@ -2925,7 +2961,16 @@
         "*\\tigervnc\\*",
         "*\\tigervnc server\\*",
         "*\\tigervnc*.exe"
-      ]
+      ],
+      "macos": {
+        "rules": [
+          {
+            "teamId": "S5LX88A9BW"
+          }
+        ],
+        "source": "https://downloads.sourceforge.net/tigervnc/TigerVNC-1.16.2.dmg",
+        "verified": "2026-11-08"
+      }
     },
     "TightVNC / Remote Ripple": {
       "paths": [

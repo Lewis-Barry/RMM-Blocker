@@ -19,6 +19,8 @@ export const broadTeamIds = new Map([
   ["EQHXZ8M8AV", "Google"],
   ["BQR82RBBHL", "Adobe"],
   ["2BUA8C4S2C", "1Password"],
+  // Also signs the Cloudflare WARP client, so cloudflared is denied by Signing ID.
+  ["68WVV388M8", "Cloudflare"],
 ]);
 
 // Every rule needs a Team ID: Apple accepts Signing ID alone, but that would let a one-line products.json change deny

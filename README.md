@@ -25,7 +25,7 @@ Enrollment) and has no audit mode. Rules match the vendor's code signature, not 
 
 - `teamId` (required) denies every binary the vendor signs. Use it alone when the vendor only ships remote tools.
 - `teamId` plus `signingId` denies one binary. Required when the Team ID also signs unrelated software:
-  Microsoft's and Google's Team IDs are refused without a `signingId` (Chrome Remote Desktop lists only its host
+  the Microsoft, Google, Adobe, 1Password and Cloudflare Team IDs are refused without a `signingId` (Chrome Remote Desktop lists only its host
   binaries). Signing ID alone is not accepted, even though Apple allows it, because one line could deny
   `com.apple.Safari` on every Mac.
 
@@ -165,7 +165,7 @@ The **Include IOC exports** checkbox defaults to **off**. Off means XML-only;
 IOC CSVs are not loaded or prepared. Enable them in the output panel.
 
 When enabled, the three supplied CSVs in `IOC` are combined locally into one
-661-indicator dataset (649 domains and 12 IPs). The same trusted-tool selections
+665-indicator dataset (653 domains and 12 IPs). The same trusted-tool selections
 remove matching indicators; all remaining rows retain their original **Block**
 action and metadata. This does not create Allow indicators or delete indicators
 already imported into Defender.
@@ -173,7 +173,7 @@ already imported into Defender.
 - Download the XML separately, then download and import **every IOC CSV batch**.
   Batches are regenerated after filtering, with at most **500 data rows per
   file**, plus the original Defender header. No selections produces batches of
-  500 and 161; excluding Datto RMM produces a single 540-indicator batch.
+  500 and 165; excluding Datto RMM produces a single 544-indicator batch.
 - Each tool shows its matching IOCs when the toggle is on. Search also matches
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.

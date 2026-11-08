@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.0.0.21",
+    "date": "2026-11-08",
+    "source": "manual",
+    "note": "macOS: four more tools verified against their installers (Tailscale, TigerVNC, Aspia, Cloudflare Tunnel by Signing ID). RealVNC gains the cloud broker and management domains read from the VNC Server binaries. MeshAgent is ad-hoc signed and cannot be covered by Team ID.",
+    "products": [
+      {
+        "name": "RealVNC",
+        "new": false,
+        "paths": [],
+        "domains": [
+          "services.vnc.com",
+          "manage.realvnc.com",
+          "update-check.realvnc.com",
+          "realvnc.com"
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.0.20",
     "date": "2026-11-08",
     "source": "manual",
