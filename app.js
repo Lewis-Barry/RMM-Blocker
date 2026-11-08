@@ -26,7 +26,6 @@ let pendingCsv;
 let macData;
 let macLoading = false;
 let macError;
-let macPromise;
 // One shared load for the IOC toggle and the KQL popup; a failure clears it so the next try refetches.
 function loadIocsOnce() {
   return iocPromise ||= loadIocs(policy.tools.map(tool => tool.name)).catch(error => {
@@ -300,6 +299,7 @@ function update() {
   const query = byId("search").value.trim().toLowerCase();
   const filter = byId("filter").value;
   let visible = 0;
+  let eligible = 0;
   for (const entry of tools) {
     const selected = excluded.has(entry.tool.name);
     const sharedRemoved = entry.tool.rules.filter(rule => ids.has(rule.id) && rule.names.length > 1);
@@ -312,6 +312,7 @@ function update() {
     const searchText = `${windowsOn() ? entry.searchText : entry.tool.name.toLowerCase()} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${macOn() ? entry.macSearchText : ""}`;
     // A row stays when a chosen platform covers it; with only macOS chosen, Windows-only tools drop out.
     const onPlatform = windowsOn() || (macOn() && entry.macRules.length > 0);
+    if (onPlatform) eligible++;
     entry.row.hidden = !onPlatform || !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
     entry.row.querySelector(".execution-rule-list").closest("details").hidden = !windowsOn();
@@ -321,7 +322,7 @@ function update() {
   byId("excluded-count").textContent = excluded.size;
   byId("removed-count").textContent = ids.size;
   byId("reset").disabled = !excluded.size;
-  byId("results").textContent = `${visible} / ${tools.length} tools`;
+  byId("results").textContent = `${visible} / ${eligible} tools`;
   byId("empty").hidden = visible !== 0;
   byId("selection-details").hidden = !excluded.size;
   byId("selection-summary").textContent = `Excluded tools (${excluded.size})`;
@@ -335,14 +336,7 @@ function update() {
   updateIocs();
 }
 
-// ---- macOS app control (same selection, separate files) ----
-function loadMacOnce() {
-  return macPromise ||= loadMacProducts().catch(error => {
-    macPromise = undefined;
-    throw error;
-  });
-}
-
+// ---- macOS app control (same selection, separate file) ----
 function attachMacDetails() {
   const byName = new Map(macData.tools.map(tool => [tool.name, tool]));
   for (const entry of tools) {
@@ -372,17 +366,22 @@ function attachMacDetails() {
 function showMacError(error) {
   console.error(error);
   macError = error;
-  byId("mac-error").textContent = `${error.message} macOS exports unavailable; XML unaffected. Disable and re-enable macOS exports to retry.`;
+  byId("mac-error").textContent = `${error.message} macOS exports unavailable; XML unaffected. Untick and tick macOS to retry.`;
   byId("mac-error").hidden = false;
 }
+
+// Only tools in this policy can be excluded, so a tool with macOS rules but no WDAC entry stays denied.
+const macRetained = () => filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name)))).retained;
 
 function updateMacs() {
   if (byId("wdac-card")) byId("wdac-card").hidden = !windowsOn();
   if (!hasMac) return;
   const enabled = byId("link-macos").checked;
+  const ready = enabled && macData && !macError;
   byId("mac-card").hidden = !enabled;
-  byId("mac-output").hidden = !enabled;
-  byId("mac-status").hidden = !enabled || !!macError || !macData;
+  byId("mac-status").hidden = !enabled || macError || !macData;
+  // Without data the buttons would only throw, so they stay disabled until the rules are in.
+  for (const id of ["mac-rules-open", "mac-download-intune"]) byId(id).disabled = !ready;
   for (const entry of tools) {
     const covered = entry.macRules.length > 0;
     entry.macCount.hidden = !enabled || !macData || covered || !excluded.has(entry.tool.name);
@@ -392,12 +391,11 @@ function updateMacs() {
   }
   if (!enabled) { byId("mac-status").textContent = ""; return; }
   if (macLoading) { byId("mac-status").hidden = false; byId("mac-status").textContent = "Loading macOS rules..."; return; }
-  if (macError || !macData) return;
-  // Only tools in this policy can be excluded, so a tool with macOS rules but no WDAC entry stays blocked.
+  if (!ready) return;
+  const retained = macRetained();
   const known = new Set(policy.tools.map(tool => tool.name));
-  const { retained, removed } = filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name))));
   const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
-  byId("mac-status").textContent = `${retained.length} rules kept · ${removed.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
+  byId("mac-status").textContent = `${retained.length} rules kept · ${macData.rules.length - retained.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
   for (const id of ["mac-rules-open", "mac-download-intune"]) byId(id).disabled = !retained.length;
 }
 
@@ -410,9 +408,9 @@ async function enableMacs() {
   macLoading = true;
   update();
   try {
-    macData = await loadMacOnce();
+    macData = await loadMacProducts();
     attachMacDetails();
-    byId("mac-report-missing").href = reportMissingUrl(document.querySelector(".source-link").href.replace(/\/$/, ""), "<tool name>");
+    byId("mac-report-missing").href = reportMissingUrl(document.querySelector(".source-link").href.replace(/\/$/, ""));
   } catch (error) {
     macData = undefined;
     showMacError(error);
@@ -422,27 +420,30 @@ async function enableMacs() {
   }
 }
 
-function downloadMac(build, name) {
+byId("link-macos")?.addEventListener("change", enableMacs);
+byId("mac-download-intune")?.addEventListener("click", () => {
   try {
-    const { retained } = filterMacRules(macData, new Set([...excluded].filter(n => macData.tools.some(tool => tool.name === n))));
-    saveFile(build(retained, macData.version), excluded.size ? name.replace(/\.json$/, "_custom.json") : name, "application/json;charset=utf-8");
+    saveFile(buildIntunePolicy(macRetained(), macData.version), `RMM_Denied_Binaries_Intune${excluded.size ? "_custom" : ""}.json`, "application/json;charset=utf-8");
     byId("mac-error").hidden = true;
   } catch (error) {
     showMacError(error);
   }
+});
+
+// A copy button that shows what happened: Copied, or Copy failed when the clipboard is unavailable.
+async function copyWith(button, text, restore) {
+  let state = "copied";
+  try { await navigator.clipboard.writeText(text); } catch (error) { console.error(error); state = "copy-failed"; }
+  button.classList.add(state);
+  if (restore) button.textContent = state === "copied" ? "Copied" : "Copy failed";
+  setTimeout(() => { button.classList.remove(state); if (restore) button.textContent = restore; }, 1500);
 }
 
-byId("link-macos")?.addEventListener("change", enableMacs);
-
-// The portal route: one row per Denied Binaries entry, with the tool names so the admin knows what each Team ID is.
-function macRetained() {
-  return filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name)))).retained;
-}
+// The portal route: one block per tool with its Team ID and Signing IDs, each value a click-to-copy chip.
 let macListText = "";
 byId("mac-rules-open")?.addEventListener("click", () => {
   const retained = macRetained();
   macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
-  // One block per tool: the Team ID once, then its Signing IDs. Clicking a value copies it for the portal form.
   const chip = value => {
     const button = document.createElement("button");
     button.type = "button";
@@ -452,11 +453,7 @@ byId("mac-rules-open")?.addEventListener("click", () => {
     code.textContent = value;
     button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>');
     button.prepend(code);
-    button.addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(value); } catch (error) { console.error(error); return; }
-      button.classList.add("copied");
-      setTimeout(() => button.classList.remove("copied"), 1500);
-    });
+    button.addEventListener("click", () => copyWith(button, value));
     return button;
   };
   const line = (label, values) => {
@@ -468,12 +465,7 @@ byId("mac-rules-open")?.addEventListener("click", () => {
     row.append(...values.map(chip));
     return [name, row];
   };
-  const groups = new Map();
-  for (const rule of retained) {
-    const key = rule.names.join("; ");
-    (groups.get(key) || groups.set(key, []).get(key)).push(rule);
-  }
-  byId("mac-modal-list").replaceChildren(...[...groups].map(([name, rules]) => {
+  byId("mac-modal-list").replaceChildren(...[...Map.groupBy(retained, rule => rule.names.join("; "))].map(([name, rules]) => {
     const item = document.createElement("li");
     item.className = "rule-group";
     const heading = document.createElement("div");
@@ -482,10 +474,9 @@ byId("mac-rules-open")?.addEventListener("click", () => {
     count.className = "muted";
     count.textContent = `${rules.length} ${rules.length === 1 ? "entry" : "entries"}`;
     heading.append(document.createTextNode(name), count);
-    item.append(heading);
     const teamIds = [...new Set(rules.map(rule => rule.teamId))];
-    item.append(...line(teamIds.length === 1 ? "Team ID" : "Team IDs", teamIds));
     const signingIds = rules.map(rule => rule.signingId).filter(Boolean);
+    item.append(heading, ...line(teamIds.length === 1 ? "Team ID" : "Team IDs", teamIds));
     if (signingIds.length) item.append(...line(signingIds.length === 1 ? "Signing ID" : "Signing IDs", signingIds));
     return item;
   }));
@@ -496,12 +487,7 @@ byId("mac-close")?.addEventListener("click", () => byId("mac-modal").close());
 byId("mac-modal")?.addEventListener("click", event => {
   if (event.target === byId("mac-modal")) byId("mac-modal").close();
 });
-byId("mac-copy")?.addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText(macListText); } catch (error) { console.error(error); return; }
-  byId("mac-copy").textContent = "Copied";
-  setTimeout(() => { byId("mac-copy").textContent = "Copy list"; }, 1500);
-});
-byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIntunePolicy, "RMM_Denied_Binaries_Intune.json"));
+byId("mac-copy")?.addEventListener("click", () => copyWith(byId("mac-copy"), macListText, byId("mac-copy").textContent));
 
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());
@@ -589,10 +575,11 @@ async function initialize() {
     byId("policy-version").textContent = `· v${policy.version}`;
     update();
     byId("editor").hidden = false;
-    if (macOn()) await enableMacs();
+    byId("loading").hidden = true;
+    // Mac rules load behind the visible editor; the macOS card shows its own progress.
+    if (macOn()) enableMacs();
   } catch (error) {
     showError(error);
-  } finally {
     byId("loading").hidden = true;
   }
 }

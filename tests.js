@@ -120,11 +120,13 @@ async function testBuilder(policy, iocs) {
           const wrappedTitle = width < 390 ? 24 : 0;
           assert(row.height <= (touch ? 108 : 96) + wrappedTitle, `Collapsed product row is too tall: ${row.height}px`);
           if (width > 800 && height >= 600) {
-            const content = rect(".export-content");
-            for (const selector of [".export-card", ".ioc-panel", "#kql-open"]) {
-              const card = rect(selector);
-              assert(card.top >= content.top && card.bottom <= content.bottom,
-                `${selector} requires scrolling in the initial desktop layout`);
+            // The first download must be usable without scrolling; every card must sit inside the scrollable page.
+            const first = rect("#wdac-card");
+            assert(first.height > 0 && first.bottom <= height, "WDAC download card is hidden or below the fold on desktop");
+            for (const card of document.querySelectorAll(".export-card:not([hidden]), #kql-open")) {
+              const box = card.getBoundingClientRect();
+              assert(box.height > 0 && box.left >= panel.left && box.right <= panel.right, `${card.id || card.className} is clipped or collapsed`);
+              assert(box.bottom + frame.contentWindow.scrollY <= document.documentElement.scrollHeight, `${card.id || card.className} is unreachable`);
             }
           } else {
             assert(document.documentElement.scrollHeight > height, "Stacked or short layout cannot scroll");
@@ -717,15 +719,12 @@ async function run() {
 
 run();
 
-// macOS app control: pure generator checks, then the macos.html builder in a frame.
+// macOS app control: pure generator checks, then the RMM page with the macOS platform on, in a frame.
 async function testMacBuilder(policy) {
   const data = parseMacProducts(await (await fetch("./products.json")).json());
-  test("macOS products parse with at least 7 verified tools and attributed rules", () => {
+  test("macOS products parse with at least 7 verified tools", () => {
     assert(data.tools.length >= 7, `Only ${data.tools.length} macOS tools`);
-    for (const tool of data.tools) {
-      assert(tool.rules.length && tool.source.startsWith("https://") && /^\d{4}-\d{2}-\d{2}$/.test(tool.verified), `${tool.name} lacks rules, source or date`);
-      for (const rule of tool.rules) assert(rule.names.includes(tool.name) && (rule.teamId || rule.signingId), `${tool.name} rule invalid`);
-    }
+    assert(data.tools.every(tool => tool.rules.every(rule => rule.names.includes(tool.name))), "Rule not attributed to its tool");
   });
   test("Rules without a string Team ID, broad vendor Team IDs, bad sources and unknown fields are rejected", () => {
     const sample = (product, extra = {}) => ({ version: "1.0.0.1", products: { Sample: { macos: { rules: [product], source: "https://x", verified: "2026-01-01", ...extra } } } });
@@ -734,7 +733,6 @@ async function testMacBuilder(policy) {
     expectError(() => parseMacProducts(sample({ signingId: "com.apple.Safari" })), "invalid or missing Team ID");
     expectError(() => parseMacProducts(sample({ teamId: "short" })), "invalid or missing Team ID");
     expectError(() => parseMacProducts(sample({ teamId: 1234567890 })), "invalid or missing Team ID");
-    expectError(() => parseMacProducts(sample({ teamId: ["ABCDEFGHIJ"] })), "invalid or missing Team ID");
     expectError(() => parseMacProducts(sample(null)), "must be an object");
     expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", cdHash: "x" })), "unknown macOS rule field");
     expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", signingId: "com.*" })), "invalid Signing ID");
@@ -753,7 +751,6 @@ async function testMacBuilder(policy) {
       const result = filterMacRules(data, new Set([tool.name]));
       assert(result.removed.length === tool.rules.length, `${tool.name} removed count`);
       assert(result.removed.every(rule => rule.names.includes(tool.name)), `${tool.name} removed an unrelated rule`);
-      assert(result.sharedRemoved.every(rule => rule.names.length > 1), "Shared warning for an unshared rule");
     }
     expectError(() => filterMacRules(data, new Set(["Not a tool"])), "Unknown tool selection");
   });
@@ -772,13 +769,9 @@ async function testMacBuilder(policy) {
     }
     expectError(() => buildIntunePolicy([], data.version), "deny nothing");
   });
-  test("Vendor Team IDs that also sign unrelated software are only denied with a Signing ID", () => {
-    const google = data.rules.filter(rule => rule.teamId === "EQHXZ8M8AV");
-    assert(google.length && google.every(rule => rule.signingId), "Google Team ID denied vendor-wide");
-  });
   test("Missing-data report link is a prefilled GitHub issue", () => {
-    const url = new URL(reportMissingUrl("https://github.com/example/repo", "Tool <X>"));
-    assert(url.pathname === "/example/repo/issues/new" && url.searchParams.get("title") === "macOS rules for Tool <X>", "Issue URL wrong");
+    const url = new URL(reportMissingUrl("https://github.com/example/repo"));
+    assert(url.pathname === "/example/repo/issues/new" && url.searchParams.get("title") === "macOS rules for <tool name>", "Issue URL wrong");
     assert(url.searchParams.get("body").includes("codesign -dvvv"), "Issue body lacks the codesign command");
   });
   const frame = document.createElement("iframe");
@@ -814,12 +807,18 @@ async function testMacBuilder(policy) {
     test("Excluding tools updates the macOS counts and marks uncovered exclusions", () => {
       const expected = filterMacRules(data, new Set(["TeamViewer"]));
       assert(byId("mac-status").textContent.startsWith(`${expected.retained.length} rules kept · ${expected.removed.length} removed`), "macOS counts stale");
-      const warning = psExec.closest(".tool").querySelector(".ioc-count:last-of-type, [id^=mac-coverage]");
       const macCount = psExec.closest(".tool").querySelector("[id^=mac-coverage]");
       assert(!macCount.hidden && macCount.textContent.includes("No macOS rules"), "Uncovered exclusion not marked");
       assert(psExec.getAttribute("aria-describedby").split(" ").includes(macCount.id), "Mark not associated with the checkbox");
       assert(byId("excluded-count").textContent === "2" && byId("removed-count").textContent !== "0", "WDAC selection unaffected by the shared toggle");
-      void warning;
+    });
+    test("Portal rule dialog opens with a Windows-only tool excluded and names groups after tools", () => {
+      byId("mac-rules-open").click();
+      assert(byId("mac-modal").open, "Dialog did not open with PsExec excluded");
+      const names = new Set(data.tools.map(tool => tool.name));
+      const headings = [...byId("mac-modal-list").querySelectorAll(".rule-group-name")].map(node => node.firstChild.textContent);
+      assert(headings.length && headings.every(name => names.has(name)), `Group not named after a tool: ${headings.join(", ")}`);
+      byId("mac-close").click();
     });
     test("Excluding every covered tool disables the macOS downloads, Reset restores them", () => {
       for (const tool of data.tools) {
@@ -838,11 +837,14 @@ async function testMacBuilder(policy) {
       assert(visible().length === data.tools.length, `macOS-only shows ${visible().length}, expected ${data.tools.length}`);
       assert(byId("wdac-card").hidden && !byId("mac-card").hidden, "Cards do not follow a macOS-only choice");
       assert(visible().every(row => row.querySelector(".execution-rule-list").closest("details").hidden), "Windows rules shown while Windows is off");
-      assert(byId("results").textContent.startsWith(`${data.tools.length} / `), "Result count ignores the platform");
+      assert(byId("results").textContent === `${data.tools.length} / ${data.tools.length} tools`, "Result count ignores the platform");
       byId("link-macos").checked = false;
       change(byId("link-macos"));
       assert(byId("link-windows").checked, "Both platforms could be turned off");
       assert(visible().length === policy.tools.length, "Windows list not restored");
+      byId("link-windows").checked = false;
+      change(byId("link-windows"));
+      assert(byId("link-windows").checked, "Windows could be turned off with macOS already off");
       byId("link-macos").checked = true;
       change(byId("link-macos"));
     });

@@ -13,7 +13,7 @@ const intuneIds = {
 const teamIdPattern = /^[A-Z0-9]{10}$/;
 // Team IDs that also sign everyday software. Denying one vendor-wide would stop Edge, Defender or Chrome on every Mac,
 // so these are only accepted together with a Signing ID. Apple's own binaries have no Team ID and never match the pattern.
-export const broadTeamIds = new Map([
+const broadTeamIds = new Map([
   ["UBF8T346G9", "Microsoft"],
   ["EQHXZ8M8AV", "Google"],
   ["BQR82RBBHL", "Adobe"],
@@ -24,7 +24,7 @@ export const broadTeamIds = new Map([
 
 // Every rule needs a Team ID: Apple accepts Signing ID alone, but that would let a one-line products.json change deny
 // com.apple.Safari or com.microsoft.teams2 on every supervised Mac, with no audit mode to catch it.
-export function validateRule(name, rule) {
+function validateRule(name, rule) {
   if (!rule || typeof rule !== "object" || Array.isArray(rule)) throw new Error(`${name}: a macOS rule must be an object.`);
   const fields = Object.keys(rule);
   if (fields.some(field => !["teamId", "signingId"].includes(field))) throw new Error(`${name}: unknown macOS rule field.`);
@@ -62,13 +62,12 @@ export function parseMacProducts(data) {
     validateMacos(name, macos);
     const toolRules = [];
     for (const rule of macos.rules) {
-      const key = JSON.stringify([rule.teamId || "", rule.signingId || ""]);
+      const key = `${rule.teamId} ${rule.signingId || ""}`;
       const entry = rules.get(key) || rules.set(key, {
-        id: key,
         teamId: rule.teamId,
         signingId: rule.signingId,
         kind: rule.signingId ? "Signing ID" : "Team ID",
-        label: rule.signingId ? `${rule.signingId}${rule.teamId ? ` (${rule.teamId})` : ""}` : rule.teamId,
+        label: rule.signingId ? `${rule.signingId} (${rule.teamId})` : rule.teamId,
         names: [],
       }).get(key);
       if (entry.names.includes(name)) throw new Error(`${name}: duplicate macOS rule.`);
@@ -85,9 +84,9 @@ export function parseMacProducts(data) {
   };
 }
 
-export async function loadMacProducts(url = "./products.json") {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Unable to load ${url} (HTTP ${response.status}).`);
+export async function loadMacProducts() {
+  const response = await fetch("./products.json");
+  if (!response.ok) throw new Error(`Unable to load products.json (HTTP ${response.status}).`);
   return parseMacProducts(await response.json());
 }
 
@@ -102,11 +101,7 @@ export function filterMacRules(data, excludedTools) {
   for (const rule of data.rules) {
     (rule.names.some(name => excludedTools.has(name)) ? removed : retained).push(rule);
   }
-  return {
-    removed,
-    retained,
-    sharedRemoved: removed.filter(rule => rule.names.some(name => !excludedTools.has(name))),
-  };
+  return { removed, retained };
 }
 
 const stringValue = (settingDefinitionId, value) => ({
@@ -125,7 +120,7 @@ export function buildIntunePolicy(rules, version) {
   if (!rules.length) throw new Error("Every tool is excluded; the policy would deny nothing.");
   const denied = rules.map(rule => ({
     children: [
-      ...(rule.teamId ? [stringValue(intuneIds.teamId, rule.teamId)] : []),
+      stringValue(intuneIds.teamId, rule.teamId),
       ...(rule.signingId ? [stringValue(intuneIds.signingId, rule.signingId)] : []),
     ],
   }));
@@ -145,10 +140,10 @@ export function buildIntunePolicy(rules, version) {
 }
 
 // Pre-filled issue so a visitor can send the codesign output for a tool that has no macOS rules yet.
-export function reportMissingUrl(repository, toolName) {
-  const title = `macOS rules for ${toolName}`;
+export function reportMissingUrl(repository) {
+  const title = "macOS rules for <tool name>";
   const body = [
-    `Tool: ${toolName}`, "",
+    "Tool: <tool name>", "",
     "Install the Mac version, then run this on the app and on any helper or agent binary it installs, and paste the output:", "",
     "```", 'codesign -dvvv "/Applications/<App>.app" 2>&1 | grep -E "^(Identifier|TeamIdentifier)="', "```", "",
     "Download URL of the installer you checked:", "",

@@ -151,7 +151,7 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .export-details p, .warning-details p { color: var(--muted); font-size: 12px; }
 .muted { color: var(--muted); font-size: 12px; }
 .ioc-toggle { display: flex; align-items: center; gap: 8px; font-size: .875rem; cursor: pointer; margin: 4px 0 0; min-height: 44px; }
-.ioc-panel.enabled, .mac-panel.enabled { border-color: var(--accent); }
+.ioc-panel.enabled { border-color: var(--accent); }
 .mac-secondary { margin-top: 8px; }
 .ioc-download { width: 100%; justify-content: center; }
 .csv-list { list-style: none; margin: 8px 0 0; padding: 0; overflow: auto; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px; }
@@ -172,6 +172,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .copy-chip.copied { border-color: var(--accent); background: var(--accent-fill); }
 .copy-chip.copied svg { display: none; }
 .copy-chip.copied::after { content: "Copied"; font-family: inherit; font-size: 12px; color: var(--accent); }
+.copy-chip.copy-failed { border-color: var(--error); }
+.copy-chip.copy-failed svg { display: none; }
+.copy-chip.copy-failed::after { content: "Copy failed"; font-family: inherit; font-size: 12px; color: var(--error); }
 @media (max-width: 560px) { .rule-group { grid-template-columns: minmax(0, 1fr); } .rule-label { padding-top: 0; } }
 .warning-details { background: var(--warning-fill); padding: 8px; border-radius: 4px; margin-top: 16px; }
 .warning-details summary { color: var(--warning); }

@@ -26,9 +26,7 @@ for (const [name, product] of Object.entries(products)) {
   for (const field of Object.keys(product)) {
     if (!["paths", "domains", "vendorDomains", "ips", "macos"].includes(field)) throw new Error(`products.json: ${name} has unknown field "${field}"`);
   }
-  if (product.macos) {
-    try { validateMacos(name, product.macos); } catch (error) { throw new Error(`products.json: ${error.message}`); }
-  }
+  if (product.macos) validateMacos(name, product.macos);
   for (const path of product.paths || []) {
     if (!path.startsWith("*\\")) throw new Error(`products.json: ${name} path must start with *\\: ${path}`);
     add(paths, path, name);
