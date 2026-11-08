@@ -1,5 +1,79 @@
 [
   {
+    "version": "1.0.0.19",
+    "date": "2026-11-08",
+    "source": "lolrmm.io and manual",
+    "products": [
+      {
+        "name": "Ping32",
+        "new": true,
+        "paths": [
+          "*\\NSecRTS.exe",
+          "*\\NSecDs.exe"
+        ],
+        "domains": [
+          "cloud.nsecsoft.com"
+        ]
+      },
+      {
+        "name": "RdViewer",
+        "new": true,
+        "paths": [
+          "*\\RdClient.exe",
+          "*\\rdService.exe",
+          "*\\dmservice.exe",
+          "*\\diskmgr.exe",
+          "*\\RdServer.exe"
+        ],
+        "domains": [
+          "rdviewer.oss-cn-hangzhou.aliyuncs.com"
+        ]
+      },
+      {
+        "name": "StifleR (2Pint Software)",
+        "new": true,
+        "paths": [
+          "*\\StifleR.ClientApp.exe",
+          "*\\TwoPint.ConfigEditor.Wpf.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Level",
+        "new": false,
+        "paths": [
+          "*\\level.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "VS Code Remote Tunnels",
+        "new": true,
+        "paths": [
+          "*\\code-insiders.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "CA DSM / Client Automation Remote Control",
+        "new": true,
+        "paths": [
+          "*\\CA\\DSM\\bin\\rcHost.exe"
+        ],
+        "domains": []
+      },
+      {
+        "name": "Workspace ONE Assist (Omnissa / VMware)",
+        "new": true,
+        "paths": [
+          "*\\Workspace ONE Assist\\*",
+          "*\\WorkspaceONE.Assist.Agent.exe"
+        ],
+        "domains": []
+      }
+    ]
+  },
+  {
     "version": "1.0.0.15",
     "date": "2026-10-17",
     "source": "Manual fix",

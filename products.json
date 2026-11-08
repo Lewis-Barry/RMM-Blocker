@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.17",
+  "version": "1.0.0.19",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -324,6 +324,11 @@
         "breezermm.com",
         "eu.2breeze.app",
         "us.2breeze.app"
+      ]
+    },
+    "CA DSM / Client Automation Remote Control": {
+      "paths": [
+        "*\\CA\\DSM\\bin\\rcHost.exe"
       ]
     },
     "Centurion": {
@@ -1396,7 +1401,8 @@
         "*\\Level\\level.exe",
         "*\\level-windows-amd64*.exe",
         "*\\level-remote-control-ffmpeg*.exe",
-        "*\\osqueryi.exe"
+        "*\\osqueryi.exe",
+        "*\\level.exe"
       ],
       "domains": [
         "agents.level.io",
@@ -2080,6 +2086,15 @@
         "pilixo.com"
       ]
     },
+    "Ping32": {
+      "paths": [
+        "*\\NSecRTS.exe",
+        "*\\NSecDs.exe"
+      ],
+      "domains": [
+        "cloud.nsecsoft.com"
+      ]
+    },
     "PiTunnel": {
       "domains": [
         "pitunnel.com"
@@ -2181,6 +2196,18 @@
       "paths": [
         "*\\tdp2tcp*.exe",
         "*\\rdp2tcp*.exe"
+      ]
+    },
+    "RdViewer": {
+      "paths": [
+        "*\\RdClient.exe",
+        "*\\rdService.exe",
+        "*\\dmservice.exe",
+        "*\\diskmgr.exe",
+        "*\\RdServer.exe"
+      ],
+      "domains": [
+        "rdviewer.oss-cn-hangzhou.aliyuncs.com"
       ]
     },
     "RealVNC": {
@@ -2597,6 +2624,12 @@
         "splashtop.com"
       ]
     },
+    "StifleR (2Pint Software)": {
+      "paths": [
+        "*\\StifleR.ClientApp.exe",
+        "*\\TwoPint.ConfigEditor.Wpf.exe"
+      ]
+    },
     "SpyAnywhere": {
       "domains": [
         "spyanywhere.com"
@@ -2933,6 +2966,11 @@
         "vicarius.cloud"
       ]
     },
+    "VS Code Remote Tunnels": {
+      "paths": [
+        "*\\code-insiders.exe"
+      ]
+    },
     "Webex PCNow": {
       "paths": [
         "*\\webexpcnow*.exe"
@@ -2952,6 +2990,12 @@
         "weezo.en.softonic.com",
         "weezo.me",
         "weezo.net"
+      ]
+    },
+    "Workspace ONE Assist (Omnissa / VMware)": {
+      "paths": [
+        "*\\Workspace ONE Assist\\*",
+        "*\\WorkspaceONE.Assist.Agent.exe"
       ]
     },
     "XCmd": {
