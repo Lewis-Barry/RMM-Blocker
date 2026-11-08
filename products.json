@@ -2624,15 +2624,15 @@
         "splashtop.com"
       ]
     },
+    "SpyAnywhere": {
+      "domains": [
+        "spyanywhere.com"
+      ]
+    },
     "StifleR (2Pint Software)": {
       "paths": [
         "*\\StifleR.ClientApp.exe",
         "*\\TwoPint.ConfigEditor.Wpf.exe"
-      ]
-    },
-    "SpyAnywhere": {
-      "domains": [
-        "spyanywhere.com"
       ]
     },
     "Sunlogin / Oray": {
