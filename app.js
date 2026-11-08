@@ -309,8 +309,10 @@ function update() {
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
       : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
     const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${hasMac && byId("link-macos").checked ? entry.macSearchText : ""}`;
+    const onMac = entry.macRules.length > 0;
     entry.row.hidden = !searchText.includes(query) ||
-      (filter === "excluded" && !selected) || (filter === "blocked" && selected);
+      (filter === "excluded" && !selected) || (filter === "blocked" && selected) ||
+      (filter === "mac" && !onMac) || (filter === "nomac" && onMac);
     if (!entry.row.hidden) visible++;
   }
   byId("remaining-count").textContent = policy.rules.length - ids.size;
@@ -431,7 +433,15 @@ byId("mac-download-intune")?.addEventListener("click", () => downloadMac(buildIn
 byId("mac-download-ddm")?.addEventListener("click", () => downloadMac(buildDeclaration, "RMM_Denied_Binaries_macOS.json"));
 
 byId("search").addEventListener("input", () => update());
-byId("filter").addEventListener("change", () => update());
+byId("filter").addEventListener("change", () => {
+  // The macOS filters need the Mac rules, so picking one turns the macOS exports on.
+  if (hasMac && ["mac", "nomac"].includes(byId("filter").value) && !byId("link-macos").checked) {
+    byId("link-macos").checked = true;
+    enableMacs();
+    return;
+  }
+  update();
+});
 byId("reset").addEventListener("click", () => { excluded.clear(); update(); });
 byId("link-iocs")?.addEventListener("change", enableIocs);
 if (hasIocs) window.addEventListener("pagehide", releaseIocDownloads);

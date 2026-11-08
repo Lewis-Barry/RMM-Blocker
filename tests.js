@@ -703,7 +703,7 @@ async function run() {
     });
     await testBuilder(policy, iocs);
     await testBrowserBuilder();
-    await testMacBuilder();
+    await testMacBuilder(policy);
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
@@ -718,7 +718,7 @@ async function run() {
 run();
 
 // macOS app control: pure generator checks, then the macos.html builder in a frame.
-async function testMacBuilder() {
+async function testMacBuilder(policy) {
   const data = parseMacProducts(await (await fetch("./products.json")).json());
   test("macOS products parse with at least 7 verified tools and attributed rules", () => {
     assert(data.tools.length >= 7, `Only ${data.tools.length} macOS tools`);
@@ -845,6 +845,18 @@ async function testMacBuilder() {
       assert(byId("mac-download-intune").disabled && byId("mac-download-ddm").disabled, "Downloads enabled with nothing to deny");
       byId("reset").click();
       assert(byId("excluded-count").textContent === "0" && !byId("mac-download-intune").disabled, "Reset did not restore the deny list");
+    });
+    test("Show filter isolates macOS-covered and Windows-only tools", () => {
+      byId("filter").value = "mac";
+      change(byId("filter"));
+      const visible = () => [...byId("tool-list").children].filter(row => !row.hidden);
+      assert(visible().length === data.tools.length, `macOS filter shows ${visible().length}, expected ${data.tools.length}`);
+      byId("filter").value = "nomac";
+      change(byId("filter"));
+      assert(visible().length === policy.tools.length - data.tools.length, "Windows-only filter count wrong");
+      assert(visible().every(row => !row.textContent.includes("macOS denied")), "Windows-only filter shows a covered tool");
+      byId("filter").value = "all";
+      change(byId("filter"));
     });
     test("Disabling macOS exports hides its output without changing selections", () => {
       teamViewer.click();
