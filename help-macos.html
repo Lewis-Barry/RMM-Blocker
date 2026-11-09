@@ -42,9 +42,10 @@
         <a href="#choose">2. Pick a route</a>
         <a href="#graph">3. Option 1: Graph Explorer</a>
         <a href="#portal">4. Option 2: Intune portal</a>
-        <a href="#assign">5. Assign</a>
-        <a href="#verify">6. Verify</a>
-        <a href="#contribute">7. Add a tool</a>
+        <a href="#powershell">5. Option 3: PowerShell</a>
+        <a href="#assign">6. Assign</a>
+        <a href="#verify">7. Verify</a>
+        <a href="#contribute">8. Add a tool</a>
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
@@ -60,12 +61,13 @@
       </section>
       <section id="choose" class="help-step" aria-labelledby="choose-title">
         <h2 id="choose-title">2. Pick a route</h2>
-        <p>On Windows you upload one XML file into an App Control for Business policy and you are done. The macOS policy is a <strong>settings catalog</strong> profile, and the Intune portal has no file upload for those. Every denied binary is a separate entry with a Team ID, so you either create the policy through Graph in one request, or type each entry by hand.</p>
+        <p>On Windows you upload one XML file into an App Control for Business policy and you are done. The macOS policy is a <strong>settings catalog</strong> profile, and the Intune portal has no file upload for those. Every denied binary is a separate entry with a Team ID, so you either create the policy through Graph in one request, from Graph Explorer or PowerShell, or type each entry by hand.</p>
         <ul>
           <li><strong>Option 1, Graph Explorer (recommended):</strong> download <strong>Intune JSON</strong> from the macOS card and post it once. The policy appears in Intune with every entry filled in. Nothing to retype, no typos, and a changed list is a new download.</li>
           <li><strong>Option 2, Intune portal:</strong> create the settings catalog profile by hand and type every Team ID and Signing ID from <strong>Show rules for the portal</strong>. Fine for a short list; with the full list it is many entries and one mistake invalidates the whole policy on the Mac.</li>
+          <li><strong>Option 3, PowerShell:</strong> the same Graph request as option 1, sent with the Microsoft Graph PowerShell SDK. A few lines, repeatable, and the natural choice when you roll this out to more than one tenant.</li>
         </ul>
-        <p>Both routes end in the same policy. Assign and verify it the same way (steps 5 and 6).</p>
+        <p>All three routes end in the same policy. Assign and verify it the same way (steps 6 and 7).</p>
       </section>
       <section id="graph" class="help-step" aria-labelledby="graph-title">
         <h2 id="graph-title">3. Option 1: Graph Explorer</h2>
@@ -80,13 +82,9 @@
             <figure><a href="./MacScreens/Graph2.png" target="_blank" rel="noopener noreferrer" aria-label="Open Graph Explorer request body screenshot"><img style="width:720px" src="./MacScreens/Graph2.png" width="1145" height="504" loading="lazy" alt="The Request body tab holding the pasted policy JSON, starting with the name Block RMM tools (macOS)."></a></figure></li>
           <li>Select <strong>Run query</strong>. <strong>Created - 201</strong> with the policy's <code>id</code> in the response means the policy exists.
             <figure><a href="./MacScreens/Graph3.png" target="_blank" rel="noopener noreferrer" aria-label="Open Graph Explorer 201 response screenshot"><img style="width:640px" src="./MacScreens/Graph3.png" width="1145" height="818" loading="lazy" alt="Response preview showing Created 201 and the new policy with its id, name and settingCount 1."></a></figure></li>
-          <li>In <a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>, open <strong>Block RMM tools (macOS)</strong>. The overview shows <strong>Allowed</strong> with nothing under it: the portal does not list Denied Binaries entries in that view. Select <strong>Edit</strong> next to <strong>Configuration settings</strong> and the table shows every entry with its Team ID and Signing ID. It is not assigned yet: continue with step 5.
+          <li>In <a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>, open <strong>Block RMM tools (macOS)</strong>. The overview shows <strong>Allowed</strong> with nothing under it: the portal does not list Denied Binaries entries in that view. Select <strong>Edit</strong> next to <strong>Configuration settings</strong> and the table shows every entry with its Team ID and Signing ID. It is not assigned yet: continue with step 6.
             <figure><a href="./MacScreens/IntuneEdit.png" target="_blank" rel="noopener noreferrer" aria-label="Open Intune edit view screenshot"><img style="width:460px" src="./MacScreens/IntuneEdit.png" width="826" height="1174" loading="lazy" alt="Edit profile: Denied Binaries table with 19 rows, each with a Team ID and some with a Signing ID."></a></figure></li>
         </ol>
-        <p>Prefer PowerShell? The same request with the Graph SDK:</p>
-        <pre class="kql-code"><code>Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
-$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
-Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
         <p>To change the list later, exclude or include tools on the RMM page, download again and post again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
       </section>
       <section id="portal" class="help-step" aria-labelledby="portal-title">
@@ -103,17 +101,33 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
             <figure><a href="./MacScreens/PortalRow.png" target="_blank" rel="noopener noreferrer" aria-label="Open Denied Binaries row screenshot"><img style="width:520px" src="./MacScreens/PortalRow.png" width="754" height="463" loading="lazy" alt="Denied Binaries table with one row and the Edit instance link under Configure settings."></a></figure></li>
           <li>Select <strong>Edit instance</strong>. A pane opens with five fields. Fill in <strong>Team ID</strong>; fill in <strong>Signing ID</strong> only when the row shows one (Chrome Remote Desktop, Cloudflare Tunnel). Leave <strong>Signing State</strong> on All. Remove every field you leave empty with the <strong>minus</strong> next to it: an empty field shows "The value must have a length of at least 1" and blocks saving.
             <figure><a href="./MacScreens/PortalInstance.png" target="_blank" rel="noopener noreferrer" aria-label="Open Configure instance pane screenshot"><img style="width:380px" src="./MacScreens/PortalInstance.png" width="589" height="661" loading="lazy" alt="Configure instance pane: CD Hash and Path Prefix empty with arrows pointing at their minus icons, Signing ID and Team ID filled, Signing State All."></a></figure></li>
-          <li>Repeat for every row in the dialog. Check that the number of table rows equals the number of rows in the dialog, then <strong>Next</strong> and continue with step 5.</li>
+          <li>Repeat for every row in the dialog. Check that the number of table rows equals the number of rows in the dialog, then <strong>Next</strong> and continue with step 6.</li>
         </ol>
         <aside class="help-warning" role="note">Do not tick the whole Allowed group or Allowed Binaries: an allow list quits every app that is not on it. Remove the fields you leave empty instead of leaving them blank: Intune refuses to save a blank field, and an entry without a Team ID makes the Mac reject the whole policy without telling you which entry.</aside>
       </section>
+      <section id="powershell" class="help-step" aria-labelledby="powershell-title">
+        <h2 id="powershell-title">5. Option 3: PowerShell</h2>
+        <ol>
+          <li>In the macOS card, select <strong>Download Intune JSON</strong> and note where <code>RMM_Denied_Binaries_Intune.json</code> lands.</li>
+          <li>Open PowerShell in the folder with the downloaded file and run the lines below. They install the Microsoft Graph PowerShell SDK only when it is missing, sign you in with your Intune administrator account, and ask for consent to <code>DeviceManagementConfiguration.ReadWrite.All</code> if it has not been granted yet.</li>
+        </ol>
+        <pre class="kql-code"><code>if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {
+    Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
+}
+Import-Module Microsoft.Graph.Authentication
+Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
+$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
+Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
+        <p>The response is the new policy with its <code>id</code>. In Intune the policy appears under <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>; as with option 1, the overview shows an empty <strong>Allowed</strong> and <strong>Edit</strong> shows every entry. It is not assigned yet: continue with step 6.</p>
+        <p>To change the list later, exclude or include tools on the RMM page, download again and run the same lines again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
+      </section>
       <section id="assign" class="help-step" aria-labelledby="assign-title">
-        <h2 id="assign-title">5. Assign</h2>
+        <h2 id="assign-title">6. Assign</h2>
         <p>Set scope tags if needed. Assign your pilot device group of supervised Macs. <strong>Review + create</strong> → <strong>Create</strong>, or <strong>Review + save</strong> on the policy that Graph created.</p>
         <p>Keep one deny policy per Mac. Two policies are merged into one list, so a tool you excluded in one is still denied by the other.</p>
       </section>
       <section id="verify" class="help-step" aria-labelledby="verify-title">
-        <h2 id="verify-title">6. Verify</h2>
+        <h2 id="verify-title">7. Verify</h2>
         <ul>
           <li>Sync the pilot Mac. In Intune, the policy's <strong>Per-setting status</strong> shows <strong>Succeeded</strong>. If every setting shows <strong>Noncompliant</strong>, one entry is missing its Team ID.</li>
           <li>Launch a denied tool. macOS closes it and shows that the app is not allowed by your organisation.</li>
@@ -124,7 +138,7 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
         <p><a href="https://learn.microsoft.com/intune/device-configuration/templates/apple-ddm-app-settings" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a></p>
       </section>
       <section id="contribute" class="help-step" aria-labelledby="contribute-title">
-        <h2 id="contribute-title">7. Add a tool</h2>
+        <h2 id="contribute-title">8. Add a tool</h2>
         <p>Only tools whose Mac code signature was checked against a real installer are listed. To add one, install it on a Mac and read the signature of the app and of every helper, agent or service it installs:</p>
         <pre class="kql-code"><code>codesign -dvvv "/Applications/Example.app" 2>&amp;1 | grep -E "^(Identifier|TeamIdentifier)="</code></pre>
         <p><strong>TeamIdentifier</strong> is the Team ID. Use it alone when the vendor only makes remote tools. When the same Team ID also signs unrelated software (Google, Microsoft, Cloudflare), add the <strong>Identifier</strong> of each remote binary as a Signing ID, otherwise every app from that vendor is blocked.</p>

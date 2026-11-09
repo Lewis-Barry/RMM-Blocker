@@ -30,8 +30,8 @@ Enrollment) and has no audit mode. Rules match the vendor's code signature, not 
   Desktop lists only its host binaries, Cloudflare Tunnel only `cloudflared`). Signing ID alone is not accepted, even
   though Apple allows it, because one line could deny `com.apple.Safari` on every Mac.
 
-The macOS card shares the page's exclusions and offers two routes to the same Intune policy, both built in the
-browser from the `macos` blocks in `products.json`:
+The macOS card shares the page's exclusions and offers three routes to the same Intune policy (Graph Explorer, the portal by hand,
+or PowerShell), all built in the browser from the `macos` blocks in `products.json`:
 
 - **Show rules for the portal**: one block per tool with its Team ID and Signing IDs, click to copy, for typing the
   entries into the settings catalog by hand.
