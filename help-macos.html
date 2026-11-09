@@ -92,11 +92,13 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
       <section id="portal" class="help-step" aria-labelledby="portal-title">
         <h2 id="portal-title">4. Option 2: Intune portal</h2>
         <p><strong>Where the values come from.</strong> In the macOS card, select <strong>Show rules for the portal</strong>. The dialog lists one row per Denied Binaries entry you need to create: the <strong>Team ID</strong>, the <strong>Signing ID</strong> when one is required, and the tool it belongs to. <strong>Copy list</strong> puts it on your clipboard as a table. Tools you excluded are already left out. The same values are visible per tool under <strong>macOS denied binaries</strong> in the tool list.</p>
-        <figure><a href="./MacScreens/PortalRules.png" target="_blank" rel="noopener noreferrer" aria-label="Open portal rules dialog screenshot"><img src="./MacScreens/PortalRules.png" width="880" height="810" loading="lazy" alt="Denied Binaries to enter in Intune: one block per tool with its Team ID and Signing IDs as copy chips."></a></figure>
+        <figure><a href="./MacScreens/PortalRules.png" target="_blank" rel="noopener noreferrer" aria-label="Open portal rules dialog screenshot"><img class="shot-small" src="./MacScreens/PortalRules.png" width="880" height="810" loading="lazy" alt="Denied Binaries to enter in Intune: one block per tool with its Team ID and Signing IDs as copy chips."></a></figure>
         <ol>
-          <li><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong> → <strong>Create</strong> → <strong>New policy</strong>. Platform <strong>macOS</strong>, profile type <strong>Settings catalog</strong>, <strong>Create</strong>.</li>
+          <li><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong> → <strong>Create</strong> → <strong>New policy</strong>. Platform <strong>macOS</strong>, profile type <strong>Settings catalog</strong>, <strong>Create</strong>.
+            <figure><a href="./MacScreens/PortalCreate.png" target="_blank" rel="noopener noreferrer" aria-label="Open Create new policy screenshot"><img src="./MacScreens/PortalCreate.png" width="793" height="632" loading="lazy" alt="Intune macOS Configuration: the Create menu open with New Policy highlighted."></a></figure></li>
           <li>Name it, for example <strong>Block RMM (macOS)</strong>. <strong>Next</strong>.</li>
-          <li>Select <strong>Add settings</strong>. Expand <strong>Declarative Device Management (DDM)</strong> → <strong>App Settings</strong>. Under <strong>Allowed</strong>, tick only <strong>Denied Binaries</strong>. Close the picker.</li>
+          <li>Select <strong>Add settings</strong>. In the settings picker, search for <strong>denied binaries</strong>, select the <strong>App Settings</strong> subcategory and tick <strong>Denied Binaries</strong> only. Close the picker.
+            <figure><a href="./MacScreens/PortalPicker.png" target="_blank" rel="noopener noreferrer" aria-label="Open settings picker screenshot"><img src="./MacScreens/PortalPicker.png" width="476" height="536" loading="lazy" alt="Settings picker: search denied binaries, Declarative Device Management App Settings category, Denied Binaries ticked."></a></figure></li>
           <li>For every row in the dialog, select <strong>Add</strong> under Denied Binaries. A table row appears with <strong>Edit instance</strong> at the right.
             <figure><a href="./MacScreens/PortalRow.png" target="_blank" rel="noopener noreferrer" aria-label="Open Denied Binaries row screenshot"><img src="./MacScreens/PortalRow.png" width="754" height="463" loading="lazy" alt="Denied Binaries table with one row and the Edit instance link under Configure settings."></a></figure></li>
           <li>Select <strong>Edit instance</strong>. A pane opens with five fields. Fill in <strong>Team ID</strong>; fill in <strong>Signing ID</strong> only when the row shows one (Chrome Remote Desktop, Cloudflare Tunnel). Leave <strong>Signing State</strong> on All. Remove every field you leave empty with the <strong>minus</strong> next to it: an empty field shows "The value must have a length of at least 1" and blocks saving.
@@ -144,7 +146,6 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
     const check = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
     for (const pre of document.querySelectorAll("pre.kql-code")) {
       const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
-      const head = Object.assign(document.createElement("div"), { className: "code-head" });
       const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", title: "Copy", innerHTML: copy });
       button.setAttribute("aria-label", "Copy code");
       button.addEventListener("click", async () => {
@@ -155,9 +156,8 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
         button.classList.toggle("copied", ok);
         setTimeout(() => { button.innerHTML = copy; button.title = "Copy"; button.classList.remove("copied"); }, 2000);
       });
-      head.append(button);
       pre.replaceWith(wrap);
-      wrap.append(head, pre);
+      wrap.append(pre, button);
     }
   </script>
 </body>
