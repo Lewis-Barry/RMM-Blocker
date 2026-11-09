@@ -131,16 +131,25 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
   </main>
   <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./index.html#exports">Downloads</a></div></footer>
   <script type="module">
-    // Copy button on every code block; the help pages do not load app.js.
+    // Copy icon on every code block; the help pages do not load app.js.
+    const copy = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>';
+    const check = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
     for (const pre of document.querySelectorAll("pre.kql-code")) {
       const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
-      const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", textContent: "Copy" });
+      const head = Object.assign(document.createElement("div"), { className: "code-head" });
+      const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", title: "Copy", innerHTML: copy });
+      button.setAttribute("aria-label", "Copy code");
       button.addEventListener("click", async () => {
-        try { await navigator.clipboard.writeText(pre.textContent); button.textContent = "Copied"; } catch { button.textContent = "Copy failed"; }
-        setTimeout(() => { button.textContent = "Copy"; }, 2000);
+        let ok = true;
+        try { await navigator.clipboard.writeText(pre.textContent); } catch { ok = false; }
+        button.innerHTML = ok ? check : copy;
+        button.title = ok ? "Copied" : "Copy failed";
+        button.classList.toggle("copied", ok);
+        setTimeout(() => { button.innerHTML = copy; button.title = "Copy"; button.classList.remove("copied"); }, 2000);
       });
+      head.append(button);
       pre.replaceWith(wrap);
-      wrap.append(pre, button);
+      wrap.append(head, pre);
     }
   </script>
 </body>
