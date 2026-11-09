@@ -205,7 +205,6 @@ footer { border-top: 1px solid var(--line); flex-shrink: 0; background: var(--pa
 .help-step figure { margin: 16px 0 0; }
 .help-step figure a { display: block; width: fit-content; max-width: 100%; }
 .help-step img { display: block; width: auto; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; }
-.help-step img.shot-small { width: 440px; }
 nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .help-nav a[aria-current="page"] { color: var(--accent); background: var(--accent-fill); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 @media (min-width: 1600px) {
