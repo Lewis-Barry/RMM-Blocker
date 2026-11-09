@@ -71,6 +71,7 @@
         <h2 id="graph-title">3. Option 1: Graph Explorer</h2>
         <ol>
           <li>In the macOS card, select <strong>Download Intune JSON</strong>. The file <code>RMM_Denied_Binaries_Intune.json</code> is the complete policy: name, platform, and one Denied Binaries entry per rule left after your exclusions.</li>
+            <figure><a href="./MacScreens/MacCard.png" target="_blank" rel="noopener noreferrer" aria-label="Open macOS card screenshot"><img src="./MacScreens/MacCard.png" width="335" height="237" loading="lazy" alt="The macOS app control card: rules kept, Show rules for the portal, Download Intune JSON."></a></figure>
           <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a> and sign in with your Intune administrator account.</li>
           <li>Select <strong>Modify permissions</strong>, search <code>DeviceManagementConfiguration.ReadWrite.All</code> and consent to it once.</li>
           <li>Set the method to <strong>POST</strong> and the URL to <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>.</li>
@@ -86,6 +87,7 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
       <section id="portal" class="help-step" aria-labelledby="portal-title">
         <h2 id="portal-title">4. Option 2: Intune portal</h2>
         <p><strong>Where the values come from.</strong> In the macOS card, select <strong>Show rules for the portal</strong>. The dialog lists one row per Denied Binaries entry you need to create: the <strong>Team ID</strong>, the <strong>Signing ID</strong> when one is required, and the tool it belongs to. <strong>Copy list</strong> puts it on your clipboard as a table. Tools you excluded are already left out. The same values are visible per tool under <strong>macOS denied binaries</strong> in the tool list.</p>
+        <figure><a href="./MacScreens/PortalRules.png" target="_blank" rel="noopener noreferrer" aria-label="Open portal rules dialog screenshot"><img src="./MacScreens/PortalRules.png" width="880" height="810" loading="lazy" alt="Denied Binaries to enter in Intune: one block per tool with its Team ID and Signing IDs as copy chips."></a></figure>
         <ol>
           <li><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong> → <strong>Create</strong> → <strong>New policy</strong>. Platform <strong>macOS</strong>, profile type <strong>Settings catalog</strong>, <strong>Create</strong>.</li>
           <li>Name it, for example <strong>Block RMM (macOS)</strong>. <strong>Next</strong>.</li>
@@ -128,5 +130,18 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
     </article>
   </main>
   <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./index.html#exports">Downloads</a></div></footer>
+  <script type="module">
+    // Copy button on every code block; the help pages do not load app.js.
+    for (const pre of document.querySelectorAll("pre.kql-code")) {
+      const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
+      const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", textContent: "Copy" });
+      button.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(pre.textContent); button.textContent = "Copied"; } catch { button.textContent = "Copy failed"; }
+        setTimeout(() => { button.textContent = "Copy"; }, 2000);
+      });
+      pre.replaceWith(wrap);
+      wrap.append(pre, button);
+    }
+  </script>
 </body>
 </html>
