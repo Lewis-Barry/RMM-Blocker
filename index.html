@@ -108,13 +108,14 @@
               </div>
             </section>
             <section id="mac-card" class="export-card" aria-labelledby="mac-export-title" hidden>
-              <div class="export-card-heading"><h3 id="mac-export-title">macOS app control</h3><span class="file-badge">JSON</span></div>
+              <div class="export-card-heading"><h3 id="mac-export-title">macOS app control</h3><span class="file-badge">JSON · PS1</span></div>
               <p class="output-description">Intune settings catalog for macOS 27 (supervised). Preview, no audit mode.</p>
               <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
               <div id="mac-error" class="error" role="alert" hidden></div>
               <button id="mac-rules-open" class="primary" type="button">Show rules for the portal</button>
               <button id="mac-download-intune" class="primary mac-secondary" type="button">Download Intune JSON</button>
-              <details class="export-details"><summary>Deploy notes</summary><p>Separate from the WDAC XML: post the JSON once in Graph Explorer, or type the rules into the settings catalog. Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
+              <button id="mac-download-ps" class="primary mac-secondary" type="button">Download PowerShell script</button>
+              <details class="export-details"><summary>Deploy notes</summary><p>Separate from the WDAC XML: run the PowerShell script, post the JSON once in Graph Explorer, or type the rules into the settings catalog. Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
             </section>
             <button id="kql-open" class="kql-open" type="button">See KQL for network discovery</button>
           </div>

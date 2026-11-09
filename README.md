@@ -38,6 +38,8 @@ or PowerShell), all built in the browser from the `macos` blocks in `products.js
 - **Download Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
   (the portal cannot import settings catalog JSON, so the guide uses Graph Explorer). Definition ids: `app_app` →
   `app_allowed` → `app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
+- **Download PowerShell script**: the same body embedded in a `.ps1` that installs the Graph PowerShell SDK when
+  missing, signs in and posts it, so one file does the whole deployment.
 
 Only tools whose signature was read from the vendor's real installer are listed. To add one:
 

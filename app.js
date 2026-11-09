@@ -1,7 +1,7 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
-import { loadMacProducts, filterMacRules, buildIntunePolicy, reportMissingUrl } from "./macos.js";
+import { loadMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
@@ -381,7 +381,7 @@ function updateMacs() {
   byId("mac-card").hidden = !enabled;
   byId("mac-status").hidden = !enabled || macError || !macData;
   // Without data the buttons would only throw, so they stay disabled until the rules are in.
-  for (const id of ["mac-rules-open", "mac-download-intune"]) byId(id).disabled = !ready;
+  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ps"]) byId(id).disabled = !ready;
   for (const entry of tools) {
     const covered = entry.macRules.length > 0;
     entry.macCount.hidden = !enabled || !macData || covered || !excluded.has(entry.tool.name);
@@ -396,7 +396,7 @@ function updateMacs() {
   const known = new Set(policy.tools.map(tool => tool.name));
   const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
   byId("mac-status").textContent = `${retained.length} rules kept · ${macData.rules.length - retained.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
-  for (const id of ["mac-rules-open", "mac-download-intune"]) byId(id).disabled = !retained.length;
+  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ps"]) byId(id).disabled = !retained.length;
 }
 
 async function enableMacs() {
@@ -421,14 +421,17 @@ async function enableMacs() {
 }
 
 byId("link-macos")?.addEventListener("change", enableMacs);
-byId("mac-download-intune")?.addEventListener("click", () => {
-  try {
-    saveFile(buildIntunePolicy(macRetained(), macData.version), `RMM_Denied_Binaries_Intune${excluded.size ? "_custom" : ""}.json`, "application/json;charset=utf-8");
-    byId("mac-error").hidden = true;
-  } catch (error) {
-    showMacError(error);
-  }
-});
+const macDownloads = { "mac-download-intune": [buildIntunePolicy, "json", "application/json;charset=utf-8"], "mac-download-ps": [buildPowerShellScript, "ps1", "text/plain;charset=utf-8"] };
+for (const [id, [build, extension, type]] of Object.entries(macDownloads)) {
+  byId(id)?.addEventListener("click", () => {
+    try {
+      saveFile(build(macRetained(), macData.version), `RMM_Denied_Binaries_Intune${excluded.size ? "_custom" : ""}.${extension}`, type);
+      byId("mac-error").hidden = true;
+    } catch (error) {
+      showMacError(error);
+    }
+  });
+}
 
 // A copy button that shows what happened: Copied, or Copy failed when the clipboard is unavailable.
 async function copyWith(button, text, restore) {

@@ -65,7 +65,7 @@
         <ul>
           <li><strong>Option 1, Graph Explorer (recommended):</strong> download <strong>Intune JSON</strong> from the macOS card and post it once. The policy appears in Intune with every entry filled in. Nothing to retype, no typos, and a changed list is a new download.</li>
           <li><strong>Option 2, Intune portal:</strong> create the settings catalog profile by hand and type every Team ID and Signing ID from <strong>Show rules for the portal</strong>. Fine for a short list; with the full list it is many entries and one mistake invalidates the whole policy on the Mac.</li>
-          <li><strong>Option 3, PowerShell:</strong> the same Graph request as option 1, sent with the Microsoft Graph PowerShell SDK. A few lines, repeatable, and the natural choice when you roll this out to more than one tenant.</li>
+          <li><strong>Option 3, PowerShell:</strong> download one script with the policy built in and run it. The same Graph request as option 1 without Graph Explorer, and the natural choice when you roll this out to more than one tenant.</li>
         </ul>
         <p>All three routes end in the same policy. Assign and verify it the same way (steps 6 and 7).</p>
       </section>
@@ -73,7 +73,7 @@
         <h2 id="graph-title">3. Option 1: Graph Explorer</h2>
         <ol>
           <li>In the macOS card, select <strong>Download Intune JSON</strong>. The file <code>RMM_Denied_Binaries_Intune.json</code> is the complete policy: name, platform, and one Denied Binaries entry per rule left after your exclusions.
-            <figure><a href="./MacScreens/MacCard.png" target="_blank" rel="noopener noreferrer" aria-label="Open macOS card screenshot"><img src="./MacScreens/MacCard.png" width="335" height="237" loading="lazy" alt="The macOS app control card: rules kept, Show rules for the portal, Download Intune JSON."></a></figure></li>
+            <figure><a href="./MacScreens/MacCard.png" target="_blank" rel="noopener noreferrer" aria-label="Open macOS card screenshot"><img src="./MacScreens/MacCard.png" width="335" height="285" loading="lazy" alt="The macOS app control card: rules kept, Show rules for the portal, Download Intune JSON."></a></figure></li>
           <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a> and sign in with the account icon at the top right, using your Intune administrator account. Without signing in you are on Microsoft's sample tenant.</li>
           <li>Set the method to <strong>POST</strong>, the version to <strong>beta</strong> and the URL to <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>. Graph Explorer now knows which permission this request needs.</li>
           <li>Open the <strong>Modify permissions</strong> tab. It lists <code>DeviceManagementConfiguration.ReadWrite.All</code> for this request. If its status is not consented yet, select <strong>Consent</strong>; in most tenants this is already done.
@@ -108,18 +108,21 @@
       <section id="powershell" class="help-step" aria-labelledby="powershell-title">
         <h2 id="powershell-title">5. Option 3: PowerShell</h2>
         <ol>
-          <li>In the macOS card, select <strong>Download Intune JSON</strong> and note where <code>RMM_Denied_Binaries_Intune.json</code> lands.</li>
-          <li>Open PowerShell in the folder with the downloaded file and run the lines below. They install the Microsoft Graph PowerShell SDK only when it is missing, sign you in with your Intune administrator account, and ask for consent to <code>DeviceManagementConfiguration.ReadWrite.All</code> if it has not been granted yet.</li>
+          <li>In the macOS card, select <strong>Download PowerShell script</strong>. The file <code>RMM_Denied_Binaries_Intune.ps1</code> contains the whole policy, so nothing else needs to be downloaded or kept next to it.</li>
+          <li>Open PowerShell and run the file. It installs the Microsoft Graph PowerShell SDK only when it is missing, signs you in with your Intune administrator account, asks for consent to <code>DeviceManagementConfiguration.ReadWrite.All</code> if it has not been granted yet, posts the policy and prints its id.</li>
         </ol>
+        <p>This is what the script does, apart from the embedded JSON:</p>
         <pre class="kql-code"><code>if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {
     Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
 }
 Import-Module Microsoft.Graph.Authentication
-Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All
-$body = Get-Content .\RMM_Denied_Binaries_Intune.json -Raw
-Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
+Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All -NoWelcome
+$body = @'
+    ... the same JSON as Download Intune JSON ...
+'@
+$policy = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
         <p>The response is the new policy with its <code>id</code>. In Intune the policy appears under <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>; as with option 1, the overview shows an empty <strong>Allowed</strong> and <strong>Edit</strong> shows every entry. It is not assigned yet: continue with step 6.</p>
-        <p>To change the list later, exclude or include tools on the RMM page, download again and run the same lines again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
+        <p>To change the list later, exclude or include tools on the RMM page, download the script again and run it again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
       </section>
       <section id="assign" class="help-step" aria-labelledby="assign-title">
         <h2 id="assign-title">6. Assign</h2>

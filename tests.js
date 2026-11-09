@@ -1,7 +1,7 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
-import { parseMacProducts, filterMacRules, buildIntunePolicy, reportMissingUrl } from "./macos.js";
+import { parseMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -768,6 +768,18 @@ async function testMacBuilder(policy) {
       assert(JSON.stringify(item.children.map(child => child.settingDefinitionId)) === JSON.stringify(expected), "Child definitions differ");
     }
     expectError(() => buildIntunePolicy([], data.version), "deny nothing");
+  });
+  test("PowerShell script embeds the Intune body and posts it", () => {
+    const script = buildPowerShellScript(data.rules, data.version);
+    const lines = script.split("\r\n");
+    const start = lines.indexOf("$body = @'");
+    const end = lines.indexOf("'@");
+    assert(start > 0 && end > start, "Here-string delimiters missing");
+    assert(lines.slice(start + 1, end).join("\r\n") === buildIntunePolicy(data.rules, data.version), "Embedded body differs from the JSON download");
+    assert(lines.some(line => line.startsWith("Install-Module Microsoft.Graph.Authentication") || line.includes("Install-Module Microsoft.Graph.Authentication")), "No conditional install");
+    assert(lines.includes("Import-Module Microsoft.Graph.Authentication"), "No import");
+    assert(lines.some(line => line.startsWith("$policy = Invoke-MgGraphRequest -Method POST") && line.includes("/beta/deviceManagement/configurationPolicies")), "No POST");
+    expectError(() => buildPowerShellScript([], data.version), "deny nothing");
   });
   test("Missing-data report link is a prefilled GitHub issue", () => {
     const url = new URL(reportMissingUrl("https://github.com/example/repo"));

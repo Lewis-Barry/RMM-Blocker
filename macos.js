@@ -141,6 +141,27 @@ export function buildIntunePolicy(rules, version) {
   }, null, 2);
 }
 
+// A self-contained PowerShell script: Graph SDK install when missing, sign-in, and the policy body inline.
+export function buildPowerShellScript(rules, version) {
+  const body = buildIntunePolicy(rules, version);
+  return [
+    "#Requires -Version 5.1",
+    `# RMM Guard: creates the "Block RMM tools (macOS)" settings catalog policy in Intune. Deny list v${version}, ${rules.length} rules.`,
+    "# Run with an Intune administrator account. The policy is created unassigned; assign it in Intune afterwards.",
+    "if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {",
+    "    Install-Module Microsoft.Graph.Authentication -Scope CurrentUser",
+    "}",
+    "Import-Module Microsoft.Graph.Authentication",
+    "Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All -NoWelcome",
+    "$body = @'",
+    body,
+    "'@",
+    '$policy = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"',
+    "Write-Host \"Created policy '$($policy.name)' with id $($policy.id). Assign it under Devices > macOS > Configuration.\"",
+    "",
+  ].join("\r\n");
+}
+
 // Pre-filled issue so a visitor can send the codesign output for a tool that has no macOS rules yet.
 export function reportMissingUrl(repository) {
   const title = "macOS rules for <tool name>";
