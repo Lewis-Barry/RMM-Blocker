@@ -141,9 +141,15 @@ Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/device
   </main>
   <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./index.html#exports">Downloads</a></div></footer>
   <script type="module">
-    // Copy icon on every code block; the help pages do not load app.js.
-    const copy = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>';
-    const check = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
+    // Copy icon on every code block. Styles live here so the block and its button always ship together.
+    document.head.insertAdjacentHTML("beforeend", `<style>
+      .code-block { position: relative; margin: 12px 0 0; }
+      .code-block .kql-code { padding-right: 52px; }
+      .code-copy { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); cursor: pointer; }
+      .code-copy:hover, .code-copy.copied { border-color: var(--accent); color: var(--accent); }
+    </style>`);
+    const copy = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>';
+    const check = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
     for (const pre of document.querySelectorAll("pre.kql-code")) {
       const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
       const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", title: "Copy", innerHTML: copy });

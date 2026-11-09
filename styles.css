@@ -203,12 +203,6 @@ footer { border-top: 1px solid var(--line); flex-shrink: 0; background: var(--pa
 .help-step strong { color: var(--ink); font-weight: 600; }
 .help-step li { margin: 8px 0; }
 .help-step figure { margin: 16px 0 0; }
-.code-block { position: relative; margin: 12px 0 0; }
-.code-block .kql-code { padding-right: 52px; }
-.code-copy { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); cursor: pointer; }
-.code-copy svg { width: 16px; height: 16px; }
-.code-copy:hover { border-color: var(--accent); color: var(--accent); }
-.code-copy.copied { border-color: var(--accent); color: var(--accent); }
 .help-step figure a { display: block; width: fit-content; max-width: 100%; }
 .help-step img { display: block; width: auto; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; }
 .help-step img.shot-small { width: 440px; }
