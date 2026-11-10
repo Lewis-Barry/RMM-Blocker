@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { candidates, sync } from "./sync-lolrmm.mjs";
 import { reject } from "./lolrmm-reject.mjs";
-import { bump } from "./bump-version.mjs";
+import { bump, changelogEntry } from "./bump-version.mjs";
 
 const none = new Set();
 const tool = (Name, Disk = [], Domains = []) => ({ Name, Artifacts: { Disk, Network: [{ Domains }] } });
@@ -70,17 +70,41 @@ test("reject removes a product's additions from the latest release and drops a r
     ] },
     { version: "1.0.0.9", products: [] },
   ];
-  const first = reject(data, log, "beta");
+  const first = reject(data, log, "beta", "1.0.0.9");
   assert.equal(first.removed, 1);
   assert.deepEqual(Object.keys(first.data.products), ["Acme RMM"]);
   assert.equal(first.data.version, "1.0.0.10");
   assert.deepEqual(first.log[0].products.map(change => change.name), ["Acme RMM"]);
 
-  const second = reject(first.data, first.log, "Acme RMM");
+  // main was bumped to 1.0.0.9.1 without a changelog entry; an emptied release goes back to that, not to the changelog's 1.0.0.9.
+  const second = reject(first.data, first.log, "Acme RMM", "1.0.0.9.1");
   assert.deepEqual(second.data.products["Acme RMM"], { paths: ["*\\acme.exe"] });
   assert.equal(second.log.length, 1);
-  assert.equal(second.data.version, "1.0.0.9");
-  assert.equal(reject(data, log, "Unknown").removed, 0);
+  assert.equal(second.data.version, "1.0.0.9.1");
+  assert.equal(reject(data, log, "Unknown", "1.0.0.9").removed, 0);
+});
+
+test("reject reports the lolRMM tool names behind a product, so the ignore list matches what the sync reads", () => {
+  const data = { version: "1.0.0.10", products: { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"], domains: ["ninja-backup.com"] } } };
+  const log = [{ version: "1.0.0.10", products: [{ name: "NinjaOne / NinjaRMM", tool: "NinjaRMM", new: false, paths: [], domains: ["ninja-backup.com"] }] }, { version: "1.0.0.9", products: [] }];
+  const result = reject(data, log, "NinjaOne / NinjaRMM", "1.0.0.9");
+  assert.deepEqual(result.tools, ["NinjaRMM"]);
+  const again = sync(result.data, [tool("NinjaRMM", [], ["ninja-backup.com"])], new Set(result.tools.map(name => name.toLowerCase())));
+  assert.deepEqual(again.changes, []);
+});
+
+test("candidates keep one spelling of a file listed twice in different case", () => {
+  const found = candidates(tool("Zed", [exe("C:\\x\\ZedTool.exe"), exe("C:\\x\\zedtool.exe")]), none);
+  assert.deepEqual([...found.paths], ["*\\ZedTool.exe"]);
+});
+
+test("changelogEntry lists what a manual edit added and counts removed deny paths", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe", "*\\old.exe"] } } };
+  const after = { version: "1.0.0.10", products: { Acme: { paths: ["*\\ACME.exe", "*\\acme2.exe"] }, Beta: { vendorDomains: ["beta.com"] } } };
+  assert.deepEqual(changelogEntry(before, after, "1.0.0.10", "2026-01-01"), {
+    version: "1.0.0.10", date: "2026-01-01", source: "Manual edit", note: "1 deny path removed.",
+    products: [{ name: "Acme", new: false, paths: ["*\\acme2.exe"], domains: [] }, { name: "Beta", new: true, paths: [], domains: ["beta.com"] }],
+  });
 });
 
 test("a tool named after one part of a combined product joins that product", () => {

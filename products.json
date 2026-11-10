@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0.21",
+  "version": "1.0.0.22",
   "products": {
     "Absolute / Computrace": {
       "paths": [
@@ -710,8 +710,7 @@
     "Distant Desktop": {
       "paths": [
         "*\\distant-desktop*.exe",
-        "*\\ddsystem*.exe",
-        "*\\dd.exe"
+        "*\\ddsystem*.exe"
       ],
       "domains": [
         "distantdesktop.com",
@@ -990,8 +989,7 @@
     },
     "GLPI Agent": {
       "paths": [
-        "*\\perl.exe",
-        "*\\wperl.exe"
+        "*\\GLPI-Agent\\*"
       ],
       "domains": [
         "glpi-project.org",

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SiPolicy PolicyType="Base Policy" xmlns="urn:schemas-microsoft-com:sipolicy">
-  <VersionEx>1.0.0.21</VersionEx>
+  <VersionEx>1.0.0.22</VersionEx>
   <PolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</PolicyID>
   <BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID>
   <PlatformID>{2E07F7E4-194C-4D20-B7C9-6F44A6C5A234}</PlatformID>
@@ -172,7 +172,6 @@
     <Deny ID="ID_DENY_A_6C294D0DB0B60BA38E438323108D813D" FriendlyName="DesktopNow" FilePath="*\desktopnow*.exe" />
     <Deny ID="ID_DENY_A_2C841DC6C531A44AA3ED53587C950714" FriendlyName="Distant Desktop" FilePath="*\distant-desktop*.exe" />
     <Deny ID="ID_DENY_A_AC03D7BDC8D4D3EDF3A6E084FB2F16A8" FriendlyName="Distant Desktop" FilePath="*\ddsystem*.exe" />
-    <Deny ID="ID_DENY_A_99B495DCFA05E44FC3BCC088FB02D609" FriendlyName="Distant Desktop" FilePath="*\dd.exe" />
     <Deny ID="ID_DENY_A_DC1EF5A0FEF10CE5D9A0E325BBB8B3BC" FriendlyName="DocConnect" FilePath="*\DocConnect.Agent*.exe" />
     <Deny ID="ID_DENY_A_BC4F4955EA89F217DD5AC6F2422F6591" FriendlyName="Domotz" FilePath="*\domotz\*" />
     <Deny ID="ID_DENY_A_B21F2E08127D4E89CCEB9C885283EFE5" FriendlyName="Domotz" FilePath="*\domotz*.exe" />
@@ -261,8 +260,7 @@
     <Deny ID="ID_DENY_A_BE551E7E27D235AE6D1D714E8DA1821D" FriendlyName="Freshservice" FilePath="*\Freshdesk\Freshservice Discovery Agent\*" />
     <Deny ID="ID_DENY_A_628BA23912B115238DF12511CF6E4C70" FriendlyName="GetScreen" FilePath="*\getscreen\*" />
     <Deny ID="ID_DENY_A_D667C9FA118FFBBE71A1541BCF8E501F" FriendlyName="GetScreen" FilePath="*\GetScreen*.exe" />
-    <Deny ID="ID_DENY_A_033DA6DCA29076344A20C697D7156ED0" FriendlyName="GLPI Agent" FilePath="*\perl.exe" />
-    <Deny ID="ID_DENY_A_6831995B52C3C9D0B02DF4F1D56DA124" FriendlyName="GLPI Agent" FilePath="*\wperl.exe" />
+    <Deny ID="ID_DENY_A_49BA9841BC5CE933F2B9F3B828EDF6A4" FriendlyName="GLPI Agent" FilePath="*\GLPI-Agent\*" />
     <Deny ID="ID_DENY_A_9D1775F56976BF815241BCA0B4FA854D" FriendlyName="Gorelo" FilePath="*\Gorelo.Rmm.Setup*.exe" />
     <Deny ID="ID_DENY_A_59D85B79A4EF87FEDC47B8FF6C7F9A72" FriendlyName="Gorelo" FilePath="*\Gorelo.RemoteManagement.Agent*.exe" />
     <Deny ID="ID_DENY_A_081F5F94F54A78293A3E3C77C6854805" FriendlyName="Gorelo" FilePath="*\Gorelo.RemoteManagement.Shell*.exe" />
@@ -1103,7 +1101,6 @@
           <FileRuleRef RuleID="ID_DENY_A_6C294D0DB0B60BA38E438323108D813D" />
           <FileRuleRef RuleID="ID_DENY_A_2C841DC6C531A44AA3ED53587C950714" />
           <FileRuleRef RuleID="ID_DENY_A_AC03D7BDC8D4D3EDF3A6E084FB2F16A8" />
-          <FileRuleRef RuleID="ID_DENY_A_99B495DCFA05E44FC3BCC088FB02D609" />
           <FileRuleRef RuleID="ID_DENY_A_DC1EF5A0FEF10CE5D9A0E325BBB8B3BC" />
           <FileRuleRef RuleID="ID_DENY_A_BC4F4955EA89F217DD5AC6F2422F6591" />
           <FileRuleRef RuleID="ID_DENY_A_B21F2E08127D4E89CCEB9C885283EFE5" />
@@ -1192,8 +1189,7 @@
           <FileRuleRef RuleID="ID_DENY_A_BE551E7E27D235AE6D1D714E8DA1821D" />
           <FileRuleRef RuleID="ID_DENY_A_628BA23912B115238DF12511CF6E4C70" />
           <FileRuleRef RuleID="ID_DENY_A_D667C9FA118FFBBE71A1541BCF8E501F" />
-          <FileRuleRef RuleID="ID_DENY_A_033DA6DCA29076344A20C697D7156ED0" />
-          <FileRuleRef RuleID="ID_DENY_A_6831995B52C3C9D0B02DF4F1D56DA124" />
+          <FileRuleRef RuleID="ID_DENY_A_49BA9841BC5CE933F2B9F3B828EDF6A4" />
           <FileRuleRef RuleID="ID_DENY_A_9D1775F56976BF815241BCA0B4FA854D" />
           <FileRuleRef RuleID="ID_DENY_A_59D85B79A4EF87FEDC47B8FF6C7F9A72" />
           <FileRuleRef RuleID="ID_DENY_A_081F5F94F54A78293A3E3C77C6854805" />

@@ -27,6 +27,7 @@ const GENERIC = new Set([
 const SYSTEM = new Set([
   "tar", "curl", "ssh", "scp", "explorer", "svchost", "cmd", "powershell", "pwsh", "rundll32", "msiexec", "conhost",
   "dllhost", "taskmgr", "notepad", "notepad++", "regedit", "wscript", "cscript", "teams", "zoom", "slack", "chrome", "msedge", "firefox",
+  "perl", "wperl", "dd",
 ]);
 
 const lower = value => value.toLowerCase();
@@ -47,12 +48,15 @@ const rootLabel = domain => { const labels = lower(domain).replace(/^\*\./, "").
 export function candidates(tool, ignore) {
   const paths = new Set();
   const domains = new Set();
+  // lolRMM sometimes lists one file in two spellings; build.mjs rejects the same path twice under a product.
+  const seen = new Set();
   if (ignore.has(lower(tool.Name))) return { paths, domains };
   for (const disk of tool.Artifacts?.Disk || []) {
     if (!/^Windows$/i.test(disk.OS) || typeof disk.File !== "string") continue;
     const name = disk.File.split(/[\\/]/).pop();
     const stem = lower(name.replace(/\.exe$/i, ""));
-    if (!/^[^*?<>]+\.exe$/i.test(name) || stem.length < 3 || GENERIC.has(stem) || SYSTEM.has(stem) || ignore.has(lower(name))) continue;
+    if (!/^[^*?<>]+\.exe$/i.test(name) || stem.length < 3 || GENERIC.has(stem) || SYSTEM.has(stem) || ignore.has(lower(name)) || seen.has(lower(name))) continue;
+    seen.add(lower(name));
     paths.add(`*\\${name}`);
   }
   for (const network of tool.Artifacts?.Network || []) {
@@ -169,7 +173,7 @@ async function main() {
   writeFileSync(productsPath, `${JSON.stringify({ ...data, version, products }, null, 2)}\n`);
   const changelogPath = join(root, "changelog.json");
   const log = JSON.parse(readFileSync(changelogPath, "utf8"));
-  log.unshift({ version, date, source: "lolrmm.io", products: changes.map(({ name, isNew, paths, domains }) => ({ name, new: isNew, paths, domains })) });
+  log.unshift({ version, date, source: "lolrmm.io", products: changes.map(({ name, isNew, paths, domains, tool }) => ({ name, tool, new: isNew, paths, domains })) });
   writeFileSync(changelogPath, `${JSON.stringify(log, null, 2)}\n`);
 }
 

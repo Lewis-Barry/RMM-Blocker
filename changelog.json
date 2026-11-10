@@ -1,7 +1,7 @@
 [
   {
-    "version": "1.0.0.21",
-    "date": "2026-11-08",
+    "version": "1.0.0.22",
+    "date": "2026-11-10",
     "source": "manual",
     "note": "macOS: four more tools verified against their installers (Tailscale, TigerVNC, Aspia, Cloudflare Tunnel by Signing ID). RealVNC gains the cloud broker and management domains read from the VNC Server binaries. MeshAgent is ad-hoc signed and cannot be covered by Team ID.",
     "products": [
@@ -19,11 +19,27 @@
     ]
   },
   {
-    "version": "1.0.0.20",
-    "date": "2026-11-08",
+    "version": "1.0.0.21",
+    "date": "2026-11-10",
     "source": "manual",
     "note": "New macOS platform option on the RMM page: Apple DDM app control (macOS 27, supervised) deny lists by Team ID and Signing ID, exported as an Intune settings catalog policy body for Graph, or typed into the portal from the rule list. Code signatures verified against the vendors' installers for 10 tools: TeamViewer, AnyDesk, RustDesk, Splashtop, Chrome Remote Desktop, Parsec, Supremo, RealVNC, Teleport Connect and ngrok. Windows rules and IOCs are unchanged.",
     "products": []
+  },
+  {
+    "version": "1.0.0.20",
+    "date": "2026-11-10",
+    "source": "Manual edit",
+    "note": "3 deny paths removed.",
+    "products": [
+      {
+        "name": "GLPI Agent",
+        "new": false,
+        "paths": [
+          "*\\GLPI-Agent\\*"
+        ],
+        "domains": []
+      }
+    ]
   },
   {
     "version": "1.0.0.19",
