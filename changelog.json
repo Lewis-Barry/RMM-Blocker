@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.0.20",
+    "date": "2026-11-10",
+    "source": "Manual edit",
+    "note": "3 deny paths removed.",
+    "products": [
+      {
+        "name": "GLPI Agent",
+        "new": false,
+        "paths": [
+          "*\\GLPI-Agent\\*"
+        ],
+        "domains": []
+      }
+    ]
+  },
+  {
     "version": "1.0.0.19",
     "date": "2026-11-08",
     "source": "lolrmm.io and manual",
