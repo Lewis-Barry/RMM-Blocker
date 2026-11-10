@@ -10,7 +10,8 @@ const root = join(import.meta.dirname, "..");
 const lower = value => value.toLowerCase();
 
 // Pure: returns the data with the product's additions from the latest release removed.
-export function reject(data, log, name) {
+// mainVersion is the version on main, which a release left empty goes back to.
+export function reject(data, log, name, mainVersion) {
   const products = { ...data.products };
   const latest = log[0];
   const hits = latest.products.filter(change => lower(change.name) === lower(name));
@@ -29,9 +30,13 @@ export function reject(data, log, name) {
     products[change.name] = next;
   }
   const rest = { ...latest, products: latest.products.filter(change => lower(change.name) !== lower(name)) };
-  // An empty release is dropped, and the version goes back to the release before it.
-  const log2 = rest.products.length ? [rest, ...log.slice(1)] : log.slice(1);
-  return { removed: hits.length, data: { ...data, version: log2[0].version, products }, log: log2 };
+  // An empty release is dropped, and the version goes back to the one on main.
+  // The changelog can't supply it: releases bumped before bump-version.mjs wrote entries are missing from it.
+  const kept = rest.products.length > 0;
+  const log2 = kept ? [rest, ...log.slice(1)] : log.slice(1);
+  // The sync ignores by lolRMM tool name, which differs from the product name when a tool joined an existing product.
+  const tools = [...new Set(hits.map(change => change.tool).filter(Boolean))];
+  return { removed: hits.length, tools, data: { ...data, version: kept ? data.version : mainVersion, products }, log: log2 };
 }
 
 function main() {
@@ -40,18 +45,21 @@ function main() {
   const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: root }).toString().trim();
   if (branch === "main") throw new Error("Run this on the lolrmm-sync branch, not main.");
 
-  const ignorePath = join(root, "scripts", "lolrmm-ignore.json");
-  const ignore = JSON.parse(readFileSync(ignorePath, "utf8"));
-  if (!ignore.some(entry => lower(entry.name) === lower(name))) {
-    ignore.push({ name, reason });
-    writeFileSync(ignorePath, `${JSON.stringify(ignore, null, 2)}\n`);
-  }
-
   const dataPath = join(root, "products.json");
   const changelogPath = join(root, "changelog.json");
   const data = JSON.parse(readFileSync(dataPath, "utf8"));
   const log = JSON.parse(readFileSync(changelogPath, "utf8"));
-  const result = reject(data, log, name);
+  const mainVersion = JSON.parse(execFileSync("git", ["show", "origin/main:products.json"], { cwd: root, encoding: "utf8" })).version;
+  const result = reject(data, log, name, mainVersion);
+
+  const ignorePath = join(root, "scripts", "lolrmm-ignore.json");
+  const ignore = JSON.parse(readFileSync(ignorePath, "utf8"));
+  // Releases synced before the changelog recorded tool names fall back to the product name.
+  for (const tool of result.tools.length ? result.tools : [name]) {
+    if (!ignore.some(entry => lower(entry.name) === lower(tool))) ignore.push({ name: tool, reason });
+  }
+  writeFileSync(ignorePath, `${JSON.stringify(ignore, null, 2)}\n`);
+
   if (!result.removed) {
     console.log(`${name} is blocked from future syncs. It has no additions in ${data.version}, so the PR is unchanged.`);
     return;

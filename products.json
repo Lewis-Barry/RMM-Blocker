@@ -650,8 +650,7 @@
     "Distant Desktop": {
       "paths": [
         "*\\distant-desktop*.exe",
-        "*\\ddsystem*.exe",
-        "*\\dd.exe"
+        "*\\ddsystem*.exe"
       ],
       "domains": [
         "distantdesktop.com",
@@ -930,8 +929,7 @@
     },
     "GLPI Agent": {
       "paths": [
-        "*\\perl.exe",
-        "*\\wperl.exe"
+        "*\\GLPI-Agent\\*"
       ],
       "domains": [
         "glpi-project.org",
