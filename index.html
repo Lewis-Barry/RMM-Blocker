@@ -33,7 +33,7 @@
   </header>
   <main class="container page-main">
     <div class="builder-intro-row">
-      <p class="builder-intro">Exclude trusted tools from XML and CSV exports.</p>
+      <p class="builder-intro">Exclude trusted tools from the Windows, macOS and IOC exports.</p>
       <span class="chip updated-chip">Last updated Nov 8, 2026</span>
     </div>
     <section class="how-to" aria-labelledby="how-to-title">
@@ -42,6 +42,7 @@
         <li>Find each remote tool your team uses, then tick <strong>Exclude</strong>.</li>
         <li>Download the XML and deploy it as a WDAC policy, e.g. through Intune.</li>
         <li>Optional: turn on <strong>Include IOC exports</strong> and import every CSV batch into Defender indicators.</li>
+        <li>macOS: use <strong>Show rules for the portal</strong> or <strong>Download Intune JSON</strong> in the macOS card. Untick a platform to leave it out. <a href="./help-macos.html">macOS guide</a>.</li>
         <li>Pilot on one test device before a wider rollout.</li>
       </ol>
     </section>
@@ -54,6 +55,11 @@
           <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke="currentColor" stroke-width="1.5"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="1.5"/></svg>
           <input id="search" type="search" placeholder="Search tools, filenames or folders" autocomplete="off">
         </div>
+        <fieldset class="platform-field" aria-label="Platforms">
+          <legend>Platform</legend>
+          <label class="platform-option"><input id="link-windows" type="checkbox" checked autocomplete="off"><span>Windows</span></label>
+          <label class="platform-option"><input id="link-macos" type="checkbox" checked autocomplete="off" aria-describedby="mac-status"><span>macOS</span></label>
+        </fieldset>
         <div class="filter-field">
           <label for="filter">Show</label>
           <select id="filter">
@@ -74,7 +80,7 @@
           <div class="panel-heading"><h2 id="exports-title">Downloads</h2></div>
           <div class="export-content">
             <details id="selection-details" class="selection-details" hidden><summary id="selection-summary"></summary><ul id="selection-list" role="list"></ul></details>
-            <section class="export-card" aria-labelledby="wdac-export-title">
+            <section id="wdac-card" class="export-card" aria-labelledby="wdac-export-title">
               <div class="export-card-heading"><h3 id="wdac-export-title">WDAC policy</h3><span class="file-badge">XML</span></div>
               <p class="output-description">Blocks execution on Windows 11 24H2 and newer.</p>
               <p id="wdac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true"><span id="remaining-count">0</span> rules kept · <span id="removed-count">0</span> removed</p>
@@ -101,6 +107,16 @@
                 <details class="export-details"><summary>Import notes</summary><p>No Allow indicators added. Delete existing imports separately. Other network controls may still block connections; endpoint coverage is incomplete.</p><p><a href="./help-ioc.html">Upload guide</a></p></details>
               </div>
             </section>
+            <section id="mac-card" class="export-card" aria-labelledby="mac-export-title" hidden>
+              <div class="export-card-heading"><h3 id="mac-export-title">macOS app control</h3><span class="file-badge">JSON · PS1</span></div>
+              <p class="output-description">Intune settings catalog for macOS 27 (supervised). Preview, no audit mode.</p>
+              <p id="mac-status" class="export-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+              <div id="mac-error" class="error" role="alert" hidden></div>
+              <button id="mac-rules-open" class="primary" type="button">Show rules for the portal</button>
+              <button id="mac-download-intune" class="primary mac-secondary" type="button">Download Intune JSON</button>
+              <button id="mac-download-ps" class="primary mac-secondary" type="button">Download PowerShell script</button>
+              <details class="export-details"><summary>Deploy notes</summary><p>Separate from the WDAC XML: run the PowerShell script, post the JSON once in Graph Explorer, or type the rules into the settings catalog. Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
+            </section>
             <button id="kql-open" class="kql-open" type="button">See KQL for network discovery</button>
           </div>
         </section>
@@ -119,6 +135,19 @@
       <pre class="kql-code"><code id="kql-code"></code></pre>
       <div class="modal-actions">
         <button id="kql-copy" class="primary" type="button">Copy query</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="mac-modal" class="modal" aria-labelledby="mac-modal-title" aria-describedby="mac-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="mac-modal-title">Denied Binaries to enter in Intune</h2>
+        <button id="mac-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <p id="mac-modal-desc" class="modal-desc">Intune → Devices → macOS → Configuration → Settings catalog → Declarative Device Management → App Settings → Denied Binaries. Click a value to copy it. One entry per Team ID; a tool with Signing IDs needs one entry per Signing ID, each with the same Team ID. <a href="./help-macos.html#portal">Step by step</a>.</p>
+      <ul id="mac-modal-list" class="rule-groups" role="list"></ul>
+      <div class="modal-actions">
+        <button id="mac-copy" class="primary" type="button">Copy list</button>
       </div>
     </div>
   </dialog>

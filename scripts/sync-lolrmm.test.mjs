@@ -150,3 +150,12 @@ test("bump raises the version only when paths changed and the version did not", 
   assert.equal(bump(before, added).version, "1.0.0.10");
   assert.equal(bump(before, { ...added, version: "1.0.0.10" }), null);
 });
+
+test("bump also raises the version when a macOS rule is added or refined without a version change", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"] } } };
+  const macos = { rules: [{ teamId: "ABCDEFGHIJ" }], source: "https://example.com/acme.dmg", verified: "2026-01-01" };
+  const added = { ...before, products: { Acme: { paths: ["*\\acme.exe"], macos } } };
+  assert.equal(bump(before, added).version, "1.0.0.10");
+  const refined = { ...added, products: { Acme: { paths: ["*\\acme.exe"], macos: { ...macos, rules: [{ teamId: "ABCDEFGHIJ", signingId: "com.acme.agent" }] } } } };
+  assert.equal(bump(added, refined).version, "1.0.0.10");
+});

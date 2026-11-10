@@ -16,6 +16,53 @@ The **Browsers** tab (`browsers.html`) works the same way for
 It has no IOC exports. That XML is edited by hand: each deny rule's `FriendlyName` is the browser
 name the page groups it under.
 
+## macOS app control (preview)
+
+The RMM page covers two platforms, both on by default under **Platform**: Windows (the WDAC XML) and macOS.
+Untick one to leave it out. The macOS half denies the same tools on macOS 27 through Apple's declarative
+**App Settings** configuration (`com.apple.configuration.app.settings` → `Allowed.DeniedBinaries`), which Intune
+exposes in the settings catalog under Declarative Device Management. It needs a supervised Mac (Automated Device
+Enrollment) and has no audit mode. Rules match the vendor's code signature, not file paths:
+
+- `teamId` (required) denies every binary the vendor signs. Use it alone when the vendor only ships remote tools.
+- `teamId` plus `signingId` denies one binary. Required when the Team ID also signs unrelated software:
+  the Microsoft, Google, Adobe, 1Password and Cloudflare Team IDs are refused without a `signingId` (Chrome Remote
+  Desktop lists only its host binaries, Cloudflare Tunnel only `cloudflared`). Signing ID alone is not accepted, even
+  though Apple allows it, because one line could deny `com.apple.Safari` on every Mac.
+
+The macOS card shares the page's exclusions and offers three routes to the same Intune policy (Graph Explorer, the portal by hand,
+or PowerShell), all built in the browser from the `macos` blocks in `products.json`:
+
+- **Show rules for the portal**: one block per tool with its Team ID and Signing IDs, click to copy, for typing the
+  entries into the settings catalog by hand.
+- **Download Intune JSON**: a settings catalog policy body for `POST /beta/deviceManagement/configurationPolicies`
+  (the portal cannot import settings catalog JSON, so the guide uses Graph Explorer). Definition ids: `app_app` →
+  `app_allowed` → `app_allowed_deniedbinaries` → `..._item_teamid` / `..._item_signingid`.
+- **Download PowerShell script**: the same body embedded in a `.ps1` that installs the Graph PowerShell SDK when
+  missing, signs in and posts it, so one file does the whole deployment.
+
+Only tools whose signature was read from the vendor's real installer are listed. To add one:
+
+```
+codesign -dvvv "/Applications/Example.app" 2>&1 | grep -E "^(Identifier|TeamIdentifier)="
+```
+
+then add to the product in `products.json`, bump `version`, and run `node build.mjs`:
+
+```json
+"macos": {
+  "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "cask": "teamviewer",
+  "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
+  "verified": "2026-11-08"
+}
+```
+
+`node build.mjs --check` runs the same validation as the page (`validateMacos` in `macos.js`): a rule without a
+valid `teamId` makes macOS reject the whole policy, or worse, denies the wrong vendor. `help-macos.html` is the
+deployment guide. The Defender IOC CSVs already work on macOS when network protection runs in block mode, so the
+macOS half adds no IOC export of its own.
+
 ## Adding or updating products
 
 `products.json` is the only file to edit. Each product lists any of `paths`
@@ -64,6 +111,30 @@ Nothing reaches `main` until you merge that pull request.
 - `changelog.json` records each release. `changelog.html` displays it.
 - Run `node scripts/sync-lolrmm.mjs --dry-run` to preview a sync without writing files.
 - Repository settings must allow Actions to create pull requests (Settings > Actions > General).
+
+## Monthly macOS sync
+
+The lolRMM sync workflow has a second job on a macOS runner, `scripts/sync-macos.mjs`, which does for Team IDs
+what the first job does for Windows paths, on the same `lolrmm-sync` pull request:
+
+1. **Re-verify.** Every product with a `cask` in its `macos` block is downloaded again through Homebrew (which
+   checks the installer's sha256) and read with `codesign`. A Team ID that is no longer present fails the run: a
+   hijacked installer or a vendor that changed its signing identity never reaches a rule silently.
+2. **Join.** Every product without macOS rules is matched to a Homebrew cask whose homepage shares the registrable
+   domain of the product's own indicators or of its lolRMM website, and whose name shares a word with the product.
+   Exactly one cask is required; several, or other casks from the same vendor that share no name with the
+   product, are listed in the PR as "not added" with the reason.
+3. **Read.** The installer is downloaded, every Mach-O binary is read with `codesign`, and a rule is written only
+   when all binaries carry one Team ID that is not in the broad-vendor list and not used by another product.
+   Ad-hoc or unsigned binaries, mixed signers and failed downloads are listed, not added.
+4. **Review.** The PR shows per tool the Team ID, the cask and version, the number of binaries, the installer URL
+   and the Signing IDs of its apps and helpers. Check that those name the remote tool and not another product of
+   the same vendor (ESET's only cask is its antivirus; Parallels' are Parallels Desktop). To reject a tool for macOS
+   while keeping its Windows rules, add it to `scripts/macos-ignore.json` with the reason and delete its `macos`
+   block; the next run skips it. `node scripts/sync-macos.mjs --dry-run` previews a run on any Mac with Homebrew.
+
+Only products already in `products.json` are considered, so the Windows review (R1 to R4) decides which tools are
+remote access at all; the macOS job only decides whether their Mac build can be identified with certainty.
 
 ## Builder workflow
 
@@ -124,7 +195,7 @@ The **Include IOC exports** checkbox defaults to **off**. Off means XML-only;
 IOC CSVs are not loaded or prepared. Enable them in the output panel.
 
 When enabled, the three supplied CSVs in `IOC` are combined locally into one
-661-indicator dataset (649 domains and 12 IPs). The same trusted-tool selections
+665-indicator dataset (653 domains and 12 IPs). The same trusted-tool selections
 remove matching indicators; all remaining rows retain their original **Block**
 action and metadata. This does not create Allow indicators or delete indicators
 already imported into Defender.
@@ -132,7 +203,7 @@ already imported into Defender.
 - Download the XML separately, then download and import **every IOC CSV batch**.
   Batches are regenerated after filtering, with at most **500 data rows per
   file**, plus the original Defender header. No selections produces batches of
-  500 and 161; excluding Datto RMM produces a single 540-indicator batch.
+  500 and 165; excluding Datto RMM produces a single 544-indicator batch.
 - Each tool shows its matching IOCs when the toggle is on. Search also matches
   their domains/IPs. Tools without IOCs are explicitly marked; XML exclusions
   still work normally.

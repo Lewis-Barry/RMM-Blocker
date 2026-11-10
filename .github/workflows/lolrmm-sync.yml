@@ -1,5 +1,6 @@
 name: lolRMM sync
 # Monthly: adds new lolRMM tools to products.json and opens a pull request for review.
+# A second job on a macOS runner then adds Team ID rules for products that have none, read from their Homebrew installers.
 on:
   schedule:
     - cron: "0 6 1 * *"
@@ -39,7 +40,7 @@ jobs:
           # Pull requests opened with the default token do not start other workflows, so verify here.
           node build.mjs
           node build.mjs --check
-          node --test scripts/sync-lolrmm.test.mjs
+          node --test scripts/
           node run-tests.mjs google-chrome
           VERSION=$(node -p "require('./products.json').version")
           BRANCH=lolrmm-sync
@@ -53,4 +54,47 @@ jobs:
             gh pr create --base main --head "$BRANCH" --title "lolRMM sync: policy $VERSION" --body-file "$RUNNER_TEMP/summary.md"
           else
             gh pr edit "$BRANCH" --title "lolRMM sync: policy $VERSION" --body-file "$RUNNER_TEMP/summary.md"
+          fi
+  macos:
+    needs: sync
+    if: always()
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Work on the sync branch when it exists
+        run: git fetch -q origin lolrmm-sync && git checkout lolrmm-sync || git checkout -B lolrmm-sync
+      - name: Re-verify existing Team IDs and add rules for products without one
+        id: macos
+        run: |
+          node scripts/sync-macos.mjs > "$RUNNER_TEMP/macos.md"
+          cat "$RUNNER_TEMP/macos.md"
+          if git diff --quiet -- products.json changelog.json; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Regenerate, verify and update the pull request
+        if: steps.macos.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node build.mjs
+          node build.mjs --check
+          node --test scripts/
+          node run-tests.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          VERSION=$(node -p "require('./products.json').version")
+          BRANCH=lolrmm-sync
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add macOS Team ID rules for policy $VERSION"
+          git push origin "$BRANCH"
+          BODY="$RUNNER_TEMP/body.md"
+          NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')
+          if [ -z "$NUMBER" ]; then
+            gh pr create --base main --head "$BRANCH" --title "lolRMM sync: policy $VERSION" --body-file "$RUNNER_TEMP/macos.md"
+          else
+            { gh pr view "$NUMBER" --json body --jq .body; echo; echo "---"; echo; cat "$RUNNER_TEMP/macos.md"; } > "$BODY"
+            gh pr edit "$NUMBER" --title "lolRMM sync: policy $VERSION" --body-file "$BODY"
           fi

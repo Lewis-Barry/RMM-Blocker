@@ -1,6 +1,7 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { parseMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
 const output = document.getElementById("test-output");
@@ -119,11 +120,13 @@ async function testBuilder(policy, iocs) {
           const wrappedTitle = width < 390 ? 24 : 0;
           assert(row.height <= (touch ? 108 : 96) + wrappedTitle, `Collapsed product row is too tall: ${row.height}px`);
           if (width > 800 && height >= 600) {
-            const content = rect(".export-content");
-            for (const selector of [".export-card", ".ioc-panel", "#kql-open"]) {
-              const card = rect(selector);
-              assert(card.top >= content.top && card.bottom <= content.bottom,
-                `${selector} requires scrolling in the initial desktop layout`);
+            // The first download must be usable without scrolling; every card must sit inside the scrollable page.
+            const first = rect("#wdac-card");
+            assert(first.height > 0 && first.bottom <= height, "WDAC download card is hidden or below the fold on desktop");
+            for (const card of document.querySelectorAll(".export-card:not([hidden]), #kql-open")) {
+              const box = card.getBoundingClientRect();
+              assert(box.height > 0 && box.left >= panel.left && box.right <= panel.right, `${card.id || card.className} is clipped or collapsed`);
+              assert(box.bottom + frame.contentWindow.scrollY <= document.documentElement.scrollHeight, `${card.id || card.className} is unreachable`);
             }
           } else {
             assert(document.documentElement.scrollHeight > height, "Stacked or short layout cannot scroll");
@@ -702,6 +705,7 @@ async function run() {
     });
     await testBuilder(policy, iocs);
     await testBrowserBuilder();
+    await testMacBuilder(policy);
     status.textContent = `${passed} passed, ${failures} failed (${policy.tools.length} products and ${iocs.indicators.length} IOCs tested).`;
     status.dataset.complete = "true";
     status.dataset.failures = String(failures);
@@ -714,3 +718,175 @@ async function run() {
 }
 
 run();
+
+// macOS app control: pure generator checks, then the RMM page with the macOS platform on, in a frame.
+async function testMacBuilder(policy) {
+  const data = parseMacProducts(await (await fetch("./products.json")).json());
+  test("macOS products parse with at least 7 verified tools", () => {
+    assert(data.tools.length >= 7, `Only ${data.tools.length} macOS tools`);
+    assert(data.tools.every(tool => tool.rules.every(rule => rule.names.includes(tool.name))), "Rule not attributed to its tool");
+  });
+  test("Rules without a string Team ID, broad vendor Team IDs, bad sources and unknown fields are rejected", () => {
+    const sample = (product, extra = {}) => ({ version: "1.0.0.1", products: { Sample: { macos: { rules: [product], source: "https://x", verified: "2026-01-01", ...extra } } } });
+    expectError(() => parseMacProducts(sample({})), "invalid or missing Team ID");
+    // Signing ID alone is valid for Apple but could deny com.apple.Safari fleet-wide from one products.json line.
+    expectError(() => parseMacProducts(sample({ signingId: "com.apple.Safari" })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: "short" })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample({ teamId: 1234567890 })), "invalid or missing Team ID");
+    expectError(() => parseMacProducts(sample(null)), "must be an object");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", cdHash: "x" })), "unknown macOS rule field");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ", signingId: "com.*" })), "invalid Signing ID");
+    for (const teamId of ["UBF8T346G9", "EQHXZ8M8AV", "68WVV388M8"]) {
+      expectError(() => parseMacProducts(sample({ teamId })), "signs unrelated software");
+      assert(parseMacProducts(sample({ teamId, signingId: "com.example.agent" })).rules.length === 1, "Broad Team ID with Signing ID refused");
+    }
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ" }, { source: "javascript:alert(1)" })), "https URL");
+    expectError(() => parseMacProducts(sample({ teamId: "ABCDEFGHIJ" }, { verified: "yesterday" })), "YYYY-MM-DD");
+    expectError(() => parseMacProducts({ version: "1", products: {} }), "not valid");
+  });
+  test("Excluding a tool removes exactly its rules and warns about shared ones", () => {
+    const all = filterMacRules(data, new Set());
+    assert(all.removed.length === 0 && all.retained.length === data.rules.length, "Unexpected initial removal");
+    for (const tool of data.tools) {
+      const result = filterMacRules(data, new Set([tool.name]));
+      assert(result.removed.length === tool.rules.length, `${tool.name} removed count`);
+      assert(result.removed.every(rule => rule.names.includes(tool.name)), `${tool.name} removed an unrelated rule`);
+    }
+    expectError(() => filterMacRules(data, new Set(["Not a tool"])), "Unknown tool selection");
+  });
+  test("Intune body nests app_app > app_allowed > app_allowed_deniedbinaries with one child per field", () => {
+    const policy = JSON.parse(buildIntunePolicy(data.rules, data.version));
+    assert(policy.platforms === "macOS" && policy.technologies === "appleRemoteManagement", "Platform or technology wrong");
+    const root = policy.settings[0].settingInstance;
+    const allowed = root.groupSettingCollectionValue[0].children[0];
+    const denied = allowed.groupSettingCollectionValue[0].children[0];
+    assert(root.settingDefinitionId === "app_app" && allowed.settingDefinitionId === "app_allowed" &&
+      denied.settingDefinitionId === "app_allowed_deniedbinaries", "Definition chain wrong");
+    assert(denied.groupSettingCollectionValue.length === data.rules.length, "Intune rule count differs");
+    for (const [index, item] of denied.groupSettingCollectionValue.entries()) {
+      const expected = [data.rules[index].teamId && "app_allowed_deniedbinaries_item_teamid", data.rules[index].signingId && "app_allowed_deniedbinaries_item_signingid"].filter(Boolean);
+      assert(JSON.stringify(item.children.map(child => child.settingDefinitionId)) === JSON.stringify(expected), "Child definitions differ");
+    }
+    expectError(() => buildIntunePolicy([], data.version), "deny nothing");
+  });
+  test("PowerShell script embeds the Intune body and posts it", () => {
+    const script = buildPowerShellScript(data.rules, data.version);
+    const lines = script.split("\r\n");
+    const start = lines.indexOf("$body = @'");
+    const end = lines.indexOf("'@");
+    assert(start > 0 && end > start, "Here-string delimiters missing");
+    assert(lines.slice(start + 1, end).join("\r\n") === buildIntunePolicy(data.rules, data.version), "Embedded body differs from the JSON download");
+    assert(lines.some(line => line.startsWith("Install-Module Microsoft.Graph.Authentication") || line.includes("Install-Module Microsoft.Graph.Authentication")), "No conditional install");
+    assert(lines.includes("Import-Module Microsoft.Graph.Authentication"), "No import");
+    assert(lines.some(line => line.startsWith("$policy = Invoke-MgGraphRequest -Method POST") && line.includes("/beta/deviceManagement/configurationPolicies")), "No POST");
+    expectError(() => buildPowerShellScript([], data.version), "deny nothing");
+  });
+  test("Missing-data report link is a prefilled GitHub issue", () => {
+    const url = new URL(reportMissingUrl("https://github.com/example/repo"));
+    assert(url.pathname === "/example/repo/issues/new" && url.searchParams.get("title") === "macOS rules for <tool name>", "Issue URL wrong");
+    assert(url.searchParams.get("body").includes("codesign -dvvv"), "Issue body lacks the codesign command");
+  });
+  const frame = document.createElement("iframe");
+  frame.hidden = true;
+  frame.title = "macOS exports regression fixture";
+  frame.src = "./index.html";
+  document.body.append(frame);
+  try {
+    await waitFor(() => frame.contentDocument?.getElementById("editor")?.hidden === false, "Builder did not initialize");
+    const doc = frame.contentDocument;
+    const byId = id => doc.getElementById(id);
+    const change = element => element.dispatchEvent(new frame.contentWindow.Event("change", { bubbles: true }));
+    await waitFor(() => !byId("mac-status").hidden && byId("mac-status").textContent.includes("rules kept"), "macOS rules did not load");
+    test("Both platforms are chosen at start and both cards show", () => {
+      assert(byId("link-windows").checked && byId("link-macos").checked, "Platform defaults wrong");
+      assert(!byId("mac-card").hidden && !byId("wdac-card").hidden, "Cards do not follow the platform choice");
+    });
+    const macRows = () => [...byId("tool-list").children].filter(row => !row.querySelector("details:last-of-type").hidden && row.textContent.includes("macOS denied"));
+    test("Enabling macOS exports shows denied binaries for covered tools and both downloads", () => {
+      assert(byId("mac-status").textContent.startsWith(`${data.rules.length} rules kept · 0 removed · ${data.tools.length} tools covered`), `Status wrong: ${byId("mac-status").textContent}`);
+      assert(macRows().length === data.tools.length, `Covered rows ${macRows().length} differ from ${data.tools.length}`);
+      assert(!byId("mac-download-intune").disabled && !byId("mac-rules-open").disabled, "Downloads disabled at start");
+      assert(byId("mac-report-missing").href.includes("/issues/new?"), "Report link not prefilled");
+      for (const row of macRows()) {
+        const summary = row.querySelector("details:last-of-type summary");
+        assert(summary.getAttribute("aria-label").endsWith(`for ${row.querySelector(".tool-title").textContent}`), "Disclosure does not identify its tool");
+      }
+    });
+    const teamViewer = doc.querySelector('input[aria-label="Exclude TeamViewer from block list"]');
+    const psExec = doc.querySelector('input[aria-label="Exclude PsExec from block list"]');
+    teamViewer.click();
+    psExec.click();
+    test("Excluding tools updates the macOS counts and marks uncovered exclusions", () => {
+      const expected = filterMacRules(data, new Set(["TeamViewer"]));
+      assert(byId("mac-status").textContent.startsWith(`${expected.retained.length} rules kept · ${expected.removed.length} removed`), "macOS counts stale");
+      const macCount = psExec.closest(".tool").querySelector("[id^=mac-coverage]");
+      assert(!macCount.hidden && macCount.textContent.includes("No macOS rules"), "Uncovered exclusion not marked");
+      assert(psExec.getAttribute("aria-describedby").split(" ").includes(macCount.id), "Mark not associated with the checkbox");
+      assert(byId("excluded-count").textContent === "2" && byId("removed-count").textContent !== "0", "WDAC selection unaffected by the shared toggle");
+    });
+    test("Portal rule dialog opens with a Windows-only tool excluded and names groups after tools", () => {
+      byId("mac-rules-open").click();
+      assert(byId("mac-modal").open, "Dialog did not open with PsExec excluded");
+      const names = new Set(data.tools.map(tool => tool.name));
+      const headings = [...byId("mac-modal-list").querySelectorAll(".rule-group-name")].map(node => node.firstChild.textContent);
+      assert(headings.length && headings.every(name => names.has(name)), `Group not named after a tool: ${headings.join(", ")}`);
+      byId("mac-close").click();
+    });
+    test("Excluding every covered tool disables the macOS downloads, Reset restores them", () => {
+      for (const tool of data.tools) {
+        const box = doc.querySelector(`input[aria-label="Exclude ${tool.name} from block list"]`);
+        if (box && !box.checked) box.click();
+      }
+      assert(byId("mac-status").textContent.startsWith("0 rules kept"), "Rules still kept");
+      assert(byId("mac-download-intune").disabled && byId("mac-rules-open").disabled, "Downloads enabled with nothing to deny");
+      byId("reset").click();
+      assert(byId("excluded-count").textContent === "0" && !byId("mac-download-intune").disabled, "Reset did not restore the deny list");
+    });
+    test("Choosing only macOS lists just the covered tools and hides the WDAC card", () => {
+      byId("link-windows").checked = false;
+      change(byId("link-windows"));
+      const visible = () => [...byId("tool-list").children].filter(row => !row.hidden);
+      assert(visible().length === data.tools.length, `macOS-only shows ${visible().length}, expected ${data.tools.length}`);
+      assert(byId("wdac-card").hidden && !byId("mac-card").hidden, "Cards do not follow a macOS-only choice");
+      assert(visible().every(row => row.querySelector(".execution-rule-list").closest("details").hidden), "Windows rules shown while Windows is off");
+      assert(byId("results").textContent === `${data.tools.length} / ${data.tools.length} tools`, "Result count ignores the platform");
+      byId("link-macos").checked = false;
+      change(byId("link-macos"));
+      assert(byId("link-windows").checked, "Both platforms could be turned off");
+      assert(visible().length === policy.tools.length, "Windows list not restored");
+      byId("link-windows").checked = false;
+      change(byId("link-windows"));
+      assert(byId("link-windows").checked, "Windows could be turned off with macOS already off");
+      byId("link-macos").checked = true;
+      change(byId("link-macos"));
+    });
+    test("Portal rule list shows one row per retained rule with its tools", () => {
+      teamViewer.click();
+      byId("mac-rules-open").click();
+      const expected = filterMacRules(data, new Set(["TeamViewer"])).retained;
+      const groups = [...byId("mac-modal-list").children];
+      const chips = [...byId("mac-modal-list").querySelectorAll(".copy-chip")];
+      assert(byId("mac-modal").open, "Rule dialog did not open");
+      const expectedGroups = new Set(expected.map(rule => rule.names.join("; "))).size;
+      assert(groups.length === expectedGroups, `Groups ${groups.length} differ from ${expectedGroups}`);
+      const expectedChips = new Set(expected.map(rule => `${rule.names.join("; ")}:${rule.teamId}`)).size + expected.filter(rule => rule.signingId).length;
+      assert(chips.length === expectedChips, `Chips ${chips.length} differ from ${expectedChips}`);
+      assert(chips.every(chipEl => chipEl.getAttribute("aria-label").startsWith("Copy ")), "Chip without an accessible copy label");
+      assert(!groups.some(group => group.textContent.includes("TeamViewer")), "Excluded tool still listed");
+      assert(groups.some(group => group.textContent.includes("cloudflared") && group.textContent.includes("68WVV388M8")), "Signing ID rule not shown with its Team ID");
+      byId("mac-close").click();
+      teamViewer.click();
+    });
+    test("Unticking macOS hides its card without changing selections", () => {
+      teamViewer.click();
+      byId("link-macos").checked = false;
+      change(byId("link-macos"));
+      assert(byId("mac-card").hidden && byId("mac-status").hidden, "macOS output still shown");
+      assert(byId("excluded-count").textContent === "1", "Selection changed by the toggle");
+      assert(macRows().length === 0, "macOS details still shown");
+      teamViewer.click();
+    });
+  } finally {
+    frame.remove();
+  }
+}

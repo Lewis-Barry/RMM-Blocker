@@ -1,11 +1,16 @@
 import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { loadMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
 // The browser page shares this script without the IOC panel; each page's body names the XML to load.
 const hasIocs = !!byId("link-iocs");
+// Platform choice: both on by default, macOS loads products.json when ticked. Both share the one selection.
+const hasMac = !!byId("link-macos");
+const windowsOn = () => !byId("link-windows") || byId("link-windows").checked;
+const macOn = () => hasMac && byId("link-macos").checked;
 const policyFile = document.body.dataset.policy;
 if (hasIocs) byId("link-iocs").checked = false;
 let policy;
@@ -18,6 +23,9 @@ let iocBatches = [];
 let iocPromise;
 let kqlText = "";
 let pendingCsv;
+let macData;
+let macLoading = false;
+let macError;
 // One shared load for the IOC toggle and the KQL popup; a failure clears it so the next try refetches.
 function loadIocsOnce() {
   return iocPromise ||= loadIocs(policy.tools.map(tool => tool.name)).catch(error => {
@@ -140,7 +148,7 @@ function updateIocs() {
     entry.iocCount.classList.toggle("unclassified-warning", enabled && excluded.has(entry.tool.name) && !entry.iocs.length);
     entry.iocCount.textContent = "No linked IOCs.";
     entry.checkbox.setAttribute("aria-describedby",
-      [entry.counts, entry.warning, entry.iocCount]
+      [entry.counts, entry.warning, entry.iocCount, entry.macCount]
         .filter(element => element && !element.hidden)
         .map(element => element.id).join(" "));
   }
@@ -272,9 +280,16 @@ function makeTool(tool, index) {
   iocCount.hidden = true;
   const iocDetails = document.createElement("details");
   iocDetails.hidden = true;
-  row.append(iocCount, iocDetails);
+  const macCount = document.createElement("p");
+  macCount.className = "rule-count ioc-count";
+  macCount.id = `mac-coverage-${index}`;
+  macCount.hidden = true;
+  const macDetails = document.createElement("details");
+  macDetails.hidden = true;
+  row.append(iocCount, iocDetails, macCount, macDetails);
   return {
     tool, row, checkbox, counts, warning, iocCount, iocDetails, iocs: [], iocSearchText: "",
+    macCount, macDetails, macRules: [], macSearchText: "",
     searchText: `${tool.name} ${tool.rules.map(rule => `${rule.path} ${rule.path.replaceAll("*", "")}`).join(" ")}`.toLowerCase(),
   };
 }
@@ -284,6 +299,7 @@ function update() {
   const query = byId("search").value.trim().toLowerCase();
   const filter = byId("filter").value;
   let visible = 0;
+  let eligible = 0;
   for (const entry of tools) {
     const selected = excluded.has(entry.tool.name);
     const sharedRemoved = entry.tool.rules.filter(rule => ids.has(rule.id) && rule.names.length > 1);
@@ -293,16 +309,20 @@ function update() {
     entry.warning.textContent = selected
       ? `Shared folder also removed for ${[...new Set(sharedRemoved.flatMap(rule => rule.names).filter(name => name !== entry.tool.name))].join(", ")}. Other rules retained.`
       : `${sharedRemoved.length} shared folder rule${sharedRemoved.length === 1 ? "" : "s"} removed by another exclusion. Other rules retained.`;
-    const searchText = `${entry.searchText} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""}`;
-    entry.row.hidden = !searchText.includes(query) ||
+    const searchText = `${windowsOn() ? entry.searchText : entry.tool.name.toLowerCase()} ${hasIocs && byId("link-iocs").checked ? entry.iocSearchText : ""} ${macOn() ? entry.macSearchText : ""}`;
+    // A row stays when a chosen platform covers it; with only macOS chosen, Windows-only tools drop out.
+    const onPlatform = windowsOn() || (macOn() && entry.macRules.length > 0);
+    if (onPlatform) eligible++;
+    entry.row.hidden = !onPlatform || !searchText.includes(query) ||
       (filter === "excluded" && !selected) || (filter === "blocked" && selected);
+    entry.row.querySelector(".execution-rule-list").closest("details").hidden = !windowsOn();
     if (!entry.row.hidden) visible++;
   }
   byId("remaining-count").textContent = policy.rules.length - ids.size;
   byId("excluded-count").textContent = excluded.size;
   byId("removed-count").textContent = ids.size;
   byId("reset").disabled = !excluded.size;
-  byId("results").textContent = `${visible} / ${tools.length} tools`;
+  byId("results").textContent = `${visible} / ${eligible} tools`;
   byId("empty").hidden = visible !== 0;
   byId("selection-details").hidden = !excluded.size;
   byId("selection-summary").textContent = `Excluded tools (${excluded.size})`;
@@ -311,11 +331,174 @@ function update() {
     item.textContent = name;
     return item;
   }));
+  // macOS first: updateIocs builds each checkbox's aria-describedby from what is visible, including the macOS mark.
+  updateMacs();
   updateIocs();
 }
 
+// ---- macOS app control (same selection, separate file) ----
+function attachMacDetails() {
+  const byName = new Map(macData.tools.map(tool => [tool.name, tool]));
+  for (const entry of tools) {
+    const macTool = byName.get(entry.tool.name);
+    entry.macRules = macTool ? macTool.rules : [];
+    entry.macSearchText = entry.macRules.map(rule => rule.label).join(" ").toLowerCase();
+    if (!macTool) continue;
+    const list = document.createElement("ul");
+    list.className = "compact-rule-list ioc-list";
+    list.setAttribute("role", "list");
+    for (const rule of entry.macRules) list.append(makeRuleItem(rule.label, rule.kind));
+    const source = document.createElement("p");
+    source.className = "muted";
+    const link = document.createElement("a");
+    link.href = macTool.source;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = `installer checked ${macTool.verified}`;
+    source.append("Source: ", link);
+    const summary = document.createElement("summary");
+    summary.textContent = `macOS denied binaries (${entry.macRules.length})`;
+    summary.setAttribute("aria-label", `${summary.textContent} for ${entry.tool.name}`);
+    entry.macDetails.replaceChildren(summary, list, source);
+  }
+}
+
+function showMacError(error) {
+  console.error(error);
+  macError = error;
+  byId("mac-error").textContent = `${error.message} macOS exports unavailable; XML unaffected. Untick and tick macOS to retry.`;
+  byId("mac-error").hidden = false;
+}
+
+// Only tools in this policy can be excluded, so a tool with macOS rules but no WDAC entry stays denied.
+const macRetained = () => filterMacRules(macData, new Set([...excluded].filter(name => macData.tools.some(tool => tool.name === name)))).retained;
+
+function updateMacs() {
+  if (byId("wdac-card")) byId("wdac-card").hidden = !windowsOn();
+  if (!hasMac) return;
+  const enabled = byId("link-macos").checked;
+  const ready = enabled && macData && !macError;
+  byId("mac-card").hidden = !enabled;
+  byId("mac-status").hidden = !enabled || macError || !macData;
+  // Without data the buttons would only throw, so they stay disabled until the rules are in.
+  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ps"]) byId(id).disabled = !ready;
+  for (const entry of tools) {
+    const covered = entry.macRules.length > 0;
+    entry.macCount.hidden = !enabled || !macData || covered || !excluded.has(entry.tool.name);
+    entry.macDetails.hidden = !enabled || !covered;
+    entry.macCount.classList.toggle("unclassified-warning", !entry.macCount.hidden);
+    entry.macCount.textContent = "No macOS rules: not covered on Mac.";
+  }
+  if (!enabled) { byId("mac-status").textContent = ""; return; }
+  if (macLoading) { byId("mac-status").hidden = false; byId("mac-status").textContent = "Loading macOS rules..."; return; }
+  if (!ready) return;
+  const retained = macRetained();
+  const known = new Set(policy.tools.map(tool => tool.name));
+  const macOnly = macData.tools.filter(tool => !known.has(tool.name)).map(tool => tool.name);
+  byId("mac-status").textContent = `${retained.length} rules kept · ${macData.rules.length - retained.length} removed · ${macData.tools.length} tools covered${macOnly.length ? ` · macOS-only: ${macOnly.join(", ")}` : ""}`;
+  for (const id of ["mac-rules-open", "mac-download-intune", "mac-download-ps"]) byId(id).disabled = !retained.length;
+}
+
+async function enableMacs() {
+  if (!byId("link-macos").checked && !windowsOn()) byId("link-windows").checked = true;
+  if (!byId("link-macos").checked || macLoading) { update(); return; }
+  macError = undefined;
+  byId("mac-error").hidden = true;
+  if (macData) { update(); return; }
+  macLoading = true;
+  update();
+  try {
+    macData = await loadMacProducts();
+    attachMacDetails();
+    byId("mac-report-missing").href = reportMissingUrl(document.querySelector(".source-link").href.replace(/\/$/, ""));
+  } catch (error) {
+    macData = undefined;
+    showMacError(error);
+  } finally {
+    macLoading = false;
+    update();
+  }
+}
+
+byId("link-macos")?.addEventListener("change", enableMacs);
+const macDownloads = { "mac-download-intune": [buildIntunePolicy, "json", "application/json;charset=utf-8"], "mac-download-ps": [buildPowerShellScript, "ps1", "text/plain;charset=utf-8"] };
+for (const [id, [build, extension, type]] of Object.entries(macDownloads)) {
+  byId(id)?.addEventListener("click", () => {
+    try {
+      saveFile(build(macRetained(), macData.version), `RMM_Denied_Binaries_Intune${excluded.size ? "_custom" : ""}.${extension}`, type);
+      byId("mac-error").hidden = true;
+    } catch (error) {
+      showMacError(error);
+    }
+  });
+}
+
+// A copy button that shows what happened: Copied, or Copy failed when the clipboard is unavailable.
+async function copyWith(button, text, restore) {
+  let state = "copied";
+  try { await navigator.clipboard.writeText(text); } catch (error) { console.error(error); state = "copy-failed"; }
+  button.classList.add(state);
+  if (restore) button.textContent = state === "copied" ? "Copied" : "Copy failed";
+  setTimeout(() => { button.classList.remove(state); if (restore) button.textContent = restore; }, 1500);
+}
+
+// The portal route: one block per tool with its Team ID and Signing IDs, each value a click-to-copy chip.
+let macListText = "";
+byId("mac-rules-open")?.addEventListener("click", () => {
+  const retained = macRetained();
+  macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
+  const chip = value => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy-chip";
+    button.setAttribute("aria-label", `Copy ${value}`);
+    const code = document.createElement("span");
+    code.textContent = value;
+    button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>');
+    button.prepend(code);
+    button.addEventListener("click", () => copyWith(button, value));
+    return button;
+  };
+  const line = (label, values) => {
+    const name = document.createElement("span");
+    name.className = "rule-label";
+    name.textContent = label;
+    const row = document.createElement("div");
+    row.className = "chip-row";
+    row.append(...values.map(chip));
+    return [name, row];
+  };
+  byId("mac-modal-list").replaceChildren(...[...Map.groupBy(retained, rule => rule.names.join("; "))].map(([name, rules]) => {
+    const item = document.createElement("li");
+    item.className = "rule-group";
+    const heading = document.createElement("div");
+    heading.className = "rule-group-name";
+    const count = document.createElement("span");
+    count.className = "muted";
+    count.textContent = `${rules.length} ${rules.length === 1 ? "entry" : "entries"}`;
+    heading.append(document.createTextNode(name), count);
+    const teamIds = [...new Set(rules.map(rule => rule.teamId))];
+    const signingIds = rules.map(rule => rule.signingId).filter(Boolean);
+    item.append(heading, ...line(teamIds.length === 1 ? "Team ID" : "Team IDs", teamIds));
+    if (signingIds.length) item.append(...line(signingIds.length === 1 ? "Signing ID" : "Signing IDs", signingIds));
+    return item;
+  }));
+  byId("mac-copy").textContent = `Copy ${retained.length} rule${retained.length === 1 ? "" : "s"}`;
+  byId("mac-modal").showModal();
+});
+byId("mac-close")?.addEventListener("click", () => byId("mac-modal").close());
+byId("mac-modal")?.addEventListener("click", event => {
+  if (event.target === byId("mac-modal")) byId("mac-modal").close();
+});
+byId("mac-copy")?.addEventListener("click", () => copyWith(byId("mac-copy"), macListText, byId("mac-copy").textContent));
+
 byId("search").addEventListener("input", () => update());
 byId("filter").addEventListener("change", () => update());
+// At least one platform stays chosen, otherwise the list and every download would be empty.
+byId("link-windows")?.addEventListener("change", () => {
+  if (!byId("link-windows").checked && !macOn()) byId("link-windows").checked = true;
+  update();
+});
 byId("reset").addEventListener("click", () => { excluded.clear(); update(); });
 byId("link-iocs")?.addEventListener("change", enableIocs);
 if (hasIocs) window.addEventListener("pagehide", releaseIocDownloads);
@@ -395,9 +578,11 @@ async function initialize() {
     byId("policy-version").textContent = `· v${policy.version}`;
     update();
     byId("editor").hidden = false;
+    byId("loading").hidden = true;
+    // Mac rules load behind the visible editor; the macOS card shows its own progress.
+    if (macOn()) enableMacs();
   } catch (error) {
     showError(error);
-  } finally {
     byId("loading").hidden = true;
   }
 }
