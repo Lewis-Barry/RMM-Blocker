@@ -67,7 +67,7 @@ nav a:hover, .source-link:hover, .theme-toggle:hover:not(:disabled), .header-but
 h1 { font-size: 24px; line-height: 1.25; margin: 0; font-weight: 600; }
 .page-heading p { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
 .builder-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 4px; flex-shrink: 0; }
-.builder-intro { color: var(--muted); font-size: 16px; margin: 0; }
+.builder-intro { color: var(--muted); font-size: 16px; margin: 0; font-weight: 400; }
 .wip-banner { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--muted); font-size: 12px; flex-shrink: 0; }
 .chip { display: inline-flex; border-radius: 4px; padding: 0 8px; font-size: 11px; font-weight: 600; }
 .warning-chip { background: var(--warning-fill); color: var(--warning); }

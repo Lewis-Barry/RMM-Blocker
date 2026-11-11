@@ -3,13 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Exclude trusted RMM tools from WDAC execution rules and Microsoft Defender network indicators. Private, browser-only exports.">
+  <meta name="description" content="Build a WDAC policy that blocks unapproved RMM and remote access tools. Exclude the tools you trust, then export XML for Intune and IOC CSVs for Defender.">
   <meta name="theme-color" content="#1b1b1f">
-  <title>RMM Guard</title>
+  <title>RMM Guard: Block RMM and Remote Access Tools with WDAC</title>
+  <meta name="author" content="Lewis Barry, Microsoft MVP for Intune">
+  <link rel="canonical" href="https://rmmguard.com/">
+  <meta property="og:title" content="RMM Guard: Block RMM and Remote Access Tools with WDAC">
+  <meta property="og:description" content="Build a WDAC policy that blocks unapproved RMM and remote access tools. Exclude the tools you trust, then export XML for Intune and IOC CSVs for Defender.">
+  <meta property="og:url" content="https://rmmguard.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://rmmguard.com/social-card.png">
+  <meta property="og:site_name" content="RMM Guard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RMM Guard: Block RMM and Remote Access Tools with WDAC">
+  <meta name="twitter:description" content="Build a WDAC policy that blocks unapproved RMM and remote access tools. Exclude the tools you trust, then export XML for Intune and IOC CSVs for Defender.">
+  <meta name="twitter:image" content="https://rmmguard.com/social-card.png">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Person", "@id": "https://conditionalaccess.uk/#author", "name": "Lewis Barry", "url": "https://conditionalaccess.uk/about/", "jobTitle": "Principal Security Architect, Microsoft MVP for Intune", "description": "Microsoft MVP for Intune. Principal Security Architect at inforcer. Specialist in Microsoft 365, Intune, Entra ID, and Conditional Access security.", "image": {"@type": "ImageObject", "url": "https://conditionalaccess.uk/site/assets/files/1/memvp-v1.520x0.png"}, "sameAs": ["https://www.linkedin.com/in/lewis-barry/", "https://inforcer.com/"]}, {"@type": "WebSite", "@id": "https://rmmguard.com/#website", "name": "RMM Guard", "url": "https://rmmguard.com/", "author": {"@id": "https://conditionalaccess.uk/#author"}}, {"@type": "WebApplication", "name": "RMM Guard", "url": "https://rmmguard.com/", "description": "Build a WDAC policy that blocks unapproved RMM and remote access tools. Exclude the tools you trust, then export XML for Intune and IOC CSVs for Defender.", "applicationCategory": "SecurityApplication", "operatingSystem": "Windows 11", "browserRequirements": "Requires JavaScript", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@id": "https://conditionalaccess.uk/#author"}, "isPartOf": {"@id": "https://rmmguard.com/#website"}}]}</script>
   <link rel="icon" type="image/png" href="./RMMBlocker.png">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./theme.js"></script>
   <script type="module" src="./credits.js"></script>
+  <script async src="./analytics.js"></script>
   <script type="module" src="./app.js"></script>
 </head>
 <body class="builder-page" data-policy="./Blocking_RMMsv5.xml">
@@ -33,7 +47,7 @@
   </header>
   <main class="container page-main">
     <div class="builder-intro-row">
-      <p class="builder-intro">Exclude trusted tools from XML and CSV exports.</p>
+      <h1 class="builder-intro">Block unapproved RMM and remote access tools with WDAC and Defender. Exclude the ones you trust.</h1>
       <span class="chip updated-chip">Last updated Nov 8, 2026</span>
     </div>
     <section class="how-to" aria-labelledby="how-to-title">

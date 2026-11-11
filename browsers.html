@@ -3,13 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow. Private, browser-only exports.">
+  <meta name="description" content="Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow, then export the XML for Intune.">
   <meta name="theme-color" content="#1b1b1f">
-  <title>Web Browser Blocker</title>
+  <title>Block Web Browsers with a WDAC Policy | RMM Guard</title>
+  <meta name="author" content="Lewis Barry, Microsoft MVP for Intune">
+  <link rel="canonical" href="https://rmmguard.com/browsers.html">
+  <meta property="og:title" content="Block Web Browsers with a WDAC Policy | RMM Guard">
+  <meta property="og:description" content="Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow, then export the XML for Intune.">
+  <meta property="og:url" content="https://rmmguard.com/browsers.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://rmmguard.com/social-card.png">
+  <meta property="og:site_name" content="RMM Guard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Block Web Browsers with a WDAC Policy | RMM Guard">
+  <meta name="twitter:description" content="Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow, then export the XML for Intune.">
+  <meta name="twitter:image" content="https://rmmguard.com/social-card.png">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Person", "@id": "https://conditionalaccess.uk/#author", "name": "Lewis Barry", "url": "https://conditionalaccess.uk/about/", "jobTitle": "Principal Security Architect, Microsoft MVP for Intune", "description": "Microsoft MVP for Intune. Principal Security Architect at inforcer. Specialist in Microsoft 365, Intune, Entra ID, and Conditional Access security.", "image": {"@type": "ImageObject", "url": "https://conditionalaccess.uk/site/assets/files/1/memvp-v1.520x0.png"}, "sameAs": ["https://www.linkedin.com/in/lewis-barry/", "https://inforcer.com/"]}, {"@type": "WebSite", "@id": "https://rmmguard.com/#website", "name": "RMM Guard", "url": "https://rmmguard.com/", "author": {"@id": "https://conditionalaccess.uk/#author"}}, {"@type": "WebApplication", "name": "Web Browser Blocker", "url": "https://rmmguard.com/browsers.html", "description": "Block web browsers other than Microsoft Edge with a WDAC policy. Exclude the browsers you allow, then export the XML for Intune.", "applicationCategory": "SecurityApplication", "operatingSystem": "Windows 11", "browserRequirements": "Requires JavaScript", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@id": "https://conditionalaccess.uk/#author"}, "isPartOf": {"@id": "https://rmmguard.com/#website"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "RMM Guard", "item": "https://rmmguard.com/"}, {"@type": "ListItem", "position": 2, "name": "Web Browser Blocker", "item": "https://rmmguard.com/browsers.html"}]}]}</script>
   <link rel="icon" type="image/png" href="./RMMBlocker.png">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./theme.js"></script>
   <script type="module" src="./credits.js"></script>
+  <script async src="./analytics.js"></script>
   <script type="module" src="./app.js"></script>
 </head>
 <body class="builder-page" data-policy="./Browsers/Blocking_Web_Browsers_-_Except_Edge.xml">
@@ -32,7 +46,7 @@
     </div>
   </header>
   <main class="container page-main">
-    <p class="builder-intro">Block every browser except Microsoft Edge. Exclude the ones you allow.</p>
+    <h1 class="builder-intro">Block every browser except Microsoft Edge. Exclude the ones you allow.</h1>
     <aside class="wip-banner" role="note" aria-label="Work in progress warning"><span class="chip warning-chip">Preview</span><span>This policy is WIP and still undergoing testing. Test on a non-production device.</span></aside>
     <section class="how-to" aria-labelledby="how-to-title">
       <p id="how-to-title"><strong>How to use</strong></p>
