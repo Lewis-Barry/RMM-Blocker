@@ -1,6 +1,6 @@
 # RMM and Remote Access Tool Blocker
 
-## Executive summary
+## What the tool does
 
 RMM Guard (https://rmmguard.com/) is a free builder that blocks unapproved RMM (remote monitoring and management) and remote access tools on Windows and macOS. Exclude the tools you trust, then export the policies. Nothing is uploaded.
 
@@ -27,10 +27,6 @@ RMM Guard (https://rmmguard.com/) is a free builder that blocks unapproved RMM (
 )
 
 **Limits.** The Windows policy matches by file name and path, not hash or publisher signature, so renamed copies or tools run from unexpected folders can get past it. Pair it with the Defender indicators and treat it as one layer.
-
-Built by Lewis Barry, Microsoft MVP for Intune.
-
-Static GitHub Pages site, no dependencies, preloaded with `Blocking_RMMsv5.xml` (version and rule counts are in the editor footer and `products.json`). Search tools, check the ones you use, download the customized WDAC XML. Checked means excluded from the block list.
 
 Targets Windows 11 24H2 and newer. Many rules use multiple or mid-path wildcards, which older Windows does not support.
 
