@@ -1,0 +1,22 @@
+name: IndexNow
+
+# Tells IndexNow search engines (Bing and others) to recrawl after GitHub Pages publishes the site.
+on:
+  page_build:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || github.event.build.status == 'built'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit sitemap URLs
+        shell: bash
+        run: |
+          # The key must match e2ead9c7d48a4234a32da848f40fd478.txt at the site root.
+          curl -fsS https://rmmguard.com/sitemap.xml | grep -o '<loc>[^<]*' | sed 's/<loc>//' \
+            | jq -Rn '{host: "rmmguard.com", key: "e2ead9c7d48a4234a32da848f40fd478", urlList: [inputs]}' \
+            | curl -fsS -X POST https://api.indexnow.org/indexnow \
+                -H 'Content-Type: application/json; charset=utf-8' --data-binary @- -w 'HTTP %{http_code}\n'
