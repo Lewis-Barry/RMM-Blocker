@@ -4,7 +4,16 @@
 
 RMM Guard (https://rmmguard.com/) is a free builder that blocks unapproved RMM (remote monitoring and management) and remote access tools on Windows and macOS. Exclude the tools you trust, then export the policies. Nothing is uploaded.
 
-**Why.** Blocking unwanted RMM and remote access tools is part of good endpoint security posture management (ESPM): only approved remote tools should run or connect. The Microsoft Digital Defense Report 2026 (page 69, "RMM tools as a post-compromise standard") says RMM abuse continues to grow and that "the appearance of an unsanctioned RMM agent has become one of the most reliable mid-stage indicators of a human-operated intrusion". RMM agents are typically introduced within minutes of a foothold and set to auto-launch on logon. Because RMM platforms ship with file transfer, scripting, screen sharing, unattended logon and session recording, one agent gives an attacker "the operational reach of a senior administrator".
+**Why.** Blocking unwanted RMM and remote access tools is part of good endpoint security posture management (ESPM): only approved remote tools should run or connect.
+
+The [Microsoft Digital Defense Report 2026](https://www.microsoft.com/en-us/corporate-responsibility/topics/cybersecurity/reports/microsoft-digital-defense-report/) (page 69, *RMM tools as a post-compromise standard*) says RMM abuse continues to grow:
+
+> **"The appearance of an unsanctioned RMM agent has become one of the most reliable mid-stage indicators of a human-operated intrusion."**
+
+- Agents are typically introduced within minutes of a foothold and set to auto-launch on logon.
+- RMM platforms ship with file transfer, scripting, screen sharing, unattended logon and session recording.
+
+> **One agent gives an attacker "the operational reach of a senior administrator."**
 
 **Features.**
 
