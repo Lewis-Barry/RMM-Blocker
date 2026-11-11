@@ -2,3 +2,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://rmmguard.com/sitemap.xml
+
+# AI agents: plain-text summary and full tool list
+# https://rmmguard.com/llms.txt

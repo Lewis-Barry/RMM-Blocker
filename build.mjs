@@ -125,6 +125,53 @@ if (JSON.stringify(csvs) !== JSON.stringify(expected)) {
   throw new Error(`CSV set changed to ${csvs.join(", ")}; update iocSources in ioc.js to match.`);
 }
 
+// The page renders the tool list with JavaScript; AI agents that read raw files get it from llms.txt.
+const covers = p => [
+  p.paths?.length && "Windows",
+  p.macos && "macOS",
+  (p.domains?.length || p.vendorDomains?.length || p.ips?.length) && "network",
+].filter(Boolean).join(", ");
+files["llms.txt"] = `# RMM Guard
+
+> Free builder at https://rmmguard.com/ that blocks unapproved RMM (remote monitoring and management) and remote access tools on Windows and macOS. Exclude the tools you trust, then export an Intune App Control for Business policy (formerly WDAC, Windows Defender Application Control; both names are still in use), indicator (IOC) CSVs for Microsoft Defender, and a macOS deny list for Intune. By Lewis Barry, Microsoft MVP for Intune.
+
+Policy version ${version}: ${Object.keys(products).length} tools, ${rules.length} Windows deny rules, ${indicators.size} network indicators. The tool list is synced monthly from lolRMM (https://lolrmm.io).
+
+## Why block unapproved RMM tools
+
+Blocking unwanted RMM and remote access tools is part of good endpoint security posture management (ESPM): only the remote tools an organisation has approved should be able to run or connect. The Microsoft Digital Defense Report 2026 (page 69, "RMM tools as a post-compromise standard") says the breadth and volume of RMM abuse continues to grow, and that "the appearance of an unsanctioned RMM agent has become one of the most reliable mid-stage indicators of a human-operated intrusion". According to the report, RMM agents are typically introduced within minutes of a threat actor establishing a foothold and are configured to auto-launch on logon, and because RMM platforms ship with file transfer, scripting, screen sharing, unattended logon and session recording, a single agent gives threat actors "the operational reach of a senior administrator".
+## Key facts
+
+- Windows: an App Control for Business (WDAC) deny policy (XML) that matches each tool's expected file name and path. Designed for Windows 11 24H2 and newer. Deploy in Intune under Endpoint security > App Control for Business > Create > XML upload. The policy is enforced, so start with a pilot device group.
+- Network: CSVs of each tool's domains and IPs for Defender indicators (Settings > Endpoints > Indicators), at most 500 rows per file. Needs custom network indicators on and network protection in block mode. Applies to Windows and macOS devices.
+- macOS: denies tools by the vendor's code signature (Team ID) through the Intune settings catalog, App Settings > Denied Binaries. Needs macOS 27 or newer and a supervised Mac enrolled through Automated Device Enrollment. Preview, with no audit mode. Only tools with a verified Mac signature are covered.
+- Limits: the Windows policy matches by file name and path, not by hash or publisher signature, so renamed copies or tools run from unexpected folders can get past it. Pair it with the Defender indicators and treat it as one layer.
+- A second builder blocks every web browser except Microsoft Edge with an App Control for Business (WDAC) policy.
+
+## Pages
+
+- [RMM builder](https://rmmguard.com/): pick exclusions and download the policy
+- [Browser blocker](https://rmmguard.com/browsers.html): block browsers other than Microsoft Edge
+- [Deploy App Control for Business (WDAC) with Intune](https://rmmguard.com/help.html): step-by-step upload and pilot guide
+- [Import Defender indicators](https://rmmguard.com/help-ioc.html): prepare protection, import the CSVs, verify
+- [macOS app control with Intune](https://rmmguard.com/help-macos.html): Graph Explorer, portal and PowerShell routes
+- [Changelog](https://rmmguard.com/changelog.html): tools, executables and domains added each month
+
+## Data
+
+- [products.json](https://rmmguard.com/products.json): every tool with its file paths, domains, IPs and macOS signatures
+- [Blocking_RMMsv5.xml](https://rmmguard.com/Blocking_RMMsv5.xml): the full App Control for Business (WDAC) policy with no exclusions
+${csvs.map(name => `- [${name.split("/")[1]}](https://rmmguard.com/${name}): Defender indicator import file`).join("\n")}
+- [changelog.json](https://rmmguard.com/changelog.json): machine-readable changelog
+- [Source on GitHub](https://github.com/Lewis-Barry/RMM-Blocker)
+
+## Tools blocked
+
+Each tool is blocked unless you exclude it. In brackets: where it is covered.
+
+${Object.entries(products).map(([name, product]) => `- ${name} (${covers(product)})`).join("\n")}
+`;
+
 const stale = Object.keys(files).filter(name => {
   try { return readFileSync(join(root, name), "utf8") !== files[name]; } catch { return true; }
 });
