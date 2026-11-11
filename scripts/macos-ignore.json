@@ -1,0 +1,14 @@
+[
+  {
+    "name": "ESET Remote Administrator",
+    "reason": "The only ESET cask is ESET Cyber Security (antivirus); its Team ID would deny the antivirus, not the remote administrator."
+  },
+  {
+    "name": "Parallels Access",
+    "reason": "The Parallels casks are Parallels Desktop and its tools; the shared Team ID would deny the virtualisation product."
+  },
+  {
+    "name": "JumpCloud",
+    "reason": "The only JumpCloud cask is the password manager, not the device agent; its Team ID would deny the password manager on every Mac."
+  }
+]

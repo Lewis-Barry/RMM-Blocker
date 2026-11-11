@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Deploy the macOS RMM deny list through Microsoft Intune: one Graph Explorer request or the settings catalog by hand, then assign and verify on macOS 27.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Block RMM Tools on macOS with Intune App Control | RMM Guard</title>
+  <meta name="author" content="Lewis Barry, Microsoft MVP for Intune">
+  <link rel="canonical" href="https://rmmguard.com/help-macos.html">
+  <meta property="og:title" content="Block RMM Tools on macOS with Intune App Control | RMM Guard">
+  <meta property="og:description" content="Deploy the macOS RMM deny list through Microsoft Intune: one Graph Explorer request or the settings catalog by hand, then assign and verify on macOS 27.">
+  <meta property="og:url" content="https://rmmguard.com/help-macos.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://rmmguard.com/social-card.png">
+  <meta property="og:site_name" content="RMM Guard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Block RMM Tools on macOS with Intune App Control | RMM Guard">
+  <meta name="twitter:description" content="Deploy the macOS RMM deny list through Microsoft Intune: one Graph Explorer request or the settings catalog by hand, then assign and verify on macOS 27.">
+  <meta name="twitter:image" content="https://rmmguard.com/social-card.png">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Person", "@id": "https://conditionalaccess.uk/#author", "name": "Lewis Barry", "url": "https://conditionalaccess.uk/about/", "jobTitle": "Principal Security Architect, Microsoft MVP for Intune", "description": "Microsoft MVP for Intune. Principal Security Architect at inforcer. Specialist in Microsoft 365, Intune, Entra ID, and Conditional Access security.", "image": {"@type": "ImageObject", "url": "https://conditionalaccess.uk/site/assets/files/1/memvp-v1.520x0.png"}, "sameAs": ["https://www.linkedin.com/in/lewis-barry/", "https://inforcer.com/"]}, {"@type": "WebSite", "@id": "https://rmmguard.com/#website", "name": "RMM Guard", "url": "https://rmmguard.com/", "author": {"@id": "https://conditionalaccess.uk/#author"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "RMM Guard", "item": "https://rmmguard.com/"}, {"@type": "ListItem", "position": 2, "name": "Deploy macOS app control", "item": "https://rmmguard.com/help-macos.html"}]}]}</script>
+  <link rel="icon" type="image/png" href="./RMMBlocker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+  <script async src="./analytics.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="#guide">Skip to guide</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Guard home">
+        <img class="brand-mark" src="./RMMBlocker.png" alt="">
+        <span>RMM Guard</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./browsers.html">Browsers</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container help-layout">
+    <aside class="help-sidebar">
+      <nav class="help-nav" aria-labelledby="guides-title">
+        <h2 id="guides-title">Guides</h2>
+        <a href="./help.html">WDAC</a>
+        <a href="./help-ioc.html">Defender IOCs</a>
+        <a href="./help-macos.html" aria-current="page">macOS</a>
+      </nav>
+      <nav class="help-nav help-sections" aria-labelledby="sections-title">
+        <h2 id="sections-title">On this page</h2>
+        <a href="#requirements">1. Requirements</a>
+        <a href="#choose">2. Pick a route</a>
+        <a href="#graph">3. Option 1: Graph Explorer</a>
+        <a href="#portal">4. Option 2: Intune portal</a>
+        <a href="#powershell">5. Option 3: PowerShell</a>
+        <a href="#assign">6. Assign</a>
+        <a href="#verify">7. Verify</a>
+        <a href="#contribute">8. Add a tool</a>
+      </nav>
+    </aside>
+    <article id="guide" class="help-guide" tabindex="-1">
+      <div class="page-heading"><div><h1>Deploy macOS app control</h1><p>Denies the remote tools you have not excluded on macOS 27, by the vendor's code signature, through Intune's <strong>App Settings</strong> → <strong>Denied Binaries</strong>.</p><p><a href="./index.html">Exclude trusted tools</a> on the RMM page first. Windows and macOS are both on by default; the macOS card in the download panel gives you everything this guide uses.</p></div></div>
+      <aside class="help-warning" role="note">Enforced immediately. Apple provides no audit mode for denied binaries. A running app is killed and the user sees "not allowed by your organisation". Start with one pilot Mac.</aside>
+      <section id="requirements" class="help-step" aria-labelledby="requirements-title">
+        <h2 id="requirements-title">1. Requirements</h2>
+        <ul>
+          <li><strong>macOS 27</strong> or newer. Older Macs ignore the policy.</li>
+          <li>A <strong>supervised</strong> Mac, enrolled through Automated Device Enrollment (Apple Business Manager). User-enrolled Macs do not receive it.</li>
+          <li>Intune role with rights on device configuration. Option 1 also needs consent to the Graph permission <code>DeviceManagementConfiguration.ReadWrite.All</code>.</li>
+        </ul>
+      </section>
+      <section id="choose" class="help-step" aria-labelledby="choose-title">
+        <h2 id="choose-title">2. Pick a route</h2>
+        <p>On Windows you upload one XML file into an App Control for Business policy and you are done. The macOS policy is a <strong>settings catalog</strong> profile, and the Intune portal has no file upload for those. Every denied binary is a separate entry with a Team ID, so you either create the policy through Graph in one request, from Graph Explorer or PowerShell, or type each entry by hand.</p>
+        <ul>
+          <li><strong>Option 1, Graph Explorer (recommended):</strong> download <strong>Intune JSON</strong> from the macOS card and post it once. The policy appears in Intune with every entry filled in. Nothing to retype, no typos, and a changed list is a new download.</li>
+          <li><strong>Option 2, Intune portal:</strong> create the settings catalog profile by hand and type every Team ID and Signing ID from <strong>Show rules for the portal</strong>. Fine for a short list; with the full list it is many entries and one mistake invalidates the whole policy on the Mac.</li>
+          <li><strong>Option 3, PowerShell:</strong> download one script with the policy built in and run it. The same Graph request as option 1 without Graph Explorer, and the natural choice when you roll this out to more than one tenant.</li>
+        </ul>
+        <p>All three routes end in the same policy. Assign and verify it the same way (steps 6 and 7).</p>
+      </section>
+      <section id="graph" class="help-step" aria-labelledby="graph-title">
+        <h2 id="graph-title">3. Option 1: Graph Explorer</h2>
+        <ol>
+          <li>In the macOS card, select <strong>Download Intune JSON</strong>. The file <code>RMM_Denied_Binaries_Intune.json</code> is the complete policy: name, platform, and one Denied Binaries entry per rule left after your exclusions.
+            <figure><a href="./MacScreens/MacCard.png" target="_blank" rel="noopener noreferrer" aria-label="Open macOS card screenshot"><img src="./MacScreens/MacCard.png" width="335" height="285" loading="lazy" alt="The macOS app control card: rules kept, Show rules for the portal, Download Intune JSON."></a></figure></li>
+          <li>Open <a href="https://developer.microsoft.com/graph/graph-explorer" target="_blank" rel="noopener noreferrer">Graph Explorer <span aria-hidden="true">↗</span></a> and sign in with the account icon at the top right, using your Intune administrator account. Without signing in you are on Microsoft's sample tenant.</li>
+          <li>Set the method to <strong>POST</strong>, the version to <strong>beta</strong> and the URL to <code>https://graph.microsoft.com/beta/deviceManagement/configurationPolicies</code>. Graph Explorer now knows which permission this request needs.</li>
+          <li>Open the <strong>Modify permissions</strong> tab. It lists <code>DeviceManagementConfiguration.ReadWrite.All</code> for this request. If its status is not consented yet, select <strong>Consent</strong>; in most tenants this is already done.
+            <figure><a href="./MacScreens/Graph1.png" target="_blank" rel="noopener noreferrer" aria-label="Open Graph Explorer permissions screenshot"><img style="width:720px" src="./MacScreens/Graph1.png" width="1150" height="386" loading="lazy" alt="Graph Explorer with POST, the beta configurationPolicies URL, and the Modify permissions tab listing DeviceManagementConfiguration.ReadWrite.All as consented."></a></figure></li>
+          <li>Open the downloaded JSON file in a text editor, select everything and copy it. In Graph Explorer, open the <strong>Request body</strong> tab and paste it there, replacing whatever the tab contained.
+            <figure><a href="./MacScreens/Graph2.png" target="_blank" rel="noopener noreferrer" aria-label="Open Graph Explorer request body screenshot"><img style="width:720px" src="./MacScreens/Graph2.png" width="1145" height="504" loading="lazy" alt="The Request body tab holding the pasted policy JSON, starting with the name Block RMM tools (macOS)."></a></figure></li>
+          <li>Select <strong>Run query</strong>. <strong>Created - 201</strong> with the policy's <code>id</code> in the response means the policy exists.
+            <figure><a href="./MacScreens/Graph3.png" target="_blank" rel="noopener noreferrer" aria-label="Open Graph Explorer 201 response screenshot"><img style="width:640px" src="./MacScreens/Graph3.png" width="1145" height="818" loading="lazy" alt="Response preview showing Created 201 and the new policy with its id, name and settingCount 1."></a></figure></li>
+          <li>In <a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>, open <strong>Block RMM tools (macOS)</strong>. The overview shows <strong>Allowed</strong> with nothing under it: the portal does not list Denied Binaries entries in that view. Select <strong>Edit</strong> next to <strong>Configuration settings</strong> and the table shows every entry with its Team ID and Signing ID. It is not assigned yet: continue with step 6.
+            <figure><a href="./MacScreens/IntuneEdit.png" target="_blank" rel="noopener noreferrer" aria-label="Open Intune edit view screenshot"><img style="width:460px" src="./MacScreens/IntuneEdit.png" width="826" height="1174" loading="lazy" alt="Edit profile: Denied Binaries table with 19 rows, each with a Team ID and some with a Signing ID."></a></figure></li>
+        </ol>
+        <p>To change the list later, exclude or include tools on the RMM page, download again and post again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
+      </section>
+      <section id="portal" class="help-step" aria-labelledby="portal-title">
+        <h2 id="portal-title">4. Option 2: Intune portal</h2>
+        <p><strong>Where the values come from.</strong> In the macOS card, select <strong>Show rules for the portal</strong>. The dialog lists one row per Denied Binaries entry you need to create: the <strong>Team ID</strong>, the <strong>Signing ID</strong> when one is required, and the tool it belongs to. <strong>Copy list</strong> puts it on your clipboard as a table. Tools you excluded are already left out. The same values are visible per tool under <strong>macOS denied binaries</strong> in the tool list.</p>
+        <figure><a href="./MacScreens/PortalRules.png" target="_blank" rel="noopener noreferrer" aria-label="Open portal rules dialog screenshot"><img style="width:300px" src="./MacScreens/PortalRules.png" width="880" height="810" loading="lazy" alt="Denied Binaries to enter in Intune: one block per tool with its Team ID and Signing IDs as copy chips."></a></figure>
+        <ol>
+          <li><a href="https://intune.microsoft.com/" target="_blank" rel="noopener noreferrer">Intune</a> → <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong> → <strong>Create</strong> → <strong>New policy</strong>. Platform <strong>macOS</strong>, profile type <strong>Settings catalog</strong>, <strong>Create</strong>.
+            <figure><a href="./MacScreens/PortalCreate.png" target="_blank" rel="noopener noreferrer" aria-label="Open Create new policy screenshot"><img style="width:520px" src="./MacScreens/PortalCreate.png" width="793" height="632" loading="lazy" alt="Intune macOS Configuration: the Create menu open with New Policy highlighted."></a></figure></li>
+          <li>Name it, for example <strong>Block RMM (macOS)</strong>. <strong>Next</strong>.</li>
+          <li>Select <strong>Add settings</strong>. In the settings picker, search for <strong>denied binaries</strong>, select the <strong>App Settings</strong> subcategory and tick <strong>Denied Binaries</strong> only. Close the picker.
+            <figure><a href="./MacScreens/PortalPicker.png" target="_blank" rel="noopener noreferrer" aria-label="Open settings picker screenshot"><img style="width:320px" src="./MacScreens/PortalPicker.png" width="476" height="536" loading="lazy" alt="Settings picker: search denied binaries, Declarative Device Management App Settings category, Denied Binaries ticked."></a></figure></li>
+          <li>For every row in the dialog, select <strong>Add</strong> under Denied Binaries. A table row appears with <strong>Edit instance</strong> at the right.
+            <figure><a href="./MacScreens/PortalRow.png" target="_blank" rel="noopener noreferrer" aria-label="Open Denied Binaries row screenshot"><img style="width:520px" src="./MacScreens/PortalRow.png" width="754" height="463" loading="lazy" alt="Denied Binaries table with one row and the Edit instance link under Configure settings."></a></figure></li>
+          <li>Select <strong>Edit instance</strong>. A pane opens with five fields. Fill in <strong>Team ID</strong>; fill in <strong>Signing ID</strong> only when the row shows one (Chrome Remote Desktop, Cloudflare Tunnel). Leave <strong>Signing State</strong> on All. Remove every field you leave empty with the <strong>minus</strong> next to it: an empty field shows "The value must have a length of at least 1" and blocks saving.
+            <figure><a href="./MacScreens/PortalInstance.png" target="_blank" rel="noopener noreferrer" aria-label="Open Configure instance pane screenshot"><img style="width:380px" src="./MacScreens/PortalInstance.png" width="589" height="661" loading="lazy" alt="Configure instance pane: CD Hash and Path Prefix empty with arrows pointing at their minus icons, Signing ID and Team ID filled, Signing State All."></a></figure></li>
+          <li>Repeat for every row in the dialog. Check that the number of table rows equals the number of rows in the dialog, then <strong>Next</strong> and continue with step 6.</li>
+        </ol>
+        <aside class="help-warning" role="note">Do not tick the whole Allowed group or Allowed Binaries: an allow list quits every app that is not on it. Remove the fields you leave empty instead of leaving them blank: Intune refuses to save a blank field, and an entry without a Team ID makes the Mac reject the whole policy without telling you which entry.</aside>
+      </section>
+      <section id="powershell" class="help-step" aria-labelledby="powershell-title">
+        <h2 id="powershell-title">5. Option 3: PowerShell</h2>
+        <ol>
+          <li>In the macOS card, select <strong>Download PowerShell script</strong>. The file <code>RMM_Denied_Binaries_Intune.ps1</code> contains the whole policy, so nothing else needs to be downloaded or kept next to it.</li>
+          <li>Open PowerShell and run the file. It installs the Microsoft Graph PowerShell SDK only when it is missing, signs you in with your Intune administrator account, asks for consent to <code>DeviceManagementConfiguration.ReadWrite.All</code> if it has not been granted yet, posts the policy and prints its id.</li>
+        </ol>
+        <p>This is what the script does, apart from the embedded JSON:</p>
+        <pre class="kql-code"><code>if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {
+    Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
+}
+Import-Module Microsoft.Graph.Authentication
+Connect-MgGraph -Scopes DeviceManagementConfiguration.ReadWrite.All -NoWelcome
+$body = @'
+    ... the same JSON as Download Intune JSON ...
+'@
+$policy = Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $body -ContentType "application/json"</code></pre>
+        <p>The response is the new policy with its <code>id</code>. In Intune the policy appears under <strong>Devices</strong> → <strong>macOS</strong> → <strong>Configuration</strong>; as with option 1, the overview shows an empty <strong>Allowed</strong> and <strong>Edit</strong> shows every entry. It is not assigned yet: continue with step 6.</p>
+        <p>To change the list later, exclude or include tools on the RMM page, download the script again and run it again. Then assign the new policy and delete the old one, so a Mac never receives two deny lists.</p>
+      </section>
+      <section id="assign" class="help-step" aria-labelledby="assign-title">
+        <h2 id="assign-title">6. Assign</h2>
+        <p>Set scope tags if needed. Assign your pilot device group of supervised Macs. <strong>Review + create</strong> → <strong>Create</strong>, or <strong>Review + save</strong> on the policy that Graph created.</p>
+        <p>Keep one deny policy per Mac. Two policies are merged into one list, so a tool you excluded in one is still denied by the other.</p>
+      </section>
+      <section id="verify" class="help-step" aria-labelledby="verify-title">
+        <h2 id="verify-title">7. Verify</h2>
+        <ul>
+          <li>Sync the pilot Mac. In Intune, the policy's <strong>Per-setting status</strong> shows <strong>Succeeded</strong>. If every setting shows <strong>Noncompliant</strong>, one entry is missing its Team ID.</li>
+          <li>Launch a denied tool. macOS closes it and shows that the app is not allowed by your organisation.</li>
+          <li>Launch an excluded tool. It must start normally.</li>
+          <li>On the Mac, <code>log show --last 10m --predicate 'subsystem == "com.apple.ManagedClient"' | grep -i DENIED</code> lists the blocked executions.</li>
+        </ul>
+        <p>Expand assignments after testing.</p>
+        <p><a href="https://learn.microsoft.com/intune/device-configuration/templates/apple-ddm-app-settings" target="_blank" rel="noopener noreferrer">Microsoft documentation <span aria-hidden="true">↗</span></a></p>
+      </section>
+      <section id="contribute" class="help-step" aria-labelledby="contribute-title">
+        <h2 id="contribute-title">8. Add a tool</h2>
+        <p>Only tools whose Mac code signature was checked against a real installer are listed. To add one, install it on a Mac and read the signature of the app and of every helper, agent or service it installs:</p>
+        <pre class="kql-code"><code>codesign -dvvv "/Applications/Example.app" 2>&amp;1 | grep -E "^(Identifier|TeamIdentifier)="</code></pre>
+        <p><strong>TeamIdentifier</strong> is the Team ID. Use it alone when the vendor only makes remote tools. When the same Team ID also signs unrelated software (Google, Microsoft, Cloudflare), add the <strong>Identifier</strong> of each remote binary as a Signing ID, otherwise every app from that vendor is blocked.</p>
+        <p>Send the output and the installer URL through <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">a GitHub issue <span aria-hidden="true">↗</span></a>, or add a <code>macos</code> block to the product in <code>products.json</code>:</p>
+        <pre class="kql-code"><code>"macos": {
+  "rules": [{ "teamId": "H7UGFBUGV6" }],
+  "cask": "teamviewer",
+  "source": "https://download.teamviewer.com/download/TeamViewer.dmg",
+  "verified": "2026-11-08"
+}</code></pre>
+        <p>Tools that have a Homebrew cask are picked up by the monthly sync automatically: it reads the installer's signature on a macOS runner and proposes the rule in the lolRMM pull request, and re-checks every existing Team ID each month.</p>
+      </section>
+    </article>
+  </main>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./index.html#exports">Downloads</a></div></footer>
+  <script type="module">
+    // Copy icon on every code block. Styles live here so the block and its button always ship together.
+    document.head.insertAdjacentHTML("beforeend", `<style>
+      .code-block { position: relative; margin: 12px 0 0; }
+      .code-block .kql-code { padding-right: 52px; }
+      .code-copy { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); cursor: pointer; }
+      .code-copy:hover, .code-copy.copied { border-color: var(--accent); color: var(--accent); }
+    </style>`);
+    const copy = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>';
+    const check = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
+    for (const pre of document.querySelectorAll("pre.kql-code")) {
+      const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
+      const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", title: "Copy", innerHTML: copy });
+      button.setAttribute("aria-label", "Copy code");
+      button.addEventListener("click", async () => {
+        let ok = true;
+        try { await navigator.clipboard.writeText(pre.textContent); } catch { ok = false; }
+        button.innerHTML = ok ? check : copy;
+        button.title = ok ? "Copied" : "Copy failed";
+        button.classList.toggle("copied", ok);
+        setTimeout(() => { button.innerHTML = copy; button.title = "Copy"; button.classList.remove("copied"); }, 2000);
+      });
+      pre.replaceWith(wrap);
+      wrap.append(pre, button);
+    }
+  </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { iocHeaders, iocSources, serializeCsv } from "./ioc.js";
+// The page validates the same way, so a rule macOS would reject fails here before it is committed.
+import { validateMacos } from "./macos.js";
 
 const root = import.meta.dirname;
 const { version, products } = JSON.parse(readFileSync(join(root, "products.json"), "utf8"));
@@ -22,8 +24,9 @@ const add = (map, key, name, extra) => {
 for (const [name, product] of Object.entries(products)) {
   if (!name.trim() || name.includes(";")) throw new Error(`products.json: invalid product name "${name}"`);
   for (const field of Object.keys(product)) {
-    if (!["paths", "domains", "vendorDomains", "ips"].includes(field)) throw new Error(`products.json: ${name} has unknown field "${field}"`);
+    if (!["paths", "domains", "vendorDomains", "ips", "macos"].includes(field)) throw new Error(`products.json: ${name} has unknown field "${field}"`);
   }
+  if (product.macos) validateMacos(name, product.macos);
   for (const path of product.paths || []) {
     if (!path.startsWith("*\\")) throw new Error(`products.json: ${name} path must start with *\\: ${path}`);
     add(paths, path, name);
