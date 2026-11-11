@@ -290,6 +290,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .modal { padding: 0; border: 0; background: transparent; color: inherit; width: calc(100% - 48px); max-width: 880px; overflow: visible; }
 .modal::backdrop { background: #000000b3; }
 .modal-dialog { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; max-height: 90dvh; display: flex; flex-direction: column; padding: 20px; box-shadow: 0 24px 64px #00000080; }
+.modal-logo { display: block; width: 200px; height: 200px; margin: 0 auto 12px; flex: none; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
 .modal-head h2 { font-size: 16px; font-weight: 600; margin: 0; }
 .modal-close { min-height: 32px; min-width: 32px; padding: 0; font-size: 20px; line-height: 1; }

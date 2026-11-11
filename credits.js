@@ -2,6 +2,7 @@
 document.body.insertAdjacentHTML("beforeend", `
   <dialog id="credits-modal" class="modal" aria-labelledby="credits-modal-title" aria-describedby="credits-modal-desc">
     <div class="modal-dialog">
+      <img class="modal-logo" src="./RMMBlocker.png" alt="" width="200" height="200">
       <div class="modal-head">
         <h2 id="credits-modal-title">Credits and licence</h2>
         <button id="credits-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
