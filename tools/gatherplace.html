@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <base href="../">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Block GatherPlace with Intune and Defender: 2 Defender network indicators. Free policy builder.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>How to Block GatherPlace with Intune and Defender | RMM Guard</title>
+  <meta name="author" content="Lewis Barry, Microsoft MVP for Intune">
+  <link rel="canonical" href="https://rmmguard.com/tools/gatherplace.html">
+  <meta property="og:title" content="How to Block GatherPlace with Intune and Defender | RMM Guard">
+  <meta property="og:description" content="Block GatherPlace with Intune and Defender: 2 Defender network indicators. Free policy builder.">
+  <meta property="og:url" content="https://rmmguard.com/tools/gatherplace.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://rmmguard.com/social-card.png">
+  <meta property="og:site_name" content="RMM Guard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Block GatherPlace with Intune and Defender | RMM Guard">
+  <meta name="twitter:description" content="Block GatherPlace with Intune and Defender: 2 Defender network indicators. Free policy builder.">
+  <meta name="twitter:image" content="https://rmmguard.com/social-card.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Person","@id":"https://conditionalaccess.uk/#author","name":"Lewis Barry","url":"https://conditionalaccess.uk/about/","jobTitle":"Principal Security Architect, Microsoft MVP for Intune","description":"Microsoft MVP for Intune. Principal Security Architect at inforcer. Specialist in Microsoft 365, Intune, Entra ID, and Conditional Access security.","image":{"@type":"ImageObject","url":"https://conditionalaccess.uk/site/assets/files/1/memvp-v1.520x0.png"},"sameAs":["https://www.linkedin.com/in/lewis-barry/","https://inforcer.com/"]},{"@type":"WebSite","@id":"https://rmmguard.com/#website","name":"RMM Guard","url":"https://rmmguard.com/","author":{"@id":"https://conditionalaccess.uk/#author"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"RMM Guard","item":"https://rmmguard.com/"},{"@type":"ListItem","position":2,"name":"Tools","item":"https://rmmguard.com/tools/"},{"@type":"ListItem","position":3,"name":"GatherPlace","item":"https://rmmguard.com/tools/gatherplace.html"}]}]}</script>
+  <link rel="icon" type="image/png" href="./RMMBlocker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+  <script async src="./analytics.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="./tools/gatherplace.html#main">Skip to content</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Guard home">
+        <img class="brand-mark" src="./RMMBlocker.png" alt="">
+        <span>RMM Guard</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./tools/index.html" aria-current="page">Tools</a><a href="./browsers.html">Browsers</a><a href="./help.html">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main id="main" class="container tool-main" tabindex="-1">
+    <p class="crumbs"><a href="./index.html">RMM Guard</a> / <a href="./tools/index.html">Tools</a> / GatherPlace</p>
+    <h1>How to block GatherPlace with Intune and Defender</h1>
+    <p class="lead">To block GatherPlace, import its <strong>2 domains</strong> as Microsoft Defender block indicators. RMM Guard blocks it by default and generates the files, free. Policy 1.0.0.22.</p>
+    <div class="cta-row"><a class="button primary" href="./index.html">Build a policy that blocks GatherPlace</a></div>
+    <section class="help-step">
+      <h2>Which domains does GatherPlace connect to?</h2>
+      <p>Block these in Microsoft Defender under <strong>Settings → Endpoints → Indicators</strong>. They apply to Windows and macOS devices. <a href="./help-ioc.html">Import guide</a>.</p>
+      <ul class="mono-list"><li>gatherplace.com</li><li>gatherplace.net</li></ul>
+    </section>
+    <section class="help-step">
+      <h2>If you use GatherPlace</h2>
+      <p>Tick <strong>Exclude</strong> next to GatherPlace in the <a href="./index.html">builder</a> before you export. Its rules are left out of every file.</p>
+    </section>
+  </main>
+  <footer><div class="container footer-content"><a href="./index.html">Back to the builder</a><a href="./tools/index.html">All tools</a><a href="https://lolrmm.io" target="_blank" rel="noopener noreferrer">Data from lolRMM <span aria-hidden="true">↗</span></a></div></footer>
+</body>
+</html>

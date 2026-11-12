@@ -1,11 +1,12 @@
 // Generates Blocking_RMMsv5.xml and the IOC CSVs from products.json: node build.mjs [--check]
 // --check writes nothing and fails if the committed files are out of date.
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { iocHeaders, iocSources, serializeCsv } from "./ioc.js";
 // The page validates the same way, so a rule macOS would reject fails here before it is committed.
 import { validateMacos } from "./macos.js";
+import { covers, escape, slug, toolPages } from "./tool-pages.mjs";
 
 const root = import.meta.dirname;
 const { version, products } = JSON.parse(readFileSync(join(root, "products.json"), "utf8"));
@@ -39,7 +40,6 @@ for (const [name, product] of Object.entries(products)) {
   }
 }
 
-const escape = value => value.replace(/[&<>"]/g, char => `&${{ "&": "amp", "<": "lt", ">": "gt", '"': "quot" }[char]};`);
 const rules = [...paths.values()].map(({ key, names }) => ({
   path: key,
   // FriendlyName carries the product names, which is how the editor groups rules.
@@ -125,12 +125,8 @@ if (JSON.stringify(csvs) !== JSON.stringify(expected)) {
   throw new Error(`CSV set changed to ${csvs.join(", ")}; update iocSources in ioc.js to match.`);
 }
 
-// The page renders the tool list with JavaScript; AI agents that read raw files get it from llms.txt.
-const covers = p => [
-  p.paths?.length && "Windows",
-  p.macos && "macOS",
-  (p.domains?.length || p.vendorDomains?.length || p.ips?.length) && "network",
-].filter(Boolean).join(", ");
+// The builder renders the tool list with JavaScript; crawlers that read raw files get it from the tool pages and llms.txt.
+Object.assign(files, toolPages(products, version));
 files["llms.txt"] = `# RMM Guard
 
 > Free builder at https://rmmguard.com/ that blocks unapproved RMM (remote monitoring and management) and remote access tools on Windows and macOS. Exclude the tools you trust, then export an Intune App Control for Business policy (formerly WDAC, Windows Defender Application Control; both names are still in use), indicator (IOC) CSVs for Microsoft Defender, and a macOS deny list for Intune. By Lewis Barry, Microsoft MVP for Intune.
@@ -155,6 +151,7 @@ Blocking unwanted RMM and remote access tools is part of good endpoint security 
 - [Deploy App Control for Business (WDAC) with Intune](https://rmmguard.com/help.html): step-by-step upload and pilot guide
 - [Import Defender indicators](https://rmmguard.com/help-ioc.html): prepare protection, import the CSVs, verify
 - [macOS app control with Intune](https://rmmguard.com/help-macos.html): Graph Explorer, portal and PowerShell routes
+- [Tools](https://rmmguard.com/tools/): one page per tool with its file paths, network indicators and macOS signature
 - [Changelog](https://rmmguard.com/changelog.html): tools, executables and domains added each month
 
 ## Data
@@ -167,21 +164,29 @@ ${csvs.map(name => `- [${name.split("/")[1]}](https://rmmguard.com/${name}): Def
 
 ## Tools blocked
 
-Each tool is blocked unless you exclude it. In brackets: where it is covered.
+Each tool is blocked unless you exclude it. Each links to its page. In brackets: where it is covered.
 
-${Object.entries(products).map(([name, product]) => `- ${name} (${covers(product)})`).join("\n")}
+${Object.entries(products).map(([name, product]) => `- [${name}](https://rmmguard.com/tools/${slug(name)}.html) (${covers(product)})`).join("\n")}
 `;
 
+// Pages of tools that have left products.json.
+mkdirSync(join(root, "tools"), { recursive: true });
+const orphans = readdirSync(join(root, "tools"), { withFileTypes: true })
+  .filter(entry => entry.isFile() && !files[`tools/${entry.name}`]).map(entry => `tools/${entry.name}`);
 const stale = Object.keys(files).filter(name => {
-  try { return readFileSync(join(root, name), "utf8") !== files[name]; } catch { return true; }
+  // A Windows checkout (core.autocrlf) has CRLF where the generated text has LF.
+  try { return readFileSync(join(root, name), "utf8").replaceAll("\r\n", "\n") !== files[name]; } catch { return true; }
 });
 if (process.argv.includes("--check")) {
-  if (stale.length) {
-    console.error(`Out of date: ${stale.join(", ")}. Run node build.mjs and commit the result.`);
+  if (stale.length || orphans.length) {
+    console.error(`Out of date: ${[...stale, ...orphans].join(", ")}. Run node build.mjs and commit the result.`);
     process.exit(1);
   }
   console.log("Generated files are up to date.");
 } else {
   for (const name of stale) writeFileSync(join(root, name), files[name]);
-  console.log(`${rules.length} deny rules, ${indicators.size} IOCs. Updated: ${stale.join(", ") || "nothing"}.`);
+  for (const name of orphans) unlinkSync(join(root, name));
+  const pages = stale.filter(name => name.startsWith("tools/")).length;
+  const others = stale.filter(name => !name.startsWith("tools/"));
+  console.log(`${rules.length} deny rules, ${indicators.size} IOCs. Updated: ${[...others, pages && `${pages} tool pages`].filter(Boolean).join(", ") || "nothing"}.${orphans.length ? ` Removed: ${orphans.join(", ")}.` : ""}`);
 }
