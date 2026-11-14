@@ -9,5 +9,5 @@ jobs:
         with:
           node-version: 22
       - run: node build.mjs --check
-      - run: node --test scripts/*.test.mjs
+      - run: node --test scripts/*.test.mjs worker/*.test.mjs
       - run: node run-tests.mjs google-chrome

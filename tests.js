@@ -1,4 +1,5 @@
 import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
+import { filterPolicy, policyTools } from "./worker/index.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 import { parseMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
@@ -505,6 +506,14 @@ async function run() {
     });
     test("No exclusions preserves original source exactly", () =>
       assert(exportPolicy(policy, new Set()) === source, "Source text changed"));
+    test("Retrieval link Worker filters the policy the same way as the page", () => {
+      assert(policyTools(source).size === policy.tools.length, "Worker sees a different tool list");
+      const ruleIds = text => JSON.stringify(parsePolicy(text).rules.map(rule => [rule.id, rule.references]));
+      for (const tool of policy.tools) {
+        const selection = new Set([tool.name]);
+        assert(ruleIds(filterPolicy(source, selection)) === ruleIds(exportPolicy(policy, selection)), `Worker and page disagree for ${tool.name}`);
+      }
+    });
     test("Every deny rule is visible under its product", () => {
       const grouped = new Set(policy.tools.flatMap(tool => tool.rules.map(rule => rule.id)));
       assert(grouped.size === policy.rules.length, "Tool list hides deny rules");

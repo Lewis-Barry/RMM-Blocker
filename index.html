@@ -48,7 +48,7 @@
   <main class="container page-main">
     <div class="builder-intro-row">
       <h1 class="builder-intro">Block unapproved RMM and remote access tools on Windows and macOS. Exclude the ones you trust.</h1>
-      <span class="chip updated-chip">Last updated Nov 12, 2026</span>
+      <span class="chip updated-chip">Last updated Nov 14, 2026</span>
     </div>
     <section class="how-to" aria-labelledby="how-to-title">
       <p id="how-to-title"><strong>How to use</strong></p>
@@ -132,6 +132,7 @@
               <details class="export-details"><summary>Deploy notes</summary><p>Separate from the WDAC XML: run the PowerShell script, post the JSON once in Graph Explorer, or type the rules into the settings catalog. Only tools with a verified Mac code signature are covered; excluded tools without one are marked. Requires Automated Device Enrollment.</p><p><a href="./help-macos.html">macOS guide</a> · <a id="mac-report-missing" href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report a missing tool <span aria-hidden="true">↗</span></a></p></details>
             </section>
             <button id="kql-open" class="kql-open" type="button">See KQL for network discovery</button>
+            <button id="links-open" class="kql-open" type="button">Copy custom retrieval links</button>
           </div>
         </section>
       </div>
@@ -150,6 +151,20 @@
       <div class="modal-actions">
         <button id="kql-copy" class="primary" type="button">Copy query</button>
       </div>
+    </div>
+  </dialog>
+  <dialog id="links-modal" class="modal" aria-labelledby="links-modal-title" aria-describedby="links-modal-desc">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h2 id="links-modal-title">Custom retrieval links</h2>
+        <button id="links-close" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <div id="links-modal-desc" class="modal-desc">
+        <p>For automation. Each link returns the latest published list <span id="links-scope"></span>, so a scheduled job that fetches it picks up new tools and indicators without anyone visiting this page. Click a link to copy it.</p>
+        <p>The exclusions are written into the link and nothing is stored, so copy the links again after changing your exclusions. The links only return files: comparing them with what you have deployed, and importing them, is up to your automation.</p>
+        <p>If an excluded tool is later renamed or removed, the link returns an HTTP 400 error instead of a file, so a tool you rely on is never blocked by surprise. Come back here and copy new links.</p>
+      </div>
+      <ul id="links-modal-list" class="rule-groups" role="list"></ul>
     </div>
   </dialog>
   <dialog id="mac-modal" class="modal" aria-labelledby="mac-modal-title" aria-describedby="mac-modal-desc">

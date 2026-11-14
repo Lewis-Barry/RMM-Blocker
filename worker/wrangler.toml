@@ -1,0 +1,5 @@
+# Deploy: npx wrangler deploy (from this folder). Needs rmmguard.com proxied through Cloudflare.
+name = "rmmguard-api"
+main = "index.js"
+compatibility_date = "2026-11-01"
+routes = [{ pattern = "rmmguard.com/api/*", zone_name = "rmmguard.com" }]

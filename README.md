@@ -142,7 +142,19 @@ UI: dark by default with a header toggle for the page session, dense tool rows, 
 2. In **Settings > Pages**, choose **Deploy from a branch**.
 3. Select your branch and **/ (root)**, then save.
 
-No server-side processing, CDN or credentials are needed. Relative URLs work for project sites and custom domains. `.nojekyll` enables plain static hosting.
+The builder itself needs no server-side processing or credentials; only the retrieval links below use a Worker. Relative URLs work for project sites and custom domains. `.nojekyll` enables plain static hosting.
+
+## Retrieval links for automation
+
+**Copy custom retrieval links** gives three URLs that return the latest published lists minus the current exclusions, so an MSP's scheduled job stays in sync without the page:
+
+- `https://rmmguard.com/api/wdac.xml`: the WDAC policy
+- `https://rmmguard.com/api/iocs.csv`: every indicator in one CSV (not split into 500-row batches)
+- `https://rmmguard.com/api/macos.json`: the Intune settings catalog body
+
+Each excluded tool is one `exclude=<tool name>` query parameter. A name that is not in the policy returns HTTP 400 rather than being ignored, so a renamed tool cannot silently become blocked.
+
+The URLs are served by the Cloudflare Worker in `worker/`, routed on `rmmguard.com/api/*`. It reads the live site on each request, so it only needs redeploying when `worker/index.js`, `ioc.js` or `macos.js` change: `cd worker && npx wrangler deploy`. `node --test worker/worker.test.mjs` runs it against the local files.
 
 ## Optional Defender IOC export
 

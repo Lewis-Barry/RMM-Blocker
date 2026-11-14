@@ -166,6 +166,8 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; }
 .rule-group-name .muted { font-weight: 400; }
 .rule-label { color: var(--muted); font-size: 12px; padding-top: 5px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.link-row { grid-column: 1 / -1; }
+.modal-desc p { margin: 0 0 8px; }
 .copy-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px 2px 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--page); color: var(--ink); font: inherit; font-size: 13px; font-family: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace; cursor: pointer; overflow-wrap: anywhere; text-align: left; }
 .copy-chip:hover { border-color: var(--accent); color: var(--accent); }
 .copy-chip svg { width: 14px; height: 14px; flex: none; opacity: .7; }

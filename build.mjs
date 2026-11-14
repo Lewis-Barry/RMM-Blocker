@@ -158,6 +158,7 @@ Blocking unwanted RMM and remote access tools is part of good endpoint security 
 
 - [products.json](https://rmmguard.com/products.json): every tool with its file paths, domains, IPs and macOS signatures
 - [Blocking_RMMsv5.xml](https://rmmguard.com/Blocking_RMMsv5.xml): the full App Control for Business (WDAC) policy with no exclusions
+- Retrieval links for automation: https://rmmguard.com/api/wdac.xml, https://rmmguard.com/api/iocs.csv (all indicators in one file) and https://rmmguard.com/api/macos.json return the latest lists; add one exclude=TOOL-NAME query parameter per tool to leave out. An unknown tool name returns HTTP 400.
 ${csvs.map(name => `- [${name.split("/")[1]}](https://rmmguard.com/${name}): Defender indicator import file`).join("\n")}
 - [changelog.json](https://rmmguard.com/changelog.json): machine-readable changelog
 - [Source on GitHub](https://github.com/Lewis-Barry/RMM-Blocker)

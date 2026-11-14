@@ -442,24 +442,58 @@ async function copyWith(button, text, restore) {
   setTimeout(() => { button.classList.remove(state); if (restore) button.textContent = restore; }, 1500);
 }
 
+// A value shown as a button that copies itself.
+function chip(value) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "copy-chip";
+  button.setAttribute("aria-label", `Copy ${value}`);
+  const code = document.createElement("span");
+  code.textContent = value;
+  button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>');
+  button.prepend(code);
+  button.addEventListener("click", () => copyWith(button, value));
+  return button;
+}
+
+// One link per output to the Worker in worker/index.js, which filters the latest published files by these exclusions.
+byId("links-open")?.addEventListener("click", () => {
+  const query = excluded.size ? `?${new URLSearchParams([...excluded].sort().map(name => ["exclude", name]))}` : "";
+  byId("links-scope").textContent = excluded.size
+    ? `minus your ${excluded.size} excluded tool${excluded.size === 1 ? "" : "s"}`
+    : "in full, because no tools are excluded";
+  byId("links-modal-list").replaceChildren(...[
+    ["WDAC policy", "XML", "wdac.xml"],
+    ["Defender indicators", "one CSV with every row; split it for the portal's 500-row import limit", "iocs.csv"],
+    ["macOS app control", "Intune settings catalog JSON; excluded tools without Mac rules change nothing", "macos.json"],
+  ].map(([name, note, file]) => {
+    const item = document.createElement("li");
+    item.className = "rule-group";
+    const heading = document.createElement("div");
+    heading.className = "rule-group-name";
+    const detail = document.createElement("span");
+    detail.className = "muted";
+    detail.textContent = note;
+    heading.append(document.createTextNode(name), detail);
+    const row = document.createElement("div");
+    row.className = "chip-row link-row";
+    row.append(chip(`https://rmmguard.com/api/${file}${query}`));
+    item.append(heading, row);
+    return item;
+  }));
+  byId("links-modal").showModal();
+});
+byId("links-close")?.addEventListener("click", () => byId("links-modal").close());
+byId("links-modal")?.addEventListener("click", event => {
+  if (event.target === byId("links-modal")) byId("links-modal").close();
+});
+
 // The portal route: one block per tool with its Team ID and Signing IDs, each value a click-to-copy chip.
 let macListText = "";
 byId("mac-rules-open")?.addEventListener("click", () => {
   const retained = macRetained();
   macListText = ["Team ID\tSigning ID\tTools", ...retained.map(rule => `${rule.teamId}\t${rule.signingId || ""}\t${rule.names.join("; ")}`)].join("\n");
-  const chip = value => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "copy-chip";
-    button.setAttribute("aria-label", `Copy ${value}`);
-    const code = document.createElement("span");
-    code.textContent = value;
-    button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>');
-    button.prepend(code);
-    button.addEventListener("click", () => copyWith(button, value));
-    return button;
-  };
-  const line = (label, values) => {
+  const line =(label, values) => {
     const name = document.createElement("span");
     name.className = "rule-label";
     name.textContent = label;
