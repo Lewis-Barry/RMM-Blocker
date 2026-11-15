@@ -736,8 +736,8 @@ function testAutomation() {
     assert(command === "./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf", command);
   });
   test("Sync command lists exclusions sorted and quoted", () => {
-    const command = buildSyncCommand(new Set(["TeamViewer", "AnyDesk"]));
-    assert(command.includes("-Exclude 'AnyDesk','TeamViewer' "), command);
+    const command = buildSyncCommand(new Set(["TeamViewer", "AnyDesk", "Splashtop"]));
+    assert(command.includes("-Exclude 'AnyDesk','Splashtop','TeamViewer' "), command);
   });
   test("Sync command doubles single quotes in tool names", () => {
     const command = buildSyncCommand(new Set(["O'Tool", "O&O Syspectr"]));
