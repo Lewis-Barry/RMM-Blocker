@@ -46,6 +46,92 @@ Describe 'WDAC' {
     It 'rejects an HTML page served with status 200' {
         { Test-WdacPolicy '<!doctype html><html><body>Just a moment...</body></html>' } | Should -Throw 'WDAC:*'
     }
+    Context 'hardening' {
+        BeforeAll {
+            $script:X = ConvertTo-NormalizedXml $script:PolicyXml
+            $script:Ctes = 'FilePath="*\ctes.exe"'
+        }
+        It 'rejects a changed <Which> alone' -ForEach @(
+            @{ Which = 'BasePolicyID'; From = '<BasePolicyID>{01A11AD0'; To = '<BasePolicyID>{11111111' }
+            @{ Which = 'PolicyID';     From = '<PolicyID>{01A11AD0';     To = '<PolicyID>{11111111' }
+        ) {
+            { Test-WdacPolicy $script:X.Replace($From, $To) } | Should -Throw 'WDAC:*'
+        }
+        It 'rejects one Allow removed' {
+            $bad = [regex]::Replace($script:X, '<Allow [^>]*/>', '', 1)
+            { Test-WdacPolicy $bad } | Should -Throw '*two Allow*'
+        }
+        It 'rejects an Allow with FileName x.exe' {
+            $bad = [regex]::Replace($script:X, '(<Allow [^>]*FileName=)"\*"', '$1"x.exe"', 1)
+            { Test-WdacPolicy $bad } | Should -Throw '*two Allow*'
+        }
+        It 'rejects a Deny with FileName next to FilePath' {
+            { Test-WdacPolicy $script:X.Replace($script:Ctes, "$script:Ctes FileName=`"explorer.exe`"") } | Should -Throw '*uses FileName*'
+        }
+        It 'rejects a Deny with a Hash next to FilePath' {
+            { Test-WdacPolicy $script:X.Replace($script:Ctes, "$script:Ctes Hash=`"00`"") } | Should -Throw '*uses Hash*'
+        }
+        It 'rejects a Deny without FilePath' {
+            { Test-WdacPolicy $script:X.Replace(" $script:Ctes", '') } | Should -Throw 'WDAC:*'
+        }
+        It 'rejects the macro path <Path>' -ForEach @(
+            @{ Path = '%SYSTEM32%\*' }
+            @{ Path = '%OSDRIVE%\*' }
+        ) {
+            { Test-WdacPolicy $script:X.Replace($script:Ctes, "FilePath=`"$Path`"") } | Should -Throw '*only FilePath rules*'
+        }
+        It 'rejects the path <Path> that hits a canary' -ForEach @(
+            @{ Path = '*\EXPLORER.EXE' }
+            @{ Path = '*\explore?.exe' }
+            @{ Path = '*.dll' }
+            @{ Path = '*\omadmclient.exe' }
+            @{ Path = '*\svchost.exe' }
+            @{ Path = '*\lsass.exe' }
+            @{ Path = '*\winlogon.exe' }
+            @{ Path = '*\cmd.exe' }
+            @{ Path = '*\powershell.exe' }
+            @{ Path = '*\MsMpEng.exe' }
+            @{ Path = '*\Microsoft.Management.Services.IntuneWindowsAgent.exe' }
+            @{ Path = '*\ntdll.dll' }
+            @{ Path = '*\SysWOW64\ntdll.dll' }
+            @{ Path = '*\msiexec.exe' }
+            @{ Path = '*\conhost.exe' }
+            @{ Path = '*\AgentExecutor.exe' }
+            @{ Path = '*\MsSense.exe' }
+        ) {
+            { Test-WdacPolicy $script:X.Replace($script:Ctes, "FilePath=`"$Path`"") } | Should -Throw '*would block*'
+        }
+        It 'rejects a structure change: <Name>' -ForEach @(
+            @{ Name = 'DeniedSigners under scenario 12'; Mutate = {
+                $script:X.Replace('</FileRules>', '</FileRules><Signers><Signer ID="ID_SIGNER_X" Name="Windows"><CertRoot Type="Wellknown" Value="06" /></Signer></Signers>').
+                    Replace('<ProductSigners>', '<ProductSigners><DeniedSigners><DeniedSigner SignerId="ID_SIGNER_X" /></DeniedSigners>') } }
+            @{ Name = 'scenario 131 FileRuleRef removed'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?)<FileRuleRef RuleID="[^"]+" />', '$1') } }
+            @{ Name = 'scenario 131 FileRuleRef repointed'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?<FileRuleRef RuleID=")[^"]+', '${1}ID_DENY_A_D91474AD759E53010A953C20F82F02DE') } }
+            @{ Name = 'MinimumFileVersion on an Allow'; Mutate = { [regex]::Replace($script:X, '(<Allow [^>]*FileName="\*")', '$1 MinimumFileVersion="65535.65535.65535.65535"', 1) } }
+            @{ Name = 'an extra SigningScenario'; Mutate = { $script:X.Replace('</SigningScenarios>', '<SigningScenario Value="12" ID="ID_X" FriendlyName="x"><ProductSigners /></SigningScenario></SigningScenarios>') } }
+            @{ Name = 'a FileAttrib element'; Mutate = { $script:X.Replace('</FileRules>', '<FileAttrib ID="ID_FILEATTRIB_X" FileName="explorer.exe" /></FileRules>') } }
+        ) {
+            { Test-WdacPolicy (& $Mutate) } | Should -Throw '*structure*'
+        }
+        It 'accepts a BOM-prefixed policy' {
+            { Test-WdacPolicy ("`u{FEFF}" + $script:PolicyXml) } | Should -Not -Throw
+        }
+        It 'rejects a policy with zero Deny rules' {
+            { Test-WdacPolicy ([regex]::Replace($script:X, '<Deny [^>]*/>', '')) } | Should -Throw '*no Deny*'
+        }
+        It 'rejects a DOCTYPE' {
+            { Test-WdacPolicy $script:X.Replace('<SiPolicy ', '<!DOCTYPE SiPolicy [<!ENTITY e "x">]><SiPolicy ') } | Should -Throw 'WDAC:*'
+        }
+        It 'accepts the worker-filtered policy and returns fewer rules' {
+            $names = '["AnyDesk","TeamViewer","O&O Syspectr"]'
+            $js = "import { filterPolicy } from '$script:Root/worker/index.js'; import { readFileSync } from 'node:fs'; process.stdout.write(filterPolicy(readFileSync('$script:Root/Blocking_RMMsv5.xml', 'utf8'), new Set($names)))"
+            $filtered = (& node --input-type=module -e $js) -join "`n"
+            $LASTEXITCODE | Should -Be 0
+            $full = Test-WdacPolicy $script:PolicyXml
+            $facts = Test-WdacPolicy $filtered
+            $facts.Rules.Count | Should -BeLessThan $full.Rules.Count
+        }
+    }
     It 'builds the App Control body with the template ids verified live' {
         $body = New-WdacBody 'Name' 'Description' '<SiPolicy />'
         $body.templateReference.templateId | Should -Be '4321b946-b76b-4450-8afd-769c08b16ffc_1'

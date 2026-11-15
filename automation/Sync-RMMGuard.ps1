@@ -56,7 +56,16 @@ $script:WdacCanaries = @(
     'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
     'C:\ProgramData\Microsoft\Windows Defender\Platform\4.18.25010.11-0\MsMpEng.exe'
     'C:\Program Files (x86)\Microsoft Intune Management Extension\Microsoft.Management.Services.IntuneWindowsAgent.exe'
+    'C:\Windows\System32\ntdll.dll'
+    'C:\Windows\SysWOW64\ntdll.dll'
+    'C:\Windows\System32\omadmclient.exe'
+    'C:\Windows\System32\msiexec.exe'
+    'C:\Windows\System32\conhost.exe'
+    'C:\Program Files (x86)\Microsoft Intune Management Extension\AgentExecutor.exe'
+    'C:\Program Files\Windows Defender Advanced Threat Protection\MsSense.exe'
 )
+# SHA-256 of the policy with VersionEx, Settings, every Deny and the Deny FileRuleRefs removed: allows, signers and scenarios are fixed.
+$script:WdacShape = 'FE8E5A67C78533BA256D928244F99DD689592A150614C4CA9A9AF6763C862653'
 # Hosts a domain indicator must never equal or be a parent of: sign-in, Graph, Intune, Windows Update and Defender itself.
 $script:IocCanaries = @(
     'login.microsoftonline.com', 'graph.microsoft.com', 'enrollment.manage.microsoft.com', 'fef.msua06.manage.microsoft.com',
@@ -74,12 +83,13 @@ function ConvertTo-NormalizedXml([string]$Text) {
 }
 
 function ConvertTo-WildcardRegex([string]$Pattern) {
-    '^' + ([regex]::Escape($Pattern) -replace '\\\*', '.*' -replace '\\\?', '.') + '$'
+    '(?i)^' + ([regex]::Escape($Pattern) -replace '\\\*', '.*' -replace '\\\?', '.') + '$'
 }
 
 # Version and deny rules of any policy XML, without judging it (deployed policies may predate the current guards).
 function Get-WdacFacts([string]$Text) {
     try { $xml = [xml]($Text -replace '^\uFEFF', '') } catch { throw "WDAC: the content is not XML ($($_.Exception.Message))." }
+    if ($xml.DocumentType) { throw 'WDAC: a DOCTYPE is not allowed.' }
     $policy = $xml.SiPolicy
     if (-not $policy) { throw 'WDAC: the root element is not SiPolicy.' }
     [pscustomobject]@{
@@ -87,6 +97,15 @@ function Get-WdacFacts([string]$Text) {
         Version = [string]$policy.VersionEx
         Rules   = @($policy.FileRules.Deny | Where-Object { $_ } | ForEach-Object { "$($_.FriendlyName)|$($_.FilePath)" })
     }
+}
+
+# Hash of everything except the parts that legitimately change (version, settings, deny rules and their UMCI references).
+function Get-WdacShape([xml]$Xml) {
+    $doc = $Xml.Clone()
+    $xpath = '/s:SiPolicy/s:VersionEx | /s:SiPolicy/s:Settings | /s:SiPolicy/s:FileRules/s:Deny | //s:FileRuleRef[starts-with(@RuleID, "ID_DENY_")]'
+    foreach ($node in @((Select-Xml -Xml $doc -Namespace @{ s = 'urn:schemas-microsoft-com:sipolicy' } -XPath $xpath).Node)) { [void]$node.ParentNode.RemoveChild($node) }
+    $canonical = ConvertTo-NormalizedXml $doc.DocumentElement.OuterXml
+    [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical)))
 }
 
 function Test-WdacPolicy([string]$Text) {
@@ -101,12 +120,18 @@ function Test-WdacPolicy([string]$Text) {
     $denies = @($policy.FileRules.Deny | Where-Object { $_ })
     if (-not $denies.Count) { throw 'WDAC: the policy has no Deny rules.' }
     foreach ($deny in $denies) {
+        foreach ($attribute in $deny.Attributes.Name) {
+            if ($attribute -notin 'ID', 'FriendlyName', 'FilePath') { throw "WDAC: Deny rule $($deny.ID) uses $attribute; only FilePath rules are accepted." }
+        }
         if (-not $deny.FilePath) { throw "WDAC: Deny rule $($deny.ID) has no FilePath." }
+        if ($deny.FilePath.Contains('%')) { throw "WDAC: Deny rule $($deny.ID) uses a macro in FilePath; only FilePath rules without macros are accepted." }
         $regex = ConvertTo-WildcardRegex $deny.FilePath
         foreach ($canary in $script:WdacCanaries) {
             if ($canary -match $regex) { throw "WDAC: Deny rule '$($deny.FilePath)' ($($deny.FriendlyName)) would block $canary." }
         }
     }
+    $shape = Get-WdacShape $facts.Policy.OwnerDocument
+    if ($shape -ne $script:WdacShape) { throw "WDAC: the policy structure outside the deny rules changed (shape $shape). Download the latest Sync-RMMGuard.ps1 before syncing." }
     $facts
 }
 
