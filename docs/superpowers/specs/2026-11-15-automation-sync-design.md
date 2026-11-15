@@ -82,7 +82,7 @@ Exit codes: `0` when every target is created, updated, unchanged or skipped for 
 
 ### Assignment
 
-`AllDevices` maps to `allDevicesAssignmentTarget`, `AllUsers` to `allLicensedUsersAssignmentTarget`, a GUID to `groupAssignmentTarget`. `-ExcludeGroupId` adds an `exclusionGroupAssignmentTarget`. Group names are not accepted: resolving them needs `Group.Read.All` on an already privileged app and is ambiguous when names repeat. The script reads the current assignments (`GET …/{id}/assignments`) and posts the union to `/assign`, because `/assign` replaces the full set. Assignments are never removed.
+`AllDevices` maps to `allDevicesAssignmentTarget`, `AllUsers` to `allLicensedUsersAssignmentTarget`, a GUID to `groupAssignmentTarget`. `-ExcludeGroupId` adds an `exclusionGroupAssignmentTarget`. Group names are not accepted: resolving them needs `Group.Read.All` on an already privileged app and is ambiguous when names repeat. The script reads the current assignments only through `GET …/{id}/assignments` (never `$expand`, see Live verification 4) and posts the union to `/assign`, because `/assign` replaces the full set. Assignments are never removed.
 
 ### Pilot ring
 
@@ -134,13 +134,21 @@ The pilot and production WDAC policies carry the same PolicyID, so a device must
 - `tests.js`: `buildSyncCommand` with zero, one and several exclusions, including a name with a quote.
 - Live in a test tenant before delivery: create, update, unchanged, `-WhatIf` and the IOC sync end to end.
 
-## Open items to verify live (block implementation of the affected parts)
+## Live verification (test tenant, 2026-11-15)
 
-1. Storage format of the App Control XML value (plain or base64). Confirmed read-only in a test tenant on 2026-11-15: template `4321b946-b76b-4450-8afd-769c08b16ffc_1` ("App Control for Business"), one choice setting `device_vendor_msft_policy_config_applicationcontrol_policies_{policyguid}_policiesoptions` (choice-setting template `1de98212-6949-42dc-a89c-e0ff6e5da04b`, value template `b28c7dc4-c7b2-4ce2-8f51-6ebfd3ea69d3`) with option `device_vendor_msft_policy_config_applicationcontrol_configure_xml_selected`, whose child is the string setting `device_vendor_msft_policy_config_applicationcontrol_policies_{policyguid}_xml` (setting template `4d709667-63d7-42f2-8e1b-b780f6c3c9c7`, value template `88f6f096-dedb-4cf1-ac2f-4b41e303adb5`). A second template with the same family (`d3849ba8-bf95-467c-9640-aa2334eae9e3_1`) exists; creation uses the first, and the PolicyID scan covers every policy in the family. The name filter returned `@odata.count` 78 alongside the single match, so the script checks the name client-side as well.
-2. `PUT /configurationPolicies/{id}` updates settings and keeps assignments.
-3. `/assign` replaces the full assignment set.
-4. Importing an indicator value that already exists (created by a user) under `Ti.ReadWrite`.
-5. Whether a domain indicator in Defender also blocks subdomains (decides whether the IOC canary rule above is complete).
+Confirmed with an unassigned test policy that was deleted afterwards:
+
+1. **App Control template and storage.** Creation uses template `4321b946-b76b-4450-8afd-769c08b16ffc_1` ("App Control for Business"). It has one choice setting, `device_vendor_msft_policy_config_applicationcontrol_policies_{policyguid}_policiesoptions` (instance template `1de98212-6949-42dc-a89c-e0ff6e5da04b`, value template `b28c7dc4-c7b2-4ce2-8f51-6ebfd3ea69d3`), with the option `device_vendor_msft_policy_config_applicationcontrol_configure_xml_selected`. Its child is the string setting `device_vendor_msft_policy_config_applicationcontrol_policies_{policyguid}_xml` (instance template `4d709667-63d7-42f2-8e1b-b780f6c3c9c7`, value template `88f6f096-dedb-4cf1-ac2f-4b41e303adb5`). The XML posted as plain text comes back byte-identical. A second template in the same family exists (`d3849ba8-bf95-467c-9640-aa2334eae9e3_1`); the PolicyID scan covers every policy in the family.
+2. **`PUT /configurationPolicies/{id}`** with name, description, platforms, technologies, roleScopeTagIds, templateReference and settings replaces the settings and keeps the assignments.
+3. **`/assign` replaces the full assignment set.** After posting exclusion group A and then exclusion group B, only B remained.
+4. **`$expand=assignments` is unreliable.** It returned an empty list while `GET …/{id}/assignments` returned the assignment. The script must read assignments only through `/assignments`; a union built from the `$expand` result would wipe the customer's assignments on the next `/assign`.
+5. **The `name eq` filter** returned `@odata.count` 78 alongside the single match, so the script also checks the name client-side.
+
+Still open (needs an app with WindowsDefenderATP `Ti.ReadWrite`; verified while building):
+
+6. Importing an indicator value that already exists (created by a user) under `Ti.ReadWrite`.
+7. Whether a domain indicator also blocks subdomains (decides whether the IOC canary rule is complete).
+8. Whether the Intune portal's XML upload stores the XML as plain text too (adoption of portal-created policies). The script decodes base64 when the value does not start with `<`.
 
 ## Out of scope
 
