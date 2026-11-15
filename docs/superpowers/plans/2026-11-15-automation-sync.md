@@ -46,7 +46,7 @@
 import { buildSyncCommand } from "./automation.js";
 ```
 
-and add this block right after the existing `testMacBuilder` call site's sibling tests run (put it as a new top-level function and call it where the other `test*` groups are awaited at the bottom of the file; follow the same pattern as `testMacBuilder`):
+add this top-level function next to `testMacBuilder`, and call `testAutomation();` in `run()` directly before `await testBuilder(policy, iocs);`:
 
 ```js
 function testAutomation() {
@@ -75,7 +75,7 @@ function testAutomation() {
 const quote = name => `'${name.replaceAll("'", "''")}'`;
 
 export function buildSyncCommand(excluded) {
-  const names = [...excluded].sort((a, b) => a.localeCompare(b));
+  const names = [...excluded].sort(); // same order as the links in app.js
   return [
     "./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC'",
     names.length ? `-Exclude ${names.map(quote).join(",")}` : "",
@@ -194,6 +194,7 @@ param(
     [Parameter(Mandatory)][ValidateSet('Wdac', 'Macos', 'Ioc')][string[]]$Target,
     [string]$WdacPolicyName,
     [string]$MacosPolicyName = 'Block RMM tools (macOS)',
+    [string[]]$RingPolicyName = @(),
     [string[]]$Exclude = @(),
     [ValidatePattern('^(AllDevices|AllUsers|[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})$')][string]$Assignment,
     [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$')][string]$ExcludeGroupId,
@@ -400,6 +401,7 @@ Describe 'macOS' {
     It 'rejects a malformed Team ID and an empty list' {
         { Test-MacRules @([pscustomobject]@{ TeamId = 'abc'; SigningId = $null }) } | Should -Throw '*Team ID*'
         { Test-MacRules @() } | Should -Throw '*denies nothing*'
+        { Test-MacRules (Get-MacRules @()) } | Should -Throw '*denies nothing*'
     }
     It 'keeps the broad Team IDs in step with macos.js' {
         $js = Get-Content -Raw "$script:Root/macos.js"
@@ -420,7 +422,9 @@ Describe 'Shared' {
     It 'stops above 25 percent' { { Test-ChangeSize 100 26 0 -Label T } | Should -Throw '*-Force*' }
     It 'lets -Force through' { { Test-ChangeSize 100 0 90 -Force -Label T } | Should -Not -Throw }
     It 'decides release age' {
-        $log = @([pscustomobject]@{ version = '1.0.0.22'; date = '2026-11-10' })
+        # The same shape Invoke-RestMethod returns: one object holding the array.
+        $log = ConvertFrom-Changelog (ConvertFrom-Json -NoEnumerate '[{"version":"1.0.0.22","date":"2026-11-10"},{"version":"1.0.0.21","date":"2026-11-01"}]')
+        $log.Count | Should -Be 2
         $now = [datetime]'2026-11-15'
         Test-ReleaseAge $log '1.0.0.22' 0 $now | Should -BeNullOrEmpty
         Test-ReleaseAge $log '1.0.0.22' 5 $now | Should -BeNullOrEmpty
@@ -517,7 +521,9 @@ function Get-MacRules($Settings) {
 }
 
 function Test-MacRules($Rules) {
-    if (-not @($Rules).Count) { throw 'macOS: the policy denies nothing.' }
+    # An empty function result arrives as $null, and @($null).Count is 1, so drop nulls before counting.
+    $Rules = @($Rules | Where-Object { $_ })
+    if (-not $Rules.Count) { throw 'macOS: the policy denies nothing.' }
     foreach ($rule in $Rules) {
         if ("$($rule.TeamId)" -cnotmatch '^[A-Z0-9]{10}$') { throw "macOS: invalid Team ID '$($rule.TeamId)'." }
         if ($script:BroadTeamIds.ContainsKey($rule.TeamId) -and -not $rule.SigningId) {
@@ -548,6 +554,9 @@ function Test-ChangeSize([int]$Deployed, [int]$Added, [int]$Removed, [switch]$Fo
 }
 
 # $null when the version may be applied, otherwise the reason to wait.
+# Invoke-RestMethod hands a JSON array over as one object; enumerate it so each release is its own entry.
+function ConvertFrom-Changelog($Response) { @($Response | ForEach-Object { $_ }) }
+
 function Test-ReleaseAge($Changelog, [string]$Version, [int]$MinimumDays, [datetime]$Now) {
     if ($MinimumDays -le 0) { return $null }
     $entry = @($Changelog | Where-Object version -eq $Version)[0]
@@ -757,6 +766,7 @@ function Get-RMMGuardFile([string]$File, [string]$Type) {
     if ($response.StatusCode -ne 200) { throw "${File}: HTTP $($response.StatusCode). $($content.Trim())" }
     if ("$($response.Headers['Content-Type'])" -notmatch [regex]::Escape($Type)) { throw "${File}: unexpected content type $($response.Headers['Content-Type'])." }
     $script:Files[$File] = $content
+    $content
 }
 
 function Find-Policy([string]$Name) {
@@ -776,9 +786,10 @@ function Get-WdacXml([string]$PolicyId) {
     $value
 }
 
+# The RMM Guard WDAC policy under another name, ignoring the other ring's policy (-RingPolicyName), which shares the PolicyID on purpose.
 function Find-WdacByPolicyId {
     $filter = [uri]::EscapeDataString("templateReference/templateFamily eq 'endpointSecurityApplicationControl'")
-    foreach ($candidate in (Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name").value) {
+    foreach ($candidate in (Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name").value | Where-Object { $_.name -cnotin $RingPolicyName }) {
         if ("$(Get-WdacXml $candidate.id)".Contains($script:PolicyId)) { return $candidate }
     }
 }
@@ -833,9 +844,8 @@ function Sync-Wdac {
     $change = Measure-SetChange $deployed.Rules $desired.Rules
     Test-ChangeSize $deployed.Rules.Count $change.Added $change.Removed -Force:$Force -Label 'WDAC'
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
-    if ($script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) {
-        Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
-    }
+    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
     Set-Assignment $policy.id
     "updated $summary"
 }
@@ -869,13 +879,12 @@ function Sync-Macos {
     if ($deployedVersion -ne $version -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     Test-ChangeSize $deployedKeys.Count $change.Added $change.Removed -Force:$Force -Label 'macOS'
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
-    if ($script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) {
-        $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
-        Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" @{
-            name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies
-            roleScopeTagIds = @($current.roleScopeTagIds); settings = $body.settings
-        } | Out-Null
-    }
+    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
+    Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" @{
+        name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies
+        roleScopeTagIds = @($current.roleScopeTagIds); settings = $body.settings
+    } | Out-Null
     Set-Assignment $policy.id
     "updated $summary"
 }
@@ -914,12 +923,12 @@ function Sync-Ioc {
 ```powershell
 function Invoke-Sync {
     $script:Auth = Resolve-Auth
-    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force }
+    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -WhatIf:$false }
     Import-Module Microsoft.Graph.Authentication
     # Both tokens up front: a federated token from a pipeline is short-lived.
     if ($Target -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
     if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-Graph }
-    $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? @(Invoke-RestMethod "$script:Site/changelog.json") : @()
+    $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? (ConvertFrom-Changelog (Invoke-RestMethod "$script:Site/changelog.json")) : @()
     $failed = 0
     foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $Target }) {
         try {
@@ -935,6 +944,29 @@ function Invoke-Sync {
 
 Invoke-Sync
 ```
+
+- [ ] **Step 3b: Test the download helper.** Append to `automation/Sync-RMMGuard.Tests.ps1`:
+
+```powershell
+Describe 'Download' {
+    BeforeEach { $script:Files = @{}; $Exclude = @('AnyDesk') }
+    It 'returns the body on the first and the cached call, and downloads once' {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '<SiPolicy />'; Headers = @{ 'Content-Type' = @('application/xml;charset=utf-8') } } }
+        Get-RMMGuardFile 'wdac.xml' 'xml' | Should -Be '<SiPolicy />'
+        Get-RMMGuardFile 'wdac.xml' 'xml' | Should -Be '<SiPolicy />'
+        Should -Invoke Invoke-WebRequest -Times 1 -Exactly -ParameterFilter { $Uri -eq 'https://rmmguard.com/api/wdac.xml?exclude=AnyDesk' }
+    }
+    It 'stops on <Name>' -ForEach @(
+        @{ Name = 'HTTP 400'; Status = 400; Type = 'text/plain'; Body = 'Unknown tool in exclude: X'; Expected = '*HTTP 400*Unknown tool*' }
+        @{ Name = 'an HTML page'; Status = 200; Type = 'text/html'; Body = '<html></html>'; Expected = '*content type*' }
+    ) {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = $Status; Content = $Body; Headers = @{ 'Content-Type' = @($Type) } } }
+        { Get-RMMGuardFile 'wdac.xml' 'xml' } | Should -Throw $Expected
+    }
+}
+```
+
+Run Pester; expected: the new tests pass. (If `$Exclude` set in `BeforeEach` is not visible to the function, set `$script:Exclude` instead and make `Get-RMMGuardFile` read `$Exclude` unchanged: script scope is where the param lives at run time.)
 
 - [ ] **Step 4: Static checks and unit tests.**
 
@@ -967,7 +999,7 @@ Expected: `What if` lines for creating the WDAC policy, updating `Block RMM tool
 
 - [ ] **Step 3: Second run is idempotent.** Expected: three `unchanged` lines, no writes.
 
-- [ ] **Step 4: Exclusion change.** Add `-Exclude 'AnyDesk'`. Expected: WDAC `updated … -N deny rules` with N = AnyDesk's rule count, IOC `… to delete` equal to AnyDesk's indicators, macOS `-1` or more entries. Run once more without `-Exclude`: everything comes back.
+- [ ] **Step 4: Exclusion change.** Add `-Exclude 'AnyDesk'`. Expected: WDAC `updated … -N deny rules` with N = AnyDesk's rule count, IOC `… to delete` equal to AnyDesk's indicators, macOS `-1` or more entries. Run once more without `-Exclude`: everything comes back. Repeat the `-Exclude 'AnyDesk'` run with `-MinimumReleaseAgeDays 365 -WhatIf`: WDAC and macOS must still say `would be updated` (same version, so the age does not apply) and IOC must say `skipped` (no version of its own).
 
 - [ ] **Step 5: Guards in the real flow.** `-Exclude` with an unknown name (`'NoSuchTool'`) gives `HTTP 400` for every target and a non-zero exit. A policy name that exists but is not ours (create an empty settings-catalog Windows policy named `RMM Guard - FOREIGN` by hand, or reuse any existing policy name) gives `Refusing to …`.
 
@@ -1034,7 +1066,15 @@ if ($ManagedIdentityObjectId) {
 }
 ```
 
-Then move the existing `if ($Remove) { … }` block so it runs after this branch (the managed-identity path handles its own `-Remove`). The role resolution must therefore run before the `-Remove` block; that is only reads, so it is safe.
+The resulting top-to-bottom order of the script body must be exactly:
+1. `Connect-MgGraph` and the helper functions (unchanged);
+2. `$existing = …` (the tagged-app lookup);
+3. `$grants = foreach …` (role resolution: only reads);
+4. the managed-identity branch above (ends with `return`);
+5. `if ($Remove) { … }` (unchanged content);
+6. `if ($existing) { throw … }` and the `.pfx already exists` throw;
+7. the create `ShouldProcess`, the password prompt and the rest (unchanged).
+Moving the two throws below the managed-identity branch is what lets `-ManagedIdentityObjectId` run for someone who already created the app and its `.pfx`.
 
 - [ ] **Step 3: Federated credential.** Inside the `try` after the credential `switch`, add:
 
@@ -1090,6 +1130,7 @@ jobs:
             -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
           ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
             -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+            -RingPolicyName 'RMM Guard - WDAC' `
             -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
             -Assignment '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
             -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
@@ -1105,6 +1146,7 @@ jobs:
             -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
           ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
             -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
+            -RingPolicyName 'RMM Guard - WDAC (pilot)' `
             -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
             -Assignment AllDevices -ExcludeGroupId '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
             -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
@@ -1115,6 +1157,10 @@ jobs:
 #   run: |
 #     [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/rmmguard.pfx", [Convert]::FromBase64String('${{ secrets.RMMGUARD_CERT_BASE64 }}'))
 #     ./Sync-RMMGuard.ps1 ... -CertificatePath "$env:RUNNER_TEMP/rmmguard.pfx"
+# Client secret (only if your tenant allows secrets): store it in secret RMMGUARD_CLIENT_SECRET, add
+#   env:
+#     RMMGUARD_CLIENT_SECRET: ${{ secrets.RMMGUARD_CLIENT_SECRET }}
+# and drop the token lines and -FederatedToken $token; the script reads the variable itself.
 ```
 
 - [ ] **Step 2: Azure DevOps template.**
@@ -1148,6 +1194,7 @@ stages:
               inlineScript: |
                 ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
                   -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+                  -RingPolicyName 'RMM Guard - WDAC' `
                   -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) -Assignment '$(RMMGUARD_PILOT_GROUP_ID)' `
                   -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
   - stage: production
@@ -1165,9 +1212,15 @@ stages:
               inlineScript: |
                 ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
                   -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
+                  -RingPolicyName 'RMM Guard - WDAC (pilot)' `
                   -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) `
                   -Assignment AllDevices -ExcludeGroupId '$(RMMGUARD_PILOT_GROUP_ID)' `
                   -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
+# Without a service connection: use a PowerShell@2 task (pwsh: true) instead of AzureCLI@2 and either
+#  - upload the .pfx as a Secure file, add a DownloadSecureFile@1 step (name: pfx) and pass
+#    -TenantId <tenant> -ClientId <app id> -CertificatePath $(pfx.secureFilePath), with RMMGUARD_CERT_PASSWORD as a secret variable
+#    mapped into the task's env; or
+#  - put the client secret in secret variable RMMGUARD_CLIENT_SECRET, map it into env, and pass only -TenantId and -ClientId.
 ```
 
 - [ ] **Step 3: Validate YAML syntax.** `node -e "for (const f of ['automation/github-workflow.yml','automation/azure-pipelines.yml']) { const t = require('fs').readFileSync(f,'utf8'); if (/\t/.test(t)) throw new Error(f + ' has tabs'); } console.log('ok')"` Expected: `ok`. If `actionlint` is installed, also run `actionlint automation/github-workflow.yml`.
@@ -1241,8 +1294,8 @@ stages:
           <li><strong>Canaries:</strong> a deny rule that would match Explorer, svchost, lsass, PowerShell, Defender or the Intune agent, or an indicator for Microsoft sign-in, Intune, Windows Update or Defender, stops the run.</li>
           <li><strong>Size:</strong> when more than 25 percent of the deployed rules or indicators would be added or removed, the run stops. Review the change, then run once with <code>-Force</code>.</li>
           <li><strong>Ownership:</strong> the script only updates a WDAC policy that carries the RMM Guard PolicyID and a macOS policy whose description starts with <code>RMM Guard macOS deny list</code>. Your other policies are never overwritten.</li>
-          <li><strong>Release age:</strong> with <code>-MinimumReleaseAgeDays 7</code> a new version is applied only once it has been published for seven days. Your own exclusion changes apply at once.</li>
-          <li><strong>Pilot ring:</strong> the pilot and production WDAC policies share one PolicyID, so a device must never get both. Assign the pilot policy to the pilot group, and the production policy to all devices with <code>-ExcludeGroupId</code> set to the pilot group. The templates below do this. Defender indicators are tenant-wide and are only synced by the production run.</li>
+          <li><strong>Release age:</strong> with <code>-MinimumReleaseAgeDays 7</code> a new version is applied only once it has been published for seven days. Exclusion changes on the version you already run apply at once to the WDAC and macOS policies; Defender indicators carry no version of their own, so indicator changes always wait for the release age.</li>
+          <li><strong>Pilot ring:</strong> the pilot and production WDAC policies share one PolicyID, so a device must never get both. Assign the pilot policy to the pilot group, and the production policy to all devices with <code>-ExcludeGroupId</code> set to the pilot group. Pass the other ring's WDAC policy name with <code>-RingPolicyName</code> so the script does not mistake it for a duplicate. The templates below do this. Defender indicators are tenant-wide and are only synced by the production run.</li>
           <li>A failure or a stop makes the run exit with an error, so the pipeline turns red and production does not run after a failed pilot.</li>
         </ul>
       </section>
@@ -1340,6 +1393,8 @@ stages:
   byId("links-command").replaceChildren(chip(buildSyncCommand(excluded)));
 ```
 
+Also in `index.html`, in `#links-modal-desc`, replace the sentence `The links only return files: comparing them with what you have deployed, and importing them, is up to your automation.` with `The links only return files. To compare them with what you have deployed and import them, use the script below.`
+
 - [ ] **Step 3: Style.** Append to `styles.css`:
 
 ```css
@@ -1348,22 +1403,19 @@ stages:
 .links-automation .modal-desc { margin: 8px 0; }
 ```
 
-- [ ] **Step 4: Test.** Add to `testBuilder` in `tests.js`, next to the other modal tests:
+- [ ] **Step 4: Test.** In `tests.js`, inside `testBuilder`, insert this test directly after the test that starts with `test("Tool selection updates the final XML summary and exclusion review"` (at that point the fixture has excluded exactly Datto RMM / Autotask via `selection.click()`; `document` and `byId` are the fixture's, defined at the top of `testBuilder`):
 
 ```js
     test("Retrieval-links modal shows the sync command with the current exclusions", () => {
-      const toggle = doc.querySelector('input[type="checkbox"][data-tool]');
-      toggle.click();
-      doc.getElementById("links-open").click();
-      const command = doc.querySelector("#links-command .copy-chip span").textContent;
-      assert(command.includes(`-Exclude '${toggle.dataset.tool.replaceAll("'", "''")}'`), command);
-      assert(doc.querySelector('.links-automation a[href="./help-automation.html"]'), "Guide link missing");
-      doc.getElementById("links-modal").close();
-      toggle.click();
+      byId("links-open").click();
+      const command = document.querySelector("#links-command .copy-chip span").textContent;
+      assert(command.includes("-Exclude 'Datto RMM / Autotask' "), command);
+      assert(document.querySelector('.links-automation a[href="./help-automation.html"]'), "Guide link missing");
+      byId("links-modal").close();
     });
 ```
 
-Adapt the variable names (`doc`, the checkbox selector) to the ones `testBuilder` already uses for tool toggles; read the surrounding tests first. Run `node run-tests.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`. Expected: all pass.
+Run `node run-tests.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`. Expected: all pass.
 
 - [ ] **Step 5: Last updated, build, commit.** Set the chip in `index.html` to today's date, then `node build.mjs`, then:
 

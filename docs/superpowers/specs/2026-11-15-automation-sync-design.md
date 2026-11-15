@@ -35,6 +35,7 @@ Customers copy the script into their own repo or runbook once. Nothing downloads
   -Target Wdac,Macos,Ioc                      # one or more
   [-WdacPolicyName <name>]                    # required when Target has Wdac
   [-MacosPolicyName 'Block RMM tools (macOS)']# default = name the site's export uses
+  [-RingPolicyName 'RMM Guard - WDAC (pilot)'] # the other ring's WDAC policy, which shares the PolicyID on purpose
   [-Exclude 'AnyDesk','TeamViewer']           # tool names, as on the site
   [-Assignment AllDevices|AllUsers|<group object id>]
   [-ExcludeGroupId <group object id>]         # e.g. the pilot group on the production policy
@@ -65,7 +66,7 @@ Exit codes: `0` when every target is created, updated, unchanged or skipped for 
 
 - Find `configurationPolicies` with `name eq '<WdacPolicyName>'` (single quotes doubled). More than one match: abort.
 - Read policies with `GET /beta/deviceManagement/configurationPolicies/{id}?$expand=settings`.
-- Not found: before creating, scan every App Control for Business policy for our PolicyID `{01A11AD0-7091-7896-89DD-447C515BCB5D}`. Found under another name: abort and name it, so the admin passes that name instead of the script creating a second policy with the same PolicyID. Otherwise create an App Control for Business policy (XML upload) with the fetched XML and assign it.
+- Not found: before creating, scan every App Control for Business policy for our PolicyID `{01A11AD0-7091-7896-89DD-447C515BCB5D}`. Found under another name that is not listed in `-RingPolicyName`: abort and name it, so the admin passes that name instead of the script creating a second policy with the same PolicyID. Otherwise create an App Control for Business policy (XML upload) with the fetched XML and assign it.
 - Found: refuse unless its stored XML carries our PolicyID. Compare normalised XML (BOM and whitespace between tags stripped) with the fetched XML; equal means unchanged. Otherwise `PUT` the policy with a body built from the GET result (name, description, platforms, technologies, roleScopeTagIds, templateReference, all settings) where only the XML value is replaced.
 
 ### macOS (settings catalog, Apple DDM denied binaries)
@@ -88,7 +89,7 @@ Exit codes: `0` when every target is created, updated, unchanged or skipped for 
 
 ### Pilot ring
 
-The pilot and production WDAC policies carry the same PolicyID, so a device must never receive both. The templates assign the pilot policy to the pilot group, and the production policy to `AllDevices` with `-ExcludeGroupId <pilot group>`. The guide states this rule. The same layout applies to macOS.
+The pilot and production WDAC policies carry the same PolicyID, so a device must never receive both. The templates assign the pilot policy to the pilot group, and the production policy to `AllDevices` with `-ExcludeGroupId <pilot group>`. Each ring passes the other ring's WDAC policy name as `-RingPolicyName`, so the duplicate-PolicyID scan does not stop the first run of the second ring. The guide states this rule. The same layout applies to macOS.
 
 ## Guards (script side, independent of the Worker)
 
