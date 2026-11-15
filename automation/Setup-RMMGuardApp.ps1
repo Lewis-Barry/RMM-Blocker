@@ -6,12 +6,17 @@
     Create (default): registers the app "RMM Guard Sync" in your tenant and grants it admin consent for
       - Microsoft Graph            DeviceManagementConfiguration.ReadWrite.All  (WDAC and macOS policies)
       - WindowsDefenderATP         Ti.ReadWrite                                 (Defender indicators it creates itself)
-    and, unless -NoSecret, adds a client secret that expires after -SecretDays days. The secret is shown once and is
-    never written to disk.
+    and adds a credential that expires after -CredentialDays days:
+      - Certificate (default): a self-signed certificate. Only its public key is uploaded to the app; the private key
+        is saved as a password-protected .pfx at -CertificatePath (readable by you only on macOS/Linux). Works in
+        tenants whose app management policy blocks client secrets.
+      - Secret: a client secret, shown once and never written to disk.
+      - None: no credential, for OIDC (federated credential) or when you add one yourself.
+    If any step after creating the app fails, the app is deleted again so nothing half-configured is left behind.
 
     -Remove: deletes every app registration this script created (display name AND the RMMGuardSync tag must match),
-    including its service principal and permission grants, and purges it from the deleted-items recycle bin so the
-    name and secret are gone for good. Policies and indicators the app created are left in place.
+    including its service principal and permission grants, purges it from the deleted-items recycle bin, and deletes
+    the .pfx at -CertificatePath. Policies and indicators the app created are left in place.
 
     You sign in interactively as an admin who can create apps and grant consent (Cloud Application Administrator
     plus Privileged Role Administrator, or Global Administrator).
@@ -22,13 +27,14 @@
 .EXAMPLE
     ./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove
 #>
-#Requires -Version 7.0
+#Requires -Version 7.2
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][string]$TenantId,
     [string]$DisplayName = 'RMM Guard Sync',
-    [ValidateRange(1, 730)][int]$SecretDays = 30,
-    [switch]$NoSecret,
+    [ValidateSet('Certificate', 'Secret', 'None')][string]$CredentialType = 'Certificate',
+    [ValidateRange(1, 730)][int]$CredentialDays = 30,
+    [string]$CertificatePath = (Join-Path $HOME 'RMMGuardSync.pfx'),
     [switch]$Remove
 )
 
@@ -62,25 +68,36 @@ function Invoke-WithRetry([scriptblock]$Action) {
         }
     }
 }
+function Remove-App($App) {
+    Invoke-Graph DELETE "/applications/$($App.id)" | Out-Null
+    Invoke-WithRetry { Invoke-Graph DELETE "/directory/deletedItems/$($App.id)" } | Out-Null
+}
+
 $quoted = $DisplayName.Replace("'", "''")
 # The tag guard means -Remove can never delete an unrelated app that happens to share the display name.
 $existing = @((Invoke-Graph GET "/applications?`$filter=displayName eq '$quoted'&`$select=id,appId,displayName,tags").value |
     Where-Object { $_.displayName -ceq $DisplayName -and $_.tags -contains $tag })
 
 if ($Remove) {
-    if (-not $existing) { Write-Host "No app registration '$DisplayName' tagged $tag found. Nothing to remove."; return }
+    if (-not $existing) { Write-Host "No app registration '$DisplayName' tagged $tag found." }
     foreach ($app in $existing) {
         if ($PSCmdlet.ShouldProcess("$($app.displayName) (appId $($app.appId))", 'Delete app registration and purge it')) {
-            Invoke-Graph DELETE "/applications/$($app.id)" | Out-Null
-            Invoke-WithRetry { Invoke-Graph DELETE "/directory/deletedItems/$($app.id)" } | Out-Null
+            Remove-App $app
             Write-Host "Removed and purged '$($app.displayName)' (appId $($app.appId))."
         }
+    }
+    if ((Test-Path -LiteralPath $CertificatePath) -and $PSCmdlet.ShouldProcess($CertificatePath, 'Delete certificate file')) {
+        Remove-Item -LiteralPath $CertificatePath
+        Write-Host "Deleted $CertificatePath."
     }
     return
 }
 
 if ($existing) {
     throw "App registration '$DisplayName' (appId $($existing[0].appId)) already exists. Run with -Remove first, or pass another -DisplayName."
+}
+if ($CredentialType -eq 'Certificate' -and (Test-Path -LiteralPath $CertificatePath)) {
+    throw "$CertificatePath already exists. Run with -Remove first, or pass another -CertificatePath."
 }
 
 # Resolve each permission to its app role id on the resource's service principal instead of hard-coding GUIDs.
@@ -96,7 +113,13 @@ $grants = foreach ($permission in $wanted) {
     [pscustomobject]@{ ResourceAppId = $permission.ResourceAppId; ResourceId = $resource.id; ResourceName = $resource.displayName; RoleId = $role.id; Role = $permission.Role }
 }
 
-if (-not $PSCmdlet.ShouldProcess($DisplayName, "Create app registration with $(($grants.Role) -join ', ')")) { return }
+if (-not $PSCmdlet.ShouldProcess($DisplayName, "Create app registration with $(($grants.Role) -join ', ') and credential type $CredentialType")) { return }
+
+# Ask before creating anything, so a cancelled prompt leaves no app behind.
+if ($CredentialType -eq 'Certificate') {
+    $pfxPassword = Read-Host -AsSecureString "Password to protect $CertificatePath"
+    if (-not $pfxPassword.Length) { throw 'A password is required to protect the private key.' }
+}
 
 $requiredResourceAccess = @($grants | Group-Object ResourceAppId | ForEach-Object {
     @{ resourceAppId = $_.Name; resourceAccess = @($_.Group | ForEach-Object { @{ id = $_.RoleId; type = 'Role' } }) }
@@ -108,31 +131,64 @@ $app = Invoke-Graph POST '/applications' @{
     notes                  = 'Created by Setup-RMMGuardApp.ps1 for Sync-RMMGuard.ps1 (rmmguard.com). Remove with Setup-RMMGuardApp.ps1 -Remove.'
     requiredResourceAccess = $requiredResourceAccess
 }
-$principal = Invoke-Graph POST '/servicePrincipals' @{ appId = $app.appId; tags = @($tag) }
-
-foreach ($grant in $grants) {
-    Invoke-WithRetry {
-        Invoke-Graph POST "/servicePrincipals/$($grant.ResourceId)/appRoleAssignedTo" @{
-            principalId = $principal.id; resourceId = $grant.ResourceId; appRoleId = $grant.RoleId
-        }
-    } | Out-Null
-    Write-Host "Granted $($grant.ResourceName) / $($grant.Role)."
-}
 
 $secret = $null
-if (-not $NoSecret) {
-    $secret = Invoke-Graph POST "/applications/$($app.id)/addPassword" @{
-        passwordCredential = @{ displayName = 'Sync-RMMGuard'; endDateTime = (Get-Date).ToUniversalTime().AddDays($SecretDays).ToString('o') }
+$certificate = $null
+try {
+    $principal = Invoke-Graph POST '/servicePrincipals' @{ appId = $app.appId; tags = @($tag) }
+    foreach ($grant in $grants) {
+        Invoke-WithRetry {
+            Invoke-Graph POST "/servicePrincipals/$($grant.ResourceId)/appRoleAssignedTo" @{
+                principalId = $principal.id; resourceId = $grant.ResourceId; appRoleId = $grant.RoleId
+            }
+        } | Out-Null
+        Write-Host "Granted $($grant.ResourceName) / $($grant.Role)."
     }
+
+    $expires = [DateTimeOffset]::UtcNow.AddDays($CredentialDays)
+    switch ($CredentialType) {
+        'Certificate' {
+            # .NET's CertificateRequest works the same on Windows, macOS and Linux, unlike New-SelfSignedCertificate.
+            $rsa = [System.Security.Cryptography.RSA]::Create(2048)
+            $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                "CN=$DisplayName", $rsa, [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+            $certificate = $request.CreateSelfSigned([DateTimeOffset]::UtcNow.AddMinutes(-5), $expires)
+            Invoke-Graph PATCH "/applications/$($app.id)" @{
+                keyCredentials = @(@{
+                    type = 'AsymmetricX509Cert'; usage = 'Verify'; displayName = "CN=$DisplayName"
+                    key  = [Convert]::ToBase64String($certificate.RawData)
+                })
+            } | Out-Null
+            [System.IO.File]::WriteAllBytes($CertificatePath,
+                $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $pfxPassword))
+            if (-not $IsWindows) { [System.IO.File]::SetUnixFileMode($CertificatePath, [System.IO.UnixFileMode]'UserRead, UserWrite') }
+        }
+        'Secret' {
+            $secret = Invoke-Graph POST "/applications/$($app.id)/addPassword" @{
+                passwordCredential = @{ displayName = 'Sync-RMMGuard'; endDateTime = $expires.ToString('o') }
+            }
+        }
+    }
+} catch {
+    Write-Warning "Setup failed, deleting the half-created app '$DisplayName' again: $($_.Exception.Message)"
+    Remove-App $app
+    if ($CredentialType -eq 'Certificate' -and (Test-Path -LiteralPath $CertificatePath)) { Remove-Item -LiteralPath $CertificatePath }
+    throw
 }
 
 Write-Host ''
 Write-Host "App registration '$DisplayName' is ready." -ForegroundColor Green
-Write-Host "  TenantId : $((Get-MgContext).TenantId)"
-Write-Host "  ClientId : $($app.appId)"
+Write-Host "  TenantId    : $((Get-MgContext).TenantId)"
+Write-Host "  ClientId    : $($app.appId)"
+if ($certificate) {
+    Write-Host "  Certificate : $CertificatePath (thumbprint $($certificate.Thumbprint))"
+    Write-Host "  Expires     : $($certificate.NotAfter.ToUniversalTime().ToString('u'))"
+}
 if ($secret) {
-    Write-Host "  Secret   : $($secret.secretText)" -ForegroundColor Yellow
-    Write-Host "  Expires  : $($secret.endDateTime)"
+    Write-Host "  Secret      : $($secret.secretText)" -ForegroundColor Yellow
+    Write-Host "  Expires     : $($secret.endDateTime)"
     Write-Host '  Copy the secret now; it is not shown again and not saved anywhere.'
 }
-Write-Host "  Remove   : ./Setup-RMMGuardApp.ps1 -TenantId $TenantId -Remove"
+if ($CredentialType -eq 'None') { Write-Host '  Credential  : none. Add a federated credential (OIDC) or a certificate yourself.' }
+Write-Host "  Remove      : ./Setup-RMMGuardApp.ps1 -TenantId $TenantId -Remove"
