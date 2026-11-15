@@ -2,6 +2,7 @@ import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { filterPolicy, policyTools } from "./worker/index.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { buildSyncCommand } from "./automation.js";
 import { parseMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
@@ -712,6 +713,7 @@ async function run() {
       shared[6] = shared[6].replace("Kabuto; Syncro", "Kabuto");
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
+    testAutomation();
     await testBuilder(policy, iocs);
     await testBrowserBuilder();
     await testMacBuilder(policy);
@@ -727,6 +729,21 @@ async function run() {
 }
 
 run();
+
+function testAutomation() {
+  test("Sync command without exclusions has no -Exclude", () => {
+    const command = buildSyncCommand(new Set());
+    assert(command === "./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf", command);
+  });
+  test("Sync command lists exclusions sorted and quoted", () => {
+    const command = buildSyncCommand(new Set(["TeamViewer", "AnyDesk"]));
+    assert(command.includes("-Exclude 'AnyDesk','TeamViewer' "), command);
+  });
+  test("Sync command doubles single quotes in tool names", () => {
+    const command = buildSyncCommand(new Set(["O'Tool", "O&O Syspectr"]));
+    assert(command.includes("-Exclude 'O&O Syspectr','O''Tool' "), command);
+  });
+}
 
 // macOS app control: pure generator checks, then the RMM page with the macOS platform on, in a frame.
 async function testMacBuilder(policy) {
