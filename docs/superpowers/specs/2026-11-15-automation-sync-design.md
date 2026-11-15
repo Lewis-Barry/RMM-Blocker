@@ -16,6 +16,7 @@ Precedent: `*\dd.exe` (added 2026-10-08) and `*\perl.exe`/`*\wperl.exe` (1.0.0.1
 
 | Path | What |
 |---|---|
+| `automation/Setup-RMMGuardApp.ps1` | Done (15e5d50). Creates the "RMM Guard Sync" app with admin consent for both permissions and a certificate (default), secret or no credential; rolls back on failure; `-Remove` deletes and purges the app and the .pfx. Step 1 of the guide |
 | `automation/Sync-RMMGuard.ps1` | The script (served at `rmmguard.com/automation/Sync-RMMGuard.ps1`) |
 | `automation/Sync-RMMGuard.Tests.ps1` | Pester tests for the pure functions |
 | `automation/github-workflow.yml` | GitHub Actions template: pilot job and production job |
@@ -44,7 +45,8 @@ Customers copy the script into their own repo or runbook once. Nothing downloads
   -Interactive                                # WDAC and macOS only
   -Identity                                   # Azure Automation managed identity
   -TenantId -ClientId -ClientSecret           # or $env:RMMGUARD_CLIENT_SECRET
-  -TenantId -ClientId -CertificateThumbprint  # cert in the local store
+  -TenantId -ClientId -CertificateThumbprint  # cert in the Windows/runbook store
+  -TenantId -ClientId -CertificatePath        # .pfx; password from -CertificatePassword or $env:RMMGUARD_CERT_PASSWORD
   -TenantId -ClientId -FederatedToken         # GitHub/ADO OIDC id token
 ```
 
@@ -101,7 +103,8 @@ The pilot and production WDAC policies carry the same PolicyID, so a device must
 
 ## Authentication
 
-- Graph: `Connect-MgGraph` (Microsoft.Graph.Authentication) with `-Identity`, `-ClientSecretCredential`, `-CertificateThumbprint`, or `-AccessToken` after exchanging the federated token.
+- Graph: `Connect-MgGraph` (Microsoft.Graph.Authentication) with `-Identity`, `-ClientSecretCredential`, `-CertificateThumbprint`, `-Certificate` (loaded from `-CertificatePath`), or `-AccessToken` after exchanging the federated token.
+- Client secrets are a fallback only: Entra's default app management policy can block password credentials entirely (seen in the test tenant: `CredentialTypeNotAllowedAsPerAppPolicy`). The guide and templates default to OIDC, then certificate.
 - Defender: `Get-DefenderToken`, built into the script. It sends a client-credentials request to `login.microsoftonline.com/<tenant>/oauth2/v2.0/token` with scope `https://api.securitycenter.microsoft.com/.default`, using a client secret, a federated `client_assertion` or a certificate-signed JWT assertion. With `-Identity` it uses the Automation `IDENTITY_ENDPOINT` instead.
 - Both tokens are acquired up front, so a short-lived OIDC id token is used only at the start.
 - Permissions: Graph `DeviceManagementConfiguration.ReadWrite.All`; WindowsDefenderATP `Ti.ReadWrite`. The guide includes a PowerShell snippet to grant both to a managed identity.
@@ -149,6 +152,10 @@ Still open (needs an app with WindowsDefenderATP `Ti.ReadWrite`; verified while 
 6. Importing an indicator value that already exists (created by a user) under `Ti.ReadWrite`.
 7. Whether a domain indicator also blocks subdomains (decides whether the IOC canary rule is complete).
 8. Whether the Intune portal's XML upload stores the XML as plain text too (adoption of portal-created policies). The script decodes base64 when the value does not start with `<`.
+
+## Test setup for the build
+
+Test tenant app "RMM Guard Sync" created with `Setup-RMMGuardApp.ps1` (certificate, expires 2026-12-15): Graph `DeviceManagementConfiguration.ReadWrite.All` and WindowsDefenderATP `Ti.ReadWrite`, both consented and verified. The .pfx lives outside the repo. Remove after testing with `Setup-RMMGuardApp.ps1 -Remove`.
 
 ## Out of scope
 
