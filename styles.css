@@ -346,5 +346,7 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .download-list { list-style: none; padding: 0; display: grid; gap: 12px; }
 .download-list li { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: center; margin: 0; }
 .download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 4px; font-family: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace; }
-.workflow-code { max-height: 480px; }
 @media (max-width: 640px) { .download-list li { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+.param-list { margin: 6px 0; padding-left: 18px; }
+.param-list li { margin: 4px 0; }
+.facts thead th { width: auto; color: var(--ink); font-weight: 600; }
