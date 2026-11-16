@@ -411,9 +411,11 @@ function Get-MacVersion([string]$Description) {
     if ($Description -match "^$([regex]::Escape($script:MacDescriptionPrefix)) v(\d+\.\d+\.\d+\.\d+)") { $Matches[1] }
 }
 
-function Measure-SetChange([string[]]$Old, [string[]]$New) {
-    $oldSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Old), [StringComparer]::OrdinalIgnoreCase)
-    $newSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($New), [StringComparer]::OrdinalIgnoreCase)
+# Windows paths compare case-insensitively; macOS signing IDs need -CaseSensitive.
+function Measure-SetChange([string[]]$Old, [string[]]$New, [switch]$CaseSensitive) {
+    $comparer = $CaseSensitive ? [StringComparer]::Ordinal : [StringComparer]::OrdinalIgnoreCase
+    $oldSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Old), $comparer)
+    $newSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($New), $comparer)
     [pscustomobject]@{
         Added   = @($newSet | Where-Object { -not $oldSet.Contains($_) }).Count
         Removed = @($oldSet | Where-Object { -not $newSet.Contains($_) }).Count
@@ -564,8 +566,8 @@ function Invoke-Defender([string]$Method, [string]$Path, $Body) {
 }
 
 # One download per file per run; a non-200 or a body of the wrong type (a Cloudflare challenge page) stops the target.
-function Get-RMMGuardFile([string]$File, [string]$Type) {
-    if ($script:Files.ContainsKey($File)) { return $script:Files[$File] }
+function Get-RMMGuardFile([string]$File, [string]$Type, [switch]$Fresh) {
+    if (-not $Fresh -and $script:Files.ContainsKey($File)) { return $script:Files[$File] }
     $response = Invoke-WebRequest -Uri (Get-ApiUrl $File $Exclude) -SkipHttpErrorCheck
     $content = $response.Content -is [byte[]] ? [Text.Encoding]::UTF8.GetString($response.Content) : [string]$response.Content
     if ($response.StatusCode -ne 200) { throw "${File}: HTTP $($response.StatusCode). $($content.Trim())" }
@@ -722,7 +724,7 @@ function Sync-Macos {
     }
     Set-Assignment $policy.id -ExclusionOnly
     $deployedKeys = @(Get-MacRules $deployedSettings | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
-    $change = Measure-SetChange $deployedKeys $keys
+    $change = Measure-SetChange $deployedKeys $keys -CaseSensitive
     $deployedVersion = Get-MacVersion $policy.description
     if (-not $change.Added -and -not $change.Removed) { Set-Assignment $policy.id; return "unchanged v$deployedVersion" }
     # Removing entries cannot block anything new, so only an addition waits for the release age.
@@ -752,10 +754,11 @@ function Sync-Ioc {
     $deployed = @($visible | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') -and $_.indicatorType -in 'DomainName', 'IpAddress' })
     $diff = Compare-IocSet $desired $deployed
     if (-not $diff.Upsert.Count -and -not $diff.Remove.Count) { return "unchanged, $($desired.Count) indicators" }
-    # The CSV has no version of its own; it is built from the same release as the WDAC policy.
+    # The CSV has no version of its own; it is built from the same release as the WDAC policy. Read fresh, after the CSV, the
+    # version is that release or a newer (younger) one, never an older one cached before a release published mid-run.
     # Deleting indicators cannot block anything new, so only imports (new or changed indicators) wait for the release age.
     if ($diff.Upsert.Count -and $MinimumReleaseAgeDays -gt 0) {
-        $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml')).Version
+        $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml' -Fresh)).Version
         if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
     }
     $summary = "$($diff.Upsert.Count) to import ($($diff.Added) new), $($diff.Remove.Count) to delete, $($desired.Count) wanted"

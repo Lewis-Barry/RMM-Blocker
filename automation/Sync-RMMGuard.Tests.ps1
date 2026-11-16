@@ -236,6 +236,11 @@ Describe 'Shared' {
         $change.Added | Should -Be 1
         $change.Removed | Should -Be 2
     }
+    It 'counts case-only differences with -CaseSensitive (macOS signing IDs)' {
+        $change = Measure-SetChange @('ABCDEFGHIJ|com.vendor.Tool') @('ABCDEFGHIJ|com.vendor.tool') -CaseSensitive
+        $change.Added | Should -Be 1
+        $change.Removed | Should -Be 1
+    }
     It 'has no -Force and no change-size limit: the content checks are the safety net' {
         $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
         $ast.ParamBlock.Parameters.Name.VariablePath.UserPath | Should -Not -Contain 'Force'
@@ -450,6 +455,12 @@ Describe 'Download' {
         # Not $Body or $Type: inside the mock those resolve to Invoke-WebRequest's -Body and Get-RMMGuardFile's -Type.
         Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = $Status; Content = $Text; Headers = @{ 'Content-Type' = @($Served) } } }
         { Get-RMMGuardFile 'wdac.xml' 'xml' } | Should -Throw $Expected
+    }
+    It 'downloads again with -Fresh' {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '<SiPolicy />'; Headers = @{ 'Content-Type' = @('application/xml') } } }
+        Get-RMMGuardFile 'wdac.xml' 'xml' | Out-Null
+        Get-RMMGuardFile 'wdac.xml' 'xml' -Fresh | Out-Null
+        Should -Invoke Invoke-WebRequest -Times 2 -Exactly
     }
 }
 
@@ -949,6 +960,13 @@ Describe 'Second review' {
                 Sync-Macos | Should -BeLike 'unchanged*'
                 $script:Order | Should -Be @('exclusion', 'all')
             }
+            It 'compares signing IDs case-sensitively' {
+                Mock Set-Assignment {}
+                Mock Measure-SetChange { [pscustomobject]@{ Added = 0; Removed = 0 } }
+                $script:DeployedMac = DeployedMac { param($items) $items }
+                Sync-Macos | Should -BeLike 'unchanged*'
+                Should -Invoke Measure-SetChange -Times 1 -Exactly -ParameterFilter { $CaseSensitive }
+            }
             It 'adds no inclusion when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
                 $script:Order = [System.Collections.Generic.List[string]]::new()
                 
@@ -1146,6 +1164,13 @@ Describe 'Third review' {
             $script:Present[0] = $script:Present[0].PSObject.Copy(); $script:Present[0].severity = 'High'
             Mock Invoke-Defender { [pscustomobject]@{ value = $script:Present } }
             Sync-Ioc | Should -BeLike 'skipped*'
+        }
+        It 'reads the release version after the indicator CSV, not from a wdac.xml downloaded earlier in the run' {
+            $script:Present = @(ConvertFrom-IocCsv $script:IocText)
+            $script:Present[0] = $script:Present[0].PSObject.Copy(); $script:Present[0].severity = 'High'
+            Mock Invoke-Defender { [pscustomobject]@{ value = $script:Present } }
+            Sync-Ioc | Should -BeLike 'skipped*'
+            Should -Invoke Get-RMMGuardFile -Times 1 -Exactly -ParameterFilter { $File -eq 'wdac.xml' -and $Fresh }
         }
         It 'upserts an expiry that moved within the same day' {
             $new = [pscustomobject]@{ indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block'; expirationTime = '2035-07-23T00:00:00Z'; generateAlert = $true }
