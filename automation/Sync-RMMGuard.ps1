@@ -193,8 +193,13 @@ function Test-WdacDenyPath([string]$Path, [string]$Name) {
             if ($hit) { throw "WDAC: Deny rule '$Path' ($Name) would block files in the protected folder '$hit'." }
         }
     }
+    # Could the leaf match a name ending in .dll? A * can take the dot too (*\uxtheme*ll), so after the last * only the
+    # last (up to) four characters decide; without a * the leaf's own last four do.
     $leaf = $segments[-1]
-    $couldBeDll = $leaf -ne '*' -and ($leaf -match '[*?]\z' -or ($leaf -match '\.([^.]*)\z' -and 'dll' -match (ConvertTo-WildcardRegex $Matches[1])))
+    $star = $leaf.LastIndexOf('*')
+    $tail = $leaf.Substring($star + 1)
+    $end = $tail.Substring([Math]::Max(0, $tail.Length - 4))
+    $couldBeDll = $leaf -ne '*' -and ($star -ge 0 -or $leaf.Length -ge 4) -and '.dll'.Substring(4 - $end.Length) -match (ConvertTo-WildcardRegex $end)
     if ($couldBeDll -and $Path -notin $script:WdacDllAllowed) { throw "WDAC: Deny rule '$Path' ($Name) would block a .dll; only the DLL rules RMM Guard publishes today are accepted." }
 }
 
@@ -598,9 +603,11 @@ function Find-WdacByPolicyId {
     Get-RMMGuardWdacPolicy | Where-Object { $_.name -notin $RingPolicyName } | Select-Object -First 1
 }
 
-function Set-Assignment([string]$PolicyId) {
+# -ExclusionOnly: an exclusion may go on at once, an inclusion only once the rules are current. The later full call sends the
+# exclusion again, so a stale /assignments read right after the first /assign cannot drop it.
+function Set-Assignment([string]$PolicyId, [switch]$ExclusionOnly) {
     $wanted = @(
-        if ($Assignment) { ConvertTo-AssignmentTarget $Assignment }
+        if ($Assignment -and -not $ExclusionOnly) { ConvertTo-AssignmentTarget $Assignment }
         if ($ExcludeGroupId) { @{ '@odata.type' = '#microsoft.graph.exclusionGroupAssignmentTarget'; groupId = $ExcludeGroupId } }
     )
     if (-not $wanted.Count -or -not $PolicyId) { return }
@@ -636,8 +643,7 @@ function Test-RingOverlap([string]$PolicyId) {
         $theirOut = @($theirs | Where-Object { $_.'@odata.type' -eq $exclusion } | ForEach-Object { $_.groupId })
         foreach ($r in $theirs | Where-Object { $_.'@odata.type' -ne $exclusion }) {
             foreach ($t in $mineIn) {
-                # All devices or all users reach every group; two different groups cannot be checked for shared members here.
-                if ($t.groupId -and $r.groupId -and $t.groupId -ne $r.groupId) { continue }
+                # Two different groups count as overlapping too: Entra groups can share members, directly or nested.
                 $separated = ($r.groupId -and $r.groupId -in $mineOut -and $t.'@odata.type' -ne $users) -or
                     ($t.groupId -and $t.groupId -in $theirOut -and $r.'@odata.type' -ne $users)
                 if ($separated) { continue }
@@ -674,16 +680,18 @@ function Sync-Wdac {
     if ($deployedOptions -ne ($script:RuleOptions -join '|')) {
         throw "WDAC: '$WdacPolicyName' has the rule options $deployedOptions, changed by hand (for example Audit Mode). The sync would switch them back to $($script:RuleOptions -join '|'). Set them back in Intune, or pass another -WdacPolicyName."
     }
-    # Assign before the release age: a main policy must get the pilot exclusion even when its update waits.
+    # The pilot exclusion goes on before the release age, so a main policy gets it even when its update waits. A new inclusion
+    # waits for the rules: it must never send devices a list that is out of date (for example one that still blocks an -Exclude tool).
     Test-RingOverlap $policy.id
-    Set-Assignment $policy.id
-    if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { return "unchanged v$($desired.Version)" }
+    Set-Assignment $policy.id -ExclusionOnly
+    if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { Set-Assignment $policy.id; return "unchanged v$($desired.Version)" }
     $change = Measure-SetChange $deployed.Rules $desired.Rules
     # Removing rules cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
-    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { Set-Assignment $policy.id; return "would be updated: $summary" }
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
+    Set-Assignment $policy.id
     "updated $summary"
 }
 
@@ -711,20 +719,21 @@ function Sync-Macos {
     if (@(Get-SettingIds $deployedSettings | Where-Object { $_ -cnotin $script:MacSettingIds }).Count) {
         throw "macOS: '$MacosPolicyName' has settings beyond the RMM Guard deny list. Refusing to overwrite them."
     }
-    Set-Assignment $policy.id
+    Set-Assignment $policy.id -ExclusionOnly
     $deployedKeys = @(Get-MacRules $deployedSettings | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
     $change = Measure-SetChange $deployedKeys $keys
     $deployedVersion = Get-MacVersion $policy.description
-    if (-not $change.Added -and -not $change.Removed) { return "unchanged v$deployedVersion" }
+    if (-not $change.Added -and -not $change.Removed) { Set-Assignment $policy.id; return "unchanged v$deployedVersion" }
     # Removing entries cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
-    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { Set-Assignment $policy.id; return "would be updated: $summary" }
     $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" @{
         name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies
         roleScopeTagIds = @($current.roleScopeTagIds); settings = $body.settings
     } | Out-Null
+    Set-Assignment $policy.id
     "updated $summary"
 }
 

@@ -241,9 +241,9 @@ jobs:
     -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
         <table class="facts">
           <tbody>
-            <tr><th scope="row"><code>-RingPolicyName</code></th><td>The name of the other WDAC policy. Windows allows each WDAC policy only once per device, and both policies are the same RMM Guard policy. With this name the script recognises the other one as yours, and stops if a device would get both.</td></tr>
-            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code>; an exclusion on <code>AllUsers</code> is refused, because Intune does not reliably apply it.</td></tr>
-            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. An update that only removes blocks, such as a new exclusion, applies at once.</td></tr>
+            <tr><th scope="row"><code>-RingPolicyName</code></th><td>The name of the other WDAC policy. Windows allows each WDAC policy only once per device, and both policies are the same RMM Guard policy. With this name the script recognises the other one as yours, and stops if a device could get both. Two different groups count too, because groups can share members.</td></tr>
+            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code> or a group; an exclusion on <code>AllUsers</code> is refused, because Intune does not reliably apply it.</td></tr>
+            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. An update that only removes blocks, such as a new exclusion, applies at once. A new <code>-Assignment</code> waits with the update, so devices never get an outdated list.</td></tr>
           </tbody>
         </table>
         <p>The pilot run leaves out the Defender indicators: they apply to the whole tenant, so only the main run syncs them.</p>

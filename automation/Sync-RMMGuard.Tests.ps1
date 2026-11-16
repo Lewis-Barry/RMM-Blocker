@@ -587,6 +587,16 @@ Describe 'Sync decisions' {
             $targets[0].groupId | Should -Be 'g1'
             $targets[1].'@odata.type' | Should -Be '#microsoft.graph.allDevicesAssignmentTarget'
         }
+        It 'posts only the exclusion with -ExclusionOnly' {
+            $Assignment = 'AllDevices'; $ExcludeGroupId = 'aaaaaaaa-0000-0000-0000-000000000001'
+            Set-Assignment 'p1' -ExclusionOnly
+            @($script:Written.assignments.target | Where-Object groupId -ne 'g1').'@odata.type' | Should -Be @('#microsoft.graph.exclusionGroupAssignmentTarget')
+        }
+        It 'keeps the exclusion in the full call even when /assignments does not show it yet' {
+            $Assignment = 'AllDevices'; $ExcludeGroupId = 'aaaaaaaa-0000-0000-0000-000000000001'
+            Set-Assignment 'p1'
+            @($script:Written.assignments.target).'@odata.type' | Should -Contain '#microsoft.graph.exclusionGroupAssignmentTarget'
+        }
         It 'posts nothing when every wanted target exists' {
             $script:Existing += [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }
             $Assignment = 'AllDevices'
@@ -703,7 +713,9 @@ Describe 'Review fixes' {
         It 'reports unchanged with -ceq and still assigns' {
             $script:Deployed = $script:PolicyXml
             Sync-Wdac | Should -Be "unchanged v$script:Version"
-            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+            # This mock's /assignments never shows what was posted, so the full call after the exclusion-only one posts again.
+            $script:Posts.Call | Select-Object -Unique | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+            $script:Posts | ForEach-Object { $_.Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003' }
         }
         It 'treats a case-only XML difference as a change (M1)' {
             $script:Deployed = $script:PolicyXml.Replace('FilePath="*\ctes.exe"', 'FilePath="*\CTES.exe"')
@@ -871,6 +883,21 @@ Describe 'Second review' {
                 $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
                 Sync-Wdac | Should -BeLike 'skipped*'
             }
+            It 'adds the exclusion at once but holds a new inclusion while an addition waits, and adds it after the PUT' {
+                $script:Order = [System.Collections.Generic.List[string]]::new()
+                Mock Test-RingOverlap {}
+                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Invoke-Graph { $script:Order.Add('PUT') } -ParameterFilter { $Method -eq 'PUT' }
+                $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
+                Sync-Wdac | Should -BeLike 'skipped*'
+                $script:Order | Should -Be @('exclusion')
+                $script:Order.Clear(); $MinimumReleaseAgeDays = 0; Confirm $true
+                Sync-Wdac | Should -BeLike 'updated*'
+                $script:Order | Should -Be @('exclusion', 'PUT', 'all')
+                $script:Order.Clear(); $script:Deployed = $script:X2
+                Sync-Wdac | Should -BeLike 'unchanged*'
+                $script:Order | Should -Be @('exclusion', 'all')
+            }
         }
         Context 'macOS' {
             BeforeEach {
@@ -895,6 +922,20 @@ Describe 'Second review' {
             It 'holds an addition on the same version until the release is old enough' {
                 $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
                 Sync-Macos | Should -BeLike 'skipped*'
+            }
+            It 'adds the exclusion at once but holds a new inclusion while an addition waits, and adds it after the PUT' {
+                $script:Order = [System.Collections.Generic.List[string]]::new()
+                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Invoke-Graph { $script:Order.Add('PUT') } -ParameterFilter { $Method -eq 'PUT' }
+                $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
+                Sync-Macos | Should -BeLike 'skipped*'
+                $script:Order | Should -Be @('exclusion')
+                $script:Order.Clear(); $MinimumReleaseAgeDays = 0; Confirm $true
+                Sync-Macos | Should -BeLike 'updated*'
+                $script:Order | Should -Be @('exclusion', 'PUT', 'all')
+                $script:Order.Clear(); $script:DeployedMac = DeployedMac { param($items) $items }
+                Sync-Macos | Should -BeLike 'unchanged*'
+                $script:Order | Should -Be @('exclusion', 'all')
             }
         }
         Context 'IOC' {
@@ -1009,12 +1050,14 @@ Describe 'Third review' {
         ) {
             { Test-WdacDenyPath $Path 'T' } | Should -Throw '*would block*'
         }
-        It 'rejects a .dll rule outside the pinned list: <Path>' -ForEach @(@{ Path = '*\vendor.dll' }, @{ Path = '*\vendor.DLL' }, @{ Path = '*\vendor.d*' }, @{ Path = '*\vendor.*' }) {
+        It 'rejects a .dll rule outside the pinned list: <Path>' -ForEach @(@{ Path = '*\vendor.dll' }, @{ Path = '*\vendor.DLL' }, @{ Path = '*\vendor.d*' }, @{ Path = '*\vendor.*' },
+            @{ Path = '*\uxtheme*ll' }, @{ Path = '*\vendor.dl?' }, @{ Path = '*\vendor*' }, @{ Path = '*\vendor?dll' }) {
             { Test-WdacDenyPath $Path 'T' } | Should -Throw '*would block*'
         }
         It 'accepts <Path>' -ForEach @(
             @{ Path = '*\BlackCryptAgent*.dll' }, @{ Path = '*\AppData\Roaming\Microsoft\DeviceSync\ovd_*.exe' }, @{ Path = '*\Windows\Action1\*' },
-            @{ Path = '*\apps\support\netsupport\*' }, @{ Path = '*\Remote Manipulator System*\*' }, @{ Path = '*\Vendor\*' }
+            @{ Path = '*\apps\support\netsupport\*' }, @{ Path = '*\Remote Manipulator System*\*' }, @{ Path = '*\Vendor\*' },
+            @{ Path = '*\tool*.exe' }, @{ Path = '*\tool.ex?' }
         ) {
             { Test-WdacDenyPath $Path 'T' } | Should -Not -Throw
         }
@@ -1128,6 +1171,17 @@ Describe 'Third review' {
             $Assignment = 'AllDevices'
             { Sync-Wdac } | Should -Throw 'WDAC:*could get both*Refusing*'
             $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'refuses two different groups without an exclusion: Entra groups can share members' {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = 'cccccccc-0000-0000-0000-000000000009'
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'allows two different groups when the main policy excludes the pilot group' {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = 'cccccccc-0000-0000-0000-000000000009'; $ExcludeGroupId = $script:P
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
         }
         It 'refuses the pilot when its own policy is already assigned to all devices (P11)' {
             $script:Other = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
