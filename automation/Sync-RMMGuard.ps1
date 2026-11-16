@@ -172,4 +172,137 @@ function New-WdacBody([string]$Name, [string]$Description, [string]$Xml, [string
     }
 }
 
+$script:IocHeader = 'IndicatorType,IndicatorValue,ExpirationTime,Action,Severity,Title,Description,RecommendedActions,RbacGroups,Category,MitreTechniques,GenerateAlert'
+
+# Rows of the indicator CSV as Defender import objects. Throws on anything the site never publishes.
+function ConvertFrom-IocCsv([string]$Text) {
+    $text = $Text -replace '^\uFEFF', ''
+    if (($text -split '\r?\n', 2)[0] -ne $script:IocHeader) { throw 'IOC: the content is not the RMM Guard indicator CSV.' }
+    foreach ($row in ($text | ConvertFrom-Csv)) {
+        if ($row.IndicatorType -notin 'DomainName', 'IpAddress' -or $row.Action -ne 'Block' -or
+            -not "$($row.Title)".StartsWith('LOLRMM - ') -or -not $row.IndicatorValue) {
+            throw "IOC: invalid row for '$($row.IndicatorValue)' ($($row.IndicatorType), $($row.Action), $($row.Title))."
+        }
+        if ($row.IndicatorType -eq 'DomainName') {
+            $value = $row.IndicatorValue.ToLowerInvariant()
+            foreach ($canary in $script:IocCanaries) {
+                if ($canary -eq $value -or $canary.EndsWith(".$value")) { throw "IOC: indicator '$value' would block $canary." }
+            }
+        }
+        [pscustomobject]@{
+            indicatorType      = $row.IndicatorType
+            indicatorValue     = $row.IndicatorValue
+            expirationTime     = $row.ExpirationTime
+            action             = $row.Action
+            severity           = $row.Severity
+            title              = $row.Title
+            description        = $row.Description
+            recommendedActions = $row.RecommendedActions
+            generateAlert      = $row.GenerateAlert -eq 'true'
+        }
+    }
+}
+
+# Upsert: new values plus values whose text changed. Remove: deployed values no longer wanted (they carry Defender ids).
+function Compare-IocSet($Desired, $Deployed) {
+    $key = { param($i) "$($i.indicatorType):$($i.indicatorValue)".ToLowerInvariant() }
+    $current = @{}; foreach ($i in $Deployed) { $current[(& $key $i)] = $i }
+    $wanted = @{}; foreach ($i in $Desired) { $wanted[(& $key $i)] = $i }
+    $upsert = @($Desired | Where-Object {
+        $old = $current[(& $key $_)]
+        -not $old -or $old.title -ne $_.title -or $old.description -ne $_.description -or $old.severity -ne $_.severity -or $old.action -ne $_.action
+    })
+    [pscustomobject]@{
+        Upsert = $upsert
+        Added  = @($Desired | Where-Object { -not $current.ContainsKey((& $key $_)) }).Count
+        Remove = @($Deployed | Where-Object { -not $wanted.ContainsKey((& $key $_)) })
+    }
+}
+
+# Team ID / Signing ID pairs from a settings array: the /api/macos.json body or GET .../settings of a deployed policy.
+function Get-MacRules($Settings) {
+    $stack = [System.Collections.Generic.Stack[object]]::new()
+    foreach ($setting in $Settings) { $stack.Push($setting.settingInstance) }
+    while ($stack.Count) {
+        $node = $stack.Pop()
+        if ($node.settingDefinitionId -eq 'app_allowed_deniedbinaries') {
+            return @(foreach ($item in $node.groupSettingCollectionValue) {
+                $values = @{}
+                foreach ($child in $item.children) { $values[$child.settingDefinitionId] = $child.simpleSettingValue.value }
+                [pscustomobject]@{ TeamId = $values['app_allowed_deniedbinaries_item_teamid']; SigningId = $values['app_allowed_deniedbinaries_item_signingid'] }
+            })
+        }
+        foreach ($group in $node.groupSettingCollectionValue) { foreach ($child in $group.children) { $stack.Push($child) } }
+    }
+    @()
+}
+
+function Test-MacRules($Rules) {
+    # An empty function result arrives as $null, and @($null).Count is 1, so drop nulls before counting.
+    $Rules = @($Rules | Where-Object { $_ })
+    if (-not $Rules.Count) { throw 'macOS: the policy denies nothing.' }
+    foreach ($rule in $Rules) {
+        if ("$($rule.TeamId)" -cnotmatch '^[A-Z0-9]{10}$') { throw "macOS: invalid Team ID '$($rule.TeamId)'." }
+        if ($script:BroadTeamIds.ContainsKey($rule.TeamId) -and -not $rule.SigningId) {
+            throw "macOS: Team ID $($rule.TeamId) belongs to $($script:BroadTeamIds[$rule.TeamId]) and needs a Signing ID."
+        }
+    }
+}
+
+function Get-MacVersion([string]$Description) {
+    if ($Description -match "^$([regex]::Escape($script:MacDescriptionPrefix)) v(\d+\.\d+\.\d+\.\d+)") { $Matches[1] }
+}
+
+function Measure-SetChange([string[]]$Old, [string[]]$New) {
+    $oldSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Old), [StringComparer]::OrdinalIgnoreCase)
+    $newSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($New), [StringComparer]::OrdinalIgnoreCase)
+    [pscustomobject]@{
+        Added   = @($newSet | Where-Object { -not $oldSet.Contains($_) }).Count
+        Removed = @($oldSet | Where-Object { -not $newSet.Contains($_) }).Count
+    }
+}
+
+function Test-ChangeSize([int]$Deployed, [int]$Added, [int]$Removed, [switch]$Force, [string]$Label) {
+    if ($Deployed -eq 0 -or $Force) { return }
+    $limit = [math]::Floor($Deployed * 0.25)
+    if ($Added -gt $limit -or $Removed -gt $limit) {
+        throw "${Label}: $Added added and $Removed removed against $Deployed deployed is more than 25 percent. Review the change and rerun with -Force."
+    }
+}
+
+# $null when the version may be applied, otherwise the reason to wait.
+# Invoke-RestMethod hands a JSON array over as one object; enumerate it so each release is its own entry.
+function ConvertFrom-Changelog($Response) { @($Response | ForEach-Object { $_ }) }
+
+function Test-ReleaseAge($Changelog, [string]$Version, [int]$MinimumDays, [datetime]$Now) {
+    if ($MinimumDays -le 0) { return $null }
+    $entry = @($Changelog | Where-Object version -eq $Version)[0]
+    if (-not $entry) { return "version $Version is not listed in changelog.json" }
+    $age = ($Now.Date - ([datetime]$entry.date).Date).Days
+    if ($age -lt $MinimumDays) { return "version $Version is $age day(s) old, the minimum is $MinimumDays" }
+    $null
+}
+
+function ConvertTo-AssignmentTarget([string]$Value) {
+    switch ($Value) {
+        'AllDevices' { @{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }
+        'AllUsers' { @{ '@odata.type' = '#microsoft.graph.allLicensedUsersAssignmentTarget' } }
+        default { @{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = $Value } }
+    }
+}
+
+# $null when every wanted target exists; otherwise existing plus missing, because /assign replaces the whole set.
+function Merge-AssignmentTargets($Existing, $Wanted) {
+    $key = { param($t) "$($t.'@odata.type')|$($t.groupId)" }
+    $have = @($Existing | ForEach-Object { & $key $_ })
+    $missing = @($Wanted | Where-Object { (& $key $_) -notin $have })
+    if (-not $missing.Count) { return $null }
+    @($Existing) + $missing
+}
+
+function Get-ApiUrl([string]$File, [string[]]$Exclude) {
+    $query = (@($Exclude) | Where-Object { $_ } | Sort-Object -Unique | ForEach-Object { 'exclude=' + [uri]::EscapeDataString($_) }) -join '&'
+    "$script:Site/api/$File" + ($query ? "?$query" : '')
+}
+
 # ---- I/O functions and Invoke-Sync follow (tasks 4-7). ----

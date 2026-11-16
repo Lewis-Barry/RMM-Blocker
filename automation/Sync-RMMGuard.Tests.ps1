@@ -155,3 +155,112 @@ Describe 'WDAC' {
         $xml.simpleSettingValue.value | Should -Be '<SiPolicy />'
     }
 }
+
+Describe 'IOC' {
+    BeforeAll {
+        $script:Csv = Get-ChildItem "$script:Root/IOC/*.csv" | ForEach-Object { ,@(ConvertFrom-IocCsv (Get-Content -Raw $_.FullName)) }
+        $script:Header = (Get-Content "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv" -TotalCount 1)
+        function Row($Type, $Value, $Action = 'Block', $Title = 'LOLRMM - Test') {
+            "$script:Header`r`n$Type,$Value,2035-07-23T00:00:00Z,$Action,Medium,$Title,Network domain associated with Test - listed by LOLRMM.,Block it.,,,,true`r`n"
+        }
+    }
+    It 'accepts every bundled CSV and maps the import fields (positive control)' {
+        $all = @($script:Csv | ForEach-Object { $_ })
+        $all.Count | Should -Be ((Get-ChildItem "$script:Root/IOC/*.csv" | ForEach-Object { (Get-Content $_.FullName).Count - 1 } | Measure-Object -Sum).Sum)
+        $all[0].PSObject.Properties.Name | Should -Be @('indicatorType', 'indicatorValue', 'expirationTime', 'action', 'severity', 'title', 'description', 'recommendedActions', 'generateAlert')
+        $all[0].generateAlert | Should -BeOfType [bool]
+    }
+    It 'rejects a domain that is or contains <Value>' -ForEach @(
+        @{ Value = 'microsoft.com' }, @{ Value = 'login.microsoftonline.com' }, @{ Value = 'windowsupdate.com' }
+    ) {
+        { ConvertFrom-IocCsv (Row 'DomainName' $Value) } | Should -Throw '*would block*'
+    }
+    It 'accepts a subdomain under a canary, which does not block the canary itself' {
+        @(ConvertFrom-IocCsv (Row 'DomainName' 'x.windowsupdate.com')).Count | Should -Be 1
+    }
+    It 'rejects <Name>' -ForEach @(
+        @{ Name = 'an Allowed action'; Type = 'DomainName'; Action = 'Allowed'; Title = 'LOLRMM - Test' }
+        @{ Name = 'a foreign title'; Type = 'DomainName'; Action = 'Block'; Title = 'Mine' }
+        @{ Name = 'a file hash'; Type = 'FileSha256'; Action = 'Block'; Title = 'LOLRMM - Test' }
+    ) {
+        { ConvertFrom-IocCsv (Row $Type 'example.org' $Action $Title) } | Should -Throw 'IOC:*'
+    }
+    It 'rejects content that is not the indicator CSV' {
+        { ConvertFrom-IocCsv '<!doctype html><html></html>' } | Should -Throw 'IOC:*'
+    }
+    It 'diffs adds, changed rows and removals by type and value' {
+        $a = [pscustomobject]@{ indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $b = [pscustomobject]@{ indicatorType = 'DomainName'; indicatorValue = 'b.org'; title = 'LOLRMM - B'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $bOld = [pscustomobject]@{ id = '2'; indicatorType = 'DomainName'; indicatorValue = 'B.org'; title = 'LOLRMM - Old'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $c = [pscustomobject]@{ id = '3'; indicatorType = 'DomainName'; indicatorValue = 'c.org'; title = 'LOLRMM - C'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $diff = Compare-IocSet @($a, $b) @($bOld, $c)
+        $diff.Upsert.indicatorValue | Should -Be @('a.org', 'b.org')
+        $diff.Added | Should -Be 1
+        $diff.Remove.id | Should -Be @('3')
+    }
+}
+
+Describe 'macOS' {
+    BeforeAll {
+        # The real body, built by the site's own code: the same thing /api/macos.json serves without exclusions.
+        $script:MacBody = node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$($script:Root.Replace('\', '/'))/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$($script:Root.Replace('\', '/'))/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" | ConvertFrom-Json -AsHashtable
+    }
+    It 'reads every denied binary from the policy body (positive control)' {
+        $rules = Get-MacRules $script:MacBody.settings
+        $rules.Count | Should -BeGreaterThan 0
+        { Test-MacRules $rules } | Should -Not -Throw
+        Get-MacVersion $script:MacBody.description | Should -Match '^\d+\.\d+\.\d+\.\d+$'
+    }
+    It 'rejects a broad Team ID without a Signing ID' {
+        { Test-MacRules @([pscustomobject]@{ TeamId = 'UBF8T346G9'; SigningId = $null }) } | Should -Throw '*Microsoft*'
+    }
+    It 'rejects a malformed Team ID and an empty list' {
+        { Test-MacRules @([pscustomobject]@{ TeamId = 'abc'; SigningId = $null }) } | Should -Throw '*Team ID*'
+        { Test-MacRules @() } | Should -Throw '*denies nothing*'
+        { Test-MacRules (Get-MacRules @()) } | Should -Throw '*denies nothing*'
+    }
+    It 'keeps the broad Team IDs in step with macos.js' {
+        $js = Get-Content -Raw "$script:Root/macos.js"
+        $fromJs = [regex]::Matches($js, '\["([A-Z0-9]{10})", "([^"]+)"\]') | ForEach-Object { "$($_.Groups[1].Value)=$($_.Groups[2].Value)" } | Sort-Object
+        $fromPs = $script:BroadTeamIds.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" } | Sort-Object
+        $fromPs | Should -Be $fromJs
+    }
+}
+
+Describe 'Shared' {
+    It 'counts additions and removals case-insensitively' {
+        $change = Measure-SetChange @('A|1', 'B|2', 'C|3') @('a|1', 'D|4')
+        $change.Added | Should -Be 1
+        $change.Removed | Should -Be 2
+    }
+    It 'allows a first deployment of any size' { { Test-ChangeSize 0 900 0 -Label T } | Should -Not -Throw }
+    It 'allows exactly 25 percent' { { Test-ChangeSize 100 25 25 -Label T } | Should -Not -Throw }
+    It 'stops above 25 percent' { { Test-ChangeSize 100 26 0 -Label T } | Should -Throw '*-Force*' }
+    It 'lets -Force through' { { Test-ChangeSize 100 0 90 -Force -Label T } | Should -Not -Throw }
+    It 'decides release age' {
+        # The same shape Invoke-RestMethod returns: one object holding the array.
+        $log = ConvertFrom-Changelog (ConvertFrom-Json -NoEnumerate '[{"version":"1.0.0.22","date":"2026-11-10"},{"version":"1.0.0.21","date":"2026-11-01"}]')
+        $log.Count | Should -Be 2
+        $now = [datetime]'2026-11-15'
+        Test-ReleaseAge $log '1.0.0.22' 0 $now | Should -BeNullOrEmpty
+        Test-ReleaseAge $log '1.0.0.22' 5 $now | Should -BeNullOrEmpty
+        Test-ReleaseAge $log '1.0.0.22' 6 $now | Should -Match '5 day'
+        Test-ReleaseAge $log '1.0.0.23' 1 $now | Should -Match 'not listed'
+    }
+    It 'maps -Assignment values to Intune targets' {
+        (ConvertTo-AssignmentTarget 'AllDevices').'@odata.type' | Should -Be '#microsoft.graph.allDevicesAssignmentTarget'
+        (ConvertTo-AssignmentTarget 'AllUsers').'@odata.type' | Should -Be '#microsoft.graph.allLicensedUsersAssignmentTarget'
+        (ConvertTo-AssignmentTarget '11111111-2222-3333-4444-555555555555').groupId | Should -Be '11111111-2222-3333-4444-555555555555'
+    }
+    It 'keeps existing assignments and adds only what is missing' {
+        $existing = @([pscustomobject]@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g1'; deviceAndAppManagementAssignmentFilterType = 'none' })
+        Merge-AssignmentTargets $existing @(@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g1' }) | Should -BeNullOrEmpty
+        $merged = @(Merge-AssignmentTargets $existing @(@{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' }))
+        $merged.Count | Should -Be 2
+        $merged[0].groupId | Should -Be 'g1'
+    }
+    It 'builds retrieval URLs with sorted, encoded exclusions' {
+        Get-ApiUrl 'wdac.xml' @() | Should -Be 'https://rmmguard.com/api/wdac.xml'
+        Get-ApiUrl 'wdac.xml' @('TeamViewer', 'O&O Syspectr') | Should -Be 'https://rmmguard.com/api/wdac.xml?exclude=O%26O%20Syspectr&exclude=TeamViewer'
+    }
+}
