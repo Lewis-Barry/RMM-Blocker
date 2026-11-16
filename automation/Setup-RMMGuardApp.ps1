@@ -8,7 +8,8 @@
       - WindowsDefenderATP         Ti.ReadWrite                                 (Defender indicators it creates itself)
     and adds a credential that expires after -CredentialDays days:
       - Certificate (default): a self-signed certificate. Only its public key is uploaded to the app; the private key
-        is saved as a password-protected .pfx at -CertificatePath, by default ~/RMMGuardSync-<TenantId>.pfx (readable by you only on macOS/Linux). Works in
+        is saved as a password-protected .pfx at -CertificatePath, by default ~/RMMGuardSync-<TenantId>.pfx, or
+        ~/RMMGuardSync-<DisplayName>-<TenantId>.pfx for another -DisplayName (readable by you only on macOS/Linux). Works in
         tenants whose app management policy blocks client secrets.
       - Secret: a client secret, shown once and never written to disk.
       - None: no credential, for OIDC (federated credential) or when you add one yourself.
@@ -39,7 +40,7 @@ param(
     [string]$DisplayName = 'RMM Guard Sync',
     [ValidateSet('Certificate', 'Secret', 'None')][string]$CredentialType = 'Certificate',
     [ValidateRange(1, 730)][int]$CredentialDays = 30,
-    [string]$CertificatePath,                                         # default: ~/RMMGuardSync-<TenantId>.pfx, one file per tenant
+    [string]$CertificatePath,                                         # default: ~/RMMGuardSync-<TenantId>.pfx, one file per tenant and app
     [string]$FederatedSubject,                                        # e.g. repo:contoso/rmm-guard:ref:refs/heads/main
     [string]$FederatedIssuer = 'https://token.actions.githubusercontent.com',
     [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$')][string]$ManagedIdentityObjectId,
@@ -47,7 +48,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not $CertificatePath) { $CertificatePath = Join-Path $HOME "RMMGuardSync-$($TenantId -replace '[^A-Za-z0-9.-]', '-').pfx" }
+if (-not $CertificatePath) {
+    # Another -DisplayName gets its own file, so removing one app never deletes the key of another.
+    $name = $DisplayName -eq 'RMM Guard Sync' ? '' : "$DisplayName-"
+    $CertificatePath = Join-Path $HOME ("RMMGuardSync-$name$TenantId.pfx" -replace '[^A-Za-z0-9.-]', '-')
+}
 $tag = 'RMMGuardSync'
 $graphAppId = '00000003-0000-0000-c000-000000000000'
 $defenderAppId = 'fc780465-2017-40d4-a0c5-307022471b92'   # WindowsDefenderATP
@@ -156,19 +161,19 @@ if ($CredentialType -eq 'Certificate') {
 $requiredResourceAccess = @($grants | Group-Object ResourceAppId | ForEach-Object {
     @{ resourceAppId = $_.Name; resourceAccess = @($_.Group | ForEach-Object { @{ id = $_.RoleId; type = 'Role' } }) }
 })
-$app = Invoke-Graph POST '/applications' @{
-    displayName            = $DisplayName
-    signInAudience         = 'AzureADMyOrg'
-    tags                   = @($tag)
-    notes                  = 'Created by Setup-RMMGuardApp.ps1 for Sync-RMMGuard.ps1 (rmmguard.com). Remove with Setup-RMMGuardApp.ps1 -Remove.'
-    requiredResourceAccess = $requiredResourceAccess
-}
-
+$app = $null
 $secret = $null
 $certificate = $null
 $finished = $false
 # finally instead of catch: Ctrl+C during the retry waits must also roll back, and catch does not run on Ctrl+C.
 try {
+    $app = Invoke-Graph POST '/applications' @{
+        displayName            = $DisplayName
+        signInAudience         = 'AzureADMyOrg'
+        tags                   = @($tag)
+        notes                  = 'Created by Setup-RMMGuardApp.ps1 for Sync-RMMGuard.ps1 (rmmguard.com). Remove with Setup-RMMGuardApp.ps1 -Remove.'
+        requiredResourceAccess = $requiredResourceAccess
+    }
     $principal = Invoke-Graph POST '/servicePrincipals' @{ appId = $app.appId; tags = @($tag) }
     foreach ($grant in $grants) {
         Invoke-WithRetry {
@@ -215,7 +220,7 @@ try {
     }
     $finished = $true
 } finally {
-    if (-not $finished) {
+    if (-not $finished -and $app) {
         Write-Warning "Setup did not finish, deleting the half-created app '$DisplayName' again."
         Remove-App $app
         # The check above refused an existing file, so a .pfx here was written by this run.
