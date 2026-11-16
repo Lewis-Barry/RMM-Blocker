@@ -58,12 +58,15 @@ Describe 'WDAC' {
             { Test-WdacPolicy $script:X.Replace($From, $To) } | Should -Throw 'WDAC:*'
         }
         It 'rejects one Allow removed' {
-            $bad = [regex]::Replace($script:X, '<Allow [^>]*/>', '', 1)
-            { Test-WdacPolicy $bad } | Should -Throw '*two Allow*'
+            $bad = ([regex]'<Allow [^>]*/>').Replace($script:X, '', 1)
+            [regex]::Matches($bad, '<Allow ').Count | Should -Be 1
+            { Test-WdacPolicy $bad } | Should -Throw 'WDAC: expected exactly two Allow FileName="`*" rules.'
         }
         It 'rejects an Allow with FileName x.exe' {
-            $bad = [regex]::Replace($script:X, '(<Allow [^>]*FileName=)"\*"', '$1"x.exe"', 1)
-            { Test-WdacPolicy $bad } | Should -Throw '*two Allow*'
+            $bad = ([regex]'(<Allow [^>]*FileName=)"\*"').Replace($script:X, '$1"x.exe"', 1)
+            [regex]::Matches($bad, '<Allow [^>]*FileName="\*"').Count | Should -Be 1
+            [regex]::Matches($bad, 'FileName="x\.exe"').Count | Should -Be 1
+            { Test-WdacPolicy $bad } | Should -Throw 'WDAC: expected exactly two Allow FileName="`*" rules.'
         }
         It 'rejects a Deny with FileName next to FilePath' {
             { Test-WdacPolicy $script:X.Replace($script:Ctes, "$script:Ctes FileName=`"explorer.exe`"") } | Should -Throw '*uses FileName*'
@@ -108,12 +111,12 @@ Describe 'WDAC' {
                     Replace('<ProductSigners>', '<ProductSigners><DeniedSigners><DeniedSigner SignerId="ID_SIGNER_X" /></DeniedSigners>') } }
             @{ Name = 'scenario 131 FileRuleRef removed'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?)<FileRuleRef RuleID="[^"]+" />', '$1') } }
             @{ Name = 'scenario 131 FileRuleRef repointed'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?<FileRuleRef RuleID=")[^"]+', '${1}ID_DENY_A_D91474AD759E53010A953C20F82F02DE') } }
-            @{ Name = 'MinimumFileVersion on an Allow'; Mutate = { [regex]::Replace($script:X, '(<Allow [^>]*FileName="\*")', '$1 MinimumFileVersion="65535.65535.65535.65535"', 1) } }
+            @{ Name = 'MinimumFileVersion on an Allow'; Mutate = { ([regex]'(<Allow [^>]*FileName="\*")').Replace($script:X, '$1 MinimumFileVersion="65535.65535.65535.65535"', 1) } }
             @{ Name = 'an extra SigningScenario'; Mutate = { $script:X.Replace('</SigningScenarios>', '<SigningScenario Value="12" ID="ID_X" FriendlyName="x"><ProductSigners /></SigningScenario></SigningScenarios>') } }
             @{ Name = 'a deny ref added to scenario 131'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?<FileRulesRef>)', '$1<FileRuleRef RuleID="ID_DENY_A_D91474AD759E53010A953C20F82F02DE" />') } }
             @{ Name = 'a FileAttrib element'; Mutate = { $script:X.Replace('</FileRules>', '<FileAttrib ID="ID_FILEATTRIB_X" FileName="explorer.exe" /></FileRules>') } }
         ) {
-            { Test-WdacPolicy (& $Mutate) } | Should -Throw '*structure*'
+            { Test-WdacPolicy (& $Mutate) } | Should -Throw 'WDAC: the policy structure outside the deny rules changed*'
         }
         It 'rejects a dangling UMCI reference' {
             $bad = [regex]::Replace($script:X, '<Deny [^>]*ID="ID_DENY_A_D91474AD759E53010A953C20F82F02DE"[^>]*/>', '')
@@ -588,5 +591,32 @@ Describe 'Sync decisions' {
             Set-Assignment 'p1'
             Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
         }
+    }
+}
+
+Describe 'Graph paging' {
+    It 'follows @odata.nextLink and returns every item' {
+        Mock Invoke-Graph {
+            if ($Path -eq '/x?$top=2') { [pscustomobject]@{ value = @(1, 2); '@odata.nextLink' = 'https://graph.microsoft.com/beta/x?$top=2&$skiptoken=t' } }
+            elseif ($Path -eq '/x?$top=2&$skiptoken=t') { [pscustomobject]@{ value = @(3) } }
+        }
+        @(Get-GraphAll '/x?$top=2') | Should -Be @(1, 2, 3)
+        Should -Invoke Invoke-Graph -Times 2 -Exactly
+        Should -Invoke Invoke-Graph -Times 1 -Exactly -ParameterFilter { $Path -eq '/x?$top=2&$skiptoken=t' }
+    }
+    It 'finds the RMM Guard PolicyID on the second page' {
+        $RingPolicyName = @()
+        Mock Invoke-Graph {
+            if ($Path -like '*templateFamily*' -and $Path -notlike '*skiptoken*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'a'; name = 'Other' }); '@odata.nextLink' = 'https://graph.microsoft.com/beta/deviceManagement/configurationPolicies?$skiptoken=t' } }
+            elseif ($Path -like '*skiptoken*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'b'; name = 'Hidden' }) } }
+            elseif ($Path -like '*/a/settings') { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' '<SiPolicy><PolicyID>{11111111-2222-3333-4444-555555555555}</PolicyID></SiPolicy>').settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+            elseif ($Path -like '*/b/settings') { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $script:PolicyXml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+        }
+        (Find-WdacByPolicyId).name | Should -Be 'Hidden'
+    }
+    It 'stops when Defender returns 10000 indicators' {
+        $script:Auth = @{ Mode = 'Secret' }; $script:Files = @{ 'iocs.csv' = (Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv") }
+        Mock Invoke-Defender { [pscustomobject]@{ value = @(1..10000 | ForEach-Object { [pscustomobject]@{ title = 'x' } }) } }
+        { Sync-Ioc } | Should -Throw 'IOC: more than 10000 indicators are visible; paging is not supported.'
     }
 }

@@ -439,6 +439,15 @@ function Invoke-Graph([string]$Method, [string]$Path, $Body) {
     Invoke-MgGraphRequest @request
 }
 
+# Every item of a Graph list: Invoke-MgGraphRequest returns one page, so follow @odata.nextLink.
+function Get-GraphAll([string]$Path) {
+    while ($Path) {
+        $page = Invoke-Graph GET $Path
+        $page.value
+        $Path = "$($page.'@odata.nextLink')".Replace($script:Graph, '')
+    }
+}
+
 function Invoke-Defender([string]$Method, [string]$Path, $Body) {
     $request = @{ Method = $Method; Uri = "$script:Defender$Path"; Headers = @{ Authorization = "Bearer $script:DefenderToken" } }
     if ($null -ne $Body) { $request.Body = $Body | ConvertTo-Json -Depth 8; $request.ContentType = 'application/json' }
@@ -459,7 +468,7 @@ function Get-RMMGuardFile([string]$File, [string]$Type) {
 function Find-Policy([string]$Name) {
     $filter = [uri]::EscapeDataString("name eq '$($Name.Replace("'", "''"))'")
     # The filter has returned extra rows in testing, so the name is checked here as well.
-    $found = @((Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name,description").value | Where-Object name -ceq $Name)
+    $found = @(Get-GraphAll "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name,description" | Where-Object name -ceq $Name)
     if ($found.Count -gt 1) { throw "More than one Intune policy is named '$Name'. Rename the duplicates first." }
     $found | Select-Object -First 1
 }
@@ -476,7 +485,7 @@ function Get-WdacXml([string]$PolicyId) {
 # The RMM Guard WDAC policy under another name, ignoring the other ring's policy (-RingPolicyName), which shares the PolicyID on purpose.
 function Find-WdacByPolicyId {
     $filter = [uri]::EscapeDataString("templateReference/templateFamily eq 'endpointSecurityApplicationControl'")
-    foreach ($candidate in (Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name").value | Where-Object { $_.name -cnotin $RingPolicyName }) {
+    foreach ($candidate in Get-GraphAll "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name" | Where-Object { $_.name -cnotin $RingPolicyName }) {
         if ("$(Get-WdacXml $candidate.id)".Contains($script:PolicyId)) { return $candidate }
     }
 }
@@ -489,7 +498,7 @@ function Set-Assignment([string]$PolicyId) {
     if (-not $wanted.Count -or -not $PolicyId) { return }
     # Only /assignments is reliable: $expand=assignments returned an empty list for an assigned policy in testing,
     # and a union built from that would wipe the existing assignments on the next /assign.
-    $existing = @((Invoke-Graph GET "/deviceManagement/configurationPolicies/$PolicyId/assignments").value | ForEach-Object { $_.target })
+    $existing = @(Get-GraphAll "/deviceManagement/configurationPolicies/$PolicyId/assignments" | ForEach-Object { $_.target })
     $targets = Merge-AssignmentTargets $existing $wanted
     if ($null -eq $targets) { return }
     $labels = ($wanted | ForEach-Object { "$($_.'@odata.type' -replace '^#microsoft\.graph\.', '') $($_.groupId)".Trim() }) -join ', '
@@ -579,7 +588,9 @@ function Sync-Ioc {
     }
     $desired = @(ConvertFrom-IocCsv (Get-RMMGuardFile 'iocs.csv' 'csv'))
     # With Ti.ReadWrite the app only sees the indicators it created; the title filter also covers Ti.ReadWrite.All.
-    $deployed = @((Invoke-Defender GET '/indicators?$top=10000').value | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') })
+    $visible = @((Invoke-Defender GET '/indicators?$top=10000').value)
+    if ($visible.Count -ge 10000) { throw 'IOC: more than 10000 indicators are visible; paging is not supported.' }
+    $deployed = @($visible | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') })
     $diff = Compare-IocSet $desired $deployed
     if (-not $diff.Upsert.Count -and -not $diff.Remove.Count) { return "unchanged, $($desired.Count) indicators" }
     # The CSV has no version of its own; it is built from the same release as the WDAC policy.
