@@ -1,65 +1,30 @@
-# RMM Guard sync for Azure DevOps. Copy to the root of an Azure Repos repository, next to Sync-RMMGuard.ps1.
-# Guide (service connection and variables): https://rmmguard.com/help-automation.html#azure-devops
+# RMM Guard sync. Guide: https://rmmguard.com/help-automation.html#azure-devops
 trigger: none
 schedules:
-  - cron: '0 6 * * 1'      # Mondays 06:00 UTC
+  - cron: '0 6 * * 1'     # Mondays 06:00 UTC
     displayName: Weekly RMM Guard sync
     branches:
       include: [main]
     always: true
-parameters:
-  - name: force
-    displayName: Apply a change larger than 25 percent (after checking it with a normal run)
-    type: boolean
-    default: false
 pool:
   vmImage: ubuntu-latest
 variables:
-  # Variable group with RMMGUARD_PILOT_GROUP_ID and EXCLUDE (comma-separated tool names, may be empty).
-  # The script reads them as environment variables, so a value is never pasted into the script text.
-  - group: rmm-guard
-  - name: FORCE
-    value: ${{ parameters.force }}
-stages:
-  - stage: pilot
-    jobs:
-      - job: sync
-        steps:
-          - task: AzureCLI@2
-            displayName: Sync the pilot policies
-            inputs:
-              azureSubscription: rmm-guard   # workload identity federation service connection to the RMM Guard Sync app
-              scriptType: pscore
-              scriptLocation: inlineScript
-              addSpnToEnvironment: true      # exposes tenantId, servicePrincipalId and idToken
-              inlineScript: |
-                ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
-                  -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
-                  -RingPolicyName 'RMM Guard - WDAC' `
-                  -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
-                  -Assignment $env:RMMGUARD_PILOT_GROUP_ID -Force:($env:FORCE -eq 'True') `
-                  -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
-  - stage: production
-    dependsOn: pilot
-    jobs:
-      - job: sync
-        steps:
-          - task: AzureCLI@2
-            displayName: Sync the production policies and Defender indicators
-            inputs:
-              azureSubscription: rmm-guard
-              scriptType: pscore
-              scriptLocation: inlineScript
-              addSpnToEnvironment: true
-              inlineScript: |
-                ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
-                  -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
-                  -RingPolicyName 'RMM Guard - WDAC (pilot)' `
-                  -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
-                  -Assignment AllDevices -ExcludeGroupId $env:RMMGUARD_PILOT_GROUP_ID -Force:($env:FORCE -eq 'True') `
-                  -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
-# Without a service connection: use a PowerShell@2 task (pwsh: true) instead of AzureCLI@2 and either
-#  - upload the .pfx as a Secure file, add a DownloadSecureFile@1 step (name: pfx) and pass
-#    -TenantId <tenant> -ClientId <app id> -CertificatePath $(pfx.secureFilePath), with RMMGUARD_CERT_PASSWORD as a secret variable
-#    mapped into the task's env; or
-#  - put the client secret in secret variable RMMGUARD_CLIENT_SECRET, map it into env, and pass only -TenantId and -ClientId.
+  - group: rmm-guard      # ASSIGNMENT and EXCLUDE
+steps:
+  - task: AzureCLI@2
+    displayName: Sync RMM Guard
+    inputs:
+      azureSubscription: rmm-guard
+      scriptType: pscore
+      scriptLocation: inlineScript
+      addSpnToEnvironment: true
+      inlineScript: |
+        $sync = @{
+          Target         = 'Wdac', 'Macos', 'Ioc'
+          Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
+          TenantId       = $env:tenantId
+          ClientId       = $env:servicePrincipalId
+          FederatedToken = $env:idToken
+        }
+        if ($env:ASSIGNMENT) { $sync.Assignment = $env:ASSIGNMENT }
+        ./Sync-RMMGuard.ps1 @sync
