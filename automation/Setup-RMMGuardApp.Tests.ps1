@@ -83,6 +83,33 @@ Describe 'Setup-RMMGuardApp' {
         $global:RMMSetupOut.Count | Should -Be 2
         $global:RMMSetupOut[0] | Should -Not -Be $global:RMMSetupOut[1]
     }
+    It 'gives names that only differ in case their own default .pfx and removal command' {
+        $global:RMMSetupOut = [System.Collections.Generic.List[string]]::new()
+        Mock Test-Path { $true }
+        Mock Remove-Item { $global:RMMSetupOut.Add($LiteralPath) }
+        foreach ($name in 'RMM Guard Sync', 'rmm guard sync') {
+            $global:RMMSetupApps = @([pscustomobject]@{ id = 'app0'; appId = 'appid0'; displayName = $name; tags = @('RMMGuardSync') })
+            & $script:Setup -TenantId contoso.onmicrosoft.com -DisplayName $name -Remove
+        }
+        $global:RMMSetupOut.Count | Should -Be 2
+        $global:RMMSetupOut[0] | Should -Not -Be $global:RMMSetupOut[1]
+        $global:RMMSetupApps = @()
+        Mock Write-Host { $global:RMMSetupOut.Add("$Object") }
+        & $script:Setup -TenantId contoso.onmicrosoft.com -DisplayName 'rmm guard sync' -CredentialType None
+        $global:RMMSetupOut | Where-Object { $_ -like '*Remove*:*' } | Should -BeLike "*-DisplayName 'rmm guard sync' -Remove"
+    }
+    It 'URL-encodes the display-name filter' {
+        & $script:Setup -TenantId contoso.onmicrosoft.com -DisplayName 'RMM Guard & Sync' -Remove -CertificatePath (Join-Path $TestDrive 'none.pfx')
+        $get = @($global:RMMSetupCalls | Where-Object { $_ -like 'GET /applications?*' })[0]
+        $get | Should -Not -BeLike '*& Sync*'
+        [uri]::UnescapeDataString($get) | Should -BeLike "*displayName eq 'RMM Guard & Sync'*"
+    }
+    It 'writes a relative -CertificatePath where PowerShell resolves it' {
+        Mock Read-Host { ConvertTo-SecureString 'pester' -AsPlainText -Force }
+        Push-Location $TestDrive
+        try { & $script:Setup -TenantId contoso.onmicrosoft.com -CertificatePath 'relative.pfx' } finally { Pop-Location }
+        Test-Path -LiteralPath (Join-Path $TestDrive 'relative.pfx') | Should -BeTrue
+    }
     It 'gives an app with another display name its own default .pfx' {
         # The default name must differ per app, so -Remove for one app can never take another app's key.
         $tenant = "pester-$([guid]::NewGuid().ToString('N').Substring(0, 8)).onmicrosoft.com"

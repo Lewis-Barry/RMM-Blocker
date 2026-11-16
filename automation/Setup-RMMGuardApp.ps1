@@ -33,7 +33,7 @@
 .EXAMPLE
     ./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove
 #>
-#Requires -Version 7.2
+#Requires -Version 7.4
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][string]$TenantId,
@@ -52,9 +52,11 @@ if (-not $CertificatePath) {
     # Another -DisplayName gets its own file, so removing one app never deletes the key of another. The hash keeps names apart that
     # only differ in characters the file name cannot hold ('Second Sync' and 'Second-Sync').
     $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($DisplayName))).Substring(0, 8)
-    $name = $DisplayName -eq 'RMM Guard Sync' ? '' : "$DisplayName-$hash-"
+    $name = $DisplayName -ceq 'RMM Guard Sync' ? '' : "$DisplayName-$hash-"
     $CertificatePath = Join-Path $HOME ("RMMGuardSync-$name$TenantId.pfx" -replace '[^A-Za-z0-9.-]', '-')
 }
+# .NET file calls neither expand ~ nor resolve a relative path against PowerShell's location.
+$CertificatePath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($CertificatePath)
 $tag = 'RMMGuardSync'
 $graphAppId = '00000003-0000-0000-c000-000000000000'
 $defenderAppId = 'fc780465-2017-40d4-a0c5-307022471b92'   # WindowsDefenderATP
@@ -89,9 +91,9 @@ function Remove-App($App) {
     Invoke-WithRetry { Invoke-Graph DELETE "/directory/deletedItems/$($App.id)" } | Out-Null
 }
 
-$quoted = $DisplayName.Replace("'", "''")
+$filter = [uri]::EscapeDataString("displayName eq '$($DisplayName.Replace("'", "''"))'")
 # The tag guard means -Remove can never delete an unrelated app that happens to share the display name.
-$existing = @((Invoke-Graph GET "/applications?`$filter=displayName eq '$quoted'&`$select=id,appId,displayName,tags").value |
+$existing = @((Invoke-Graph GET "/applications?`$filter=$filter&`$select=id,appId,displayName,tags").value |
     Where-Object { $_.displayName -ceq $DisplayName -and $_.tags -contains $tag })
 
 
@@ -247,7 +249,7 @@ if ($CredentialType -eq 'None') { Write-Host '  Credential  : none. Add a federa
 # The removal command names this app and its key file, so copying it can never remove another sync app.
 $quote = { "'" + ($args[0] -replace "'", "''") + "'" }
 $removeCommand = "./Setup-RMMGuardApp.ps1 -TenantId $(& $quote $TenantId)"
-if ($DisplayName -ne 'RMM Guard Sync') { $removeCommand += " -DisplayName $(& $quote $DisplayName)" }
+if ($DisplayName -cne 'RMM Guard Sync') { $removeCommand += " -DisplayName $(& $quote $DisplayName)" }
 $removeCommand += ' -Remove'
 if ($certificate) { $removeCommand += " -CertificatePath $(& $quote $CertificatePath)" }
 Write-Host "  Remove      : $removeCommand"
