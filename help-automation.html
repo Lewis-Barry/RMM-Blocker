@@ -110,7 +110,7 @@
         <p>Deletes the app, its permissions and its <code>.pfx</code>. With <code>-ManagedIdentityObjectId</code> it takes the permissions away from the managed identity.</p>
         <pre class="kql-code"><code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove</code></pre>
         <p>The setup script prints the <strong>ClientId</strong> you need in the next steps.</p>
-        <p><strong>Imported the indicator CSVs by hand before?</strong> The app only sees the indicators it created itself. Delete the <code>LOLRMM - …</code> indicators you imported, otherwise you end up with two sets. An indicator of your own for the same domain or IP, such as an Allow for a tool you use, is changed to Block: exclude that tool instead.</p>
+        <p><strong>Imported the indicator CSVs by hand before?</strong> The app only sees the indicators it created itself. Delete the indicators you imported (their titles start with <code>LOLRMM</code>), otherwise you end up with two sets. An indicator of your own for the same domain or IP, such as an Allow for a tool you use, is changed to Block: exclude that tool instead.</p>
       </section>
       <section id="parameters" class="help-step" aria-labelledby="parameters-title">
         <h2 id="parameters-title">4. Parameters</h2>
@@ -158,8 +158,8 @@
           <tbody>
             <tr><th scope="row"><code>TENANT_ID</code></th><td>The TenantId the setup script printed.</td></tr>
             <tr><th scope="row"><code>CLIENT_ID</code></th><td>The ClientId the setup script printed.</td></tr>
-            <tr><th scope="row"><code>ASSIGNMENT</code></th><td><code>AllDevices</code>, <code>AllUsers</code> or a group object ID. Empty: the policies are created unassigned and you assign them in Intune.</td></tr>
-            <tr><th scope="row"><code>EXCLUDE</code></th><td>Tools to leave out, comma-separated: <code>AnyDesk,TeamViewer</code>.</td></tr>
+            <tr><th scope="row"><code>ASSIGNMENT</code></th><td><code>AllDevices</code>, <code>AllUsers</code> or the object ID of a group. Leave it empty to create the policies unassigned.</td></tr>
+            <tr><th scope="row"><code>EXCLUDE</code></th><td>The tools you want to keep using, separated by commas: <code>AnyDesk,TeamViewer</code>. Leave it empty to block every tool.</td></tr>
           </tbody>
         </table>
         <pre class="kql-code"><code># RMM Guard sync. Guide: https://rmmguard.com/help-automation.html#github
@@ -200,58 +200,78 @@ jobs:
           <li>Create the app with <code>./Setup-RMMGuardApp.ps1 -TenantId &lt;tenant&gt; -CredentialType None</code>.</li>
           <li><strong>Project settings</strong> → <strong>Service connections</strong> → <strong>New</strong> → <strong>Azure Resource Manager</strong> → <strong>Workload identity federation (manual)</strong>. Name it <code>rmm-guard</code> and enter the tenant, the ClientId and a subscription the app has Reader on (the task requires one). Copy the <strong>Issuer</strong> and <strong>Subject identifier</strong>.</li>
           <li>In Entra, open the app → <strong>Certificates &amp; secrets</strong> → <strong>Federated credentials</strong> → <strong>Add</strong> → <strong>Other issuer</strong>, paste both values, then finish the service connection.</li>
-          <li><strong>Pipelines</strong> → <strong>Library</strong>: create the variable group <code>rmm-guard</code> with <code>ASSIGNMENT</code> and <code>EXCLUDE</code> (as in option 1; either may be empty).</li>
+          <li><strong>Pipelines</strong> → <strong>Library</strong> → <strong>+ Variable group</strong>. Name it <code>rmm-guard</code> and add the two variables below.</li>
           <li>Create the pipeline from the YAML file and run it once by hand.</li>
         </ol>
+        <table class="facts">
+          <thead><tr><th scope="col">Variable</th><th scope="col">Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>ASSIGNMENT</code></td><td><code>AllDevices</code>, <code>AllUsers</code> or the object ID of a group. Leave it empty to create the policies unassigned.</td></tr>
+            <tr><td><code>EXCLUDE</code></td><td>The tools you want to keep using, separated by commas: <code>AnyDesk,TeamViewer</code>. Leave it empty to block every tool.</td></tr>
+          </tbody>
+        </table>
         <h3 id="runbook">Option 3: Azure Automation Runbooks</h3>
         <ol>
           <li>In the Automation account: <strong>Identity</strong> → <strong>System assigned</strong> → <strong>On</strong>. Copy the <strong>Object (principal) ID</strong> and run the <a href="#app">managed identity</a> setup command with it.</li>
           <li><strong>Runtime Environments</strong>: PowerShell 7.4 with the module <code>Microsoft.Graph.Authentication</code>.</li>
           <li><strong>Runbooks</strong> → <strong>Create</strong>: type PowerShell, runtime 7.4. Paste <code>Sync-RMMGuard.ps1</code> and <strong>Publish</strong>.</li>
-          <li>Link a weekly <strong>Schedule</strong> with the parameter <code>IDENTITY</code> <code>true</code>, and optionally <code>ASSIGNMENT</code> and <code>EXCLUDE</code> (<code>["AnyDesk","TeamViewer"]</code>).</li>
+          <li>In the runbook: <strong>Link to schedule</strong> → a weekly schedule → <strong>Parameters and run settings</strong>, and fill in:</li>
         </ol>
+        <table class="facts">
+          <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>IDENTITY</code></td><td><code>True</code>. The runbook signs in with the managed identity.</td></tr>
+            <tr><td><code>ASSIGNMENT</code></td><td><code>AllDevices</code>, <code>AllUsers</code> or the object ID of a group. Leave it empty to create the policies unassigned.</td></tr>
+            <tr><td><code>EXCLUDE</code></td><td>The tools you want to keep using, as a list: <code>["AnyDesk","TeamViewer"]</code>. Leave it empty to block every tool.</td></tr>
+          </tbody>
+        </table>
+        <p>Leave the other parameters empty.</p>
       </section>
       <section id="pilot" class="help-step" aria-labelledby="pilot-title">
         <h2 id="pilot-title">6. Optional: pilot group</h2>
-        <p>To give new blocks to a few devices first, run the script twice with two policy names: a pilot policy for a pilot group, and the main policy for everyone else that follows a week later.</p>
-        <pre class="kql-code"><code># Pilot: WDAC and macOS for the pilot group
-./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
-    -RingPolicyName 'RMM Guard - WDAC' -Assignment &lt;pilot group id&gt; ...
-
-# Everyone else: one week behind, without the pilot group
-./Sync-RMMGuard.ps1 -RingPolicyName 'RMM Guard - WDAC (pilot)' `
-    -Assignment AllDevices -ExcludeGroupId &lt;pilot group id&gt; -MinimumReleaseAgeDays 7 ...</code></pre>
-        <ul>
-          <li><code>-RingPolicyName</code> names the other WDAC policy. Both carry the same policy ID, so the script refuses to assign when a device could get both.</li>
-          <li><code>-ExcludeGroupId</code> keeps the pilot group out of the main policy. Use it with <code>AllDevices</code>, not <code>AllUsers</code>.</li>
-          <li><code>-MinimumReleaseAgeDays</code> holds new blocks until the release is that many days old. Removing a block, for example a new exclusion, applies at once.</li>
-          <li>Defender indicators apply to the whole tenant, so sync them only in the main run.</li>
-        </ul>
+        <p>Want new blocks on a few devices first? Run the script twice: once for a pilot group, and once for everyone else a week later.</p>
+        <p>The pilot run, with its own policy names, assigned to the pilot group:</p>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos `
+    -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+    -RingPolicyName 'RMM Guard - WDAC' -Assignment &lt;pilot group id&gt; `
+    -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
+        <p>The main run, for all devices except the pilot group, one week behind:</p>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+    -Assignment AllDevices -ExcludeGroupId &lt;pilot group id&gt; -MinimumReleaseAgeDays 7 `
+    -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
+        <table class="facts">
+          <tbody>
+            <tr><th scope="row"><code>-RingPolicyName</code></th><td>The name of the other WDAC policy. Windows allows each WDAC policy only once per device, and both policies are the same RMM Guard policy. With this name the script recognises the other one as yours, and stops if a device would get both.</td></tr>
+            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code>.</td></tr>
+            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. Removing a block, such as a new exclusion, applies at once.</td></tr>
+          </tbody>
+        </table>
+        <p>The pilot run leaves out the Defender indicators: they apply to the whole tenant, so only the main run syncs them.</p>
       </section>
       <section id="safety" class="help-step" aria-labelledby="safety-title">
         <h2 id="safety-title">7. Safety checks</h2>
-        <p>Before writing anything, the script refuses when:</p>
+        <p>Before it changes anything, the script stops when:</p>
         <ul>
-          <li>a WDAC rule would block a Windows, .NET, Office, Defender or Intune file;</li>
+          <li>a WDAC rule would block part of Windows, or the Intune or Defender agent;</li>
           <li>an indicator would block a Microsoft or Apple domain, such as sign-in, Intune or Windows Update;</li>
-          <li>a macOS rule would block Microsoft-signed apps;</li>
-          <li>a policy with that name exists but was not made by RMM Guard. Your other policies are never overwritten.</li>
+          <li>a macOS rule would block Microsoft apps, such as Company Portal or Defender;</li>
+          <li>a policy with the chosen name exists but was not created by RMM Guard.</li>
         </ul>
       </section>
       <section id="troubleshooting" class="help-step" aria-labelledby="troubleshooting-title">
         <h2 id="troubleshooting-title">8. Troubleshooting</h2>
         <table class="facts">
-          <thead><tr><th scope="col">Message</th><th scope="col">What to do</th></tr></thead>
+          <thead><tr><th scope="col">Problem</th><th scope="col">What to do</th></tr></thead>
           <tbody>
-            <tr><td><code>HTTP 400</code> … unknown tool in exclude</td><td>A tool was renamed or removed on this site. Copy the names again from the RMM page.</td></tr>
-            <tr><td><code>would block</code> … / <code>first-party</code> … host</td><td>The published list contains a rule that would break Windows, Intune or sign-in. Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</td></tr>
-            <tr><td><code>Refusing to overwrite</code></td><td>A policy with that name exists but is not an RMM Guard policy. Pass another <code>-WdacPolicyName</code> or <code>-MacosPolicyName</code>.</td></tr>
-            <tr><td><code>already exists as</code> …</td><td>The RMM Guard WDAC policy exists under another name. Pass that name with <code>-WdacPolicyName</code>.</td></tr>
-            <tr><td><code>rule options</code> … <code>changed by hand</code></td><td>Someone changed the WDAC policy's options, for example to Audit Mode. Set them back in Intune, or sync to another policy name.</td></tr>
-            <tr><td><code>could get both rings</code></td><td>Pilot group only: the main WDAC policy also reaches the pilot devices. In Intune, add the pilot group to the main policy's <strong>Excluded groups</strong> and run again.</td></tr>
-            <tr><td><code>skipped</code> … days old</td><td>Expected with <code>-MinimumReleaseAgeDays</code>. A later run applies it.</td></tr>
-            <tr><td><code>AADSTS700213</code> or <code>AADSTS70021</code></td><td>The federated credential does not match. Check the subject: repository, and branch <code>main</code> for scheduled runs.</td></tr>
-            <tr><td><code>CredentialTypeNotAllowedAsPerAppPolicy</code></td><td>Your tenant blocks client secrets. Use a certificate or OIDC.</td></tr>
+            <tr><td>The run stops with HTTP 400: unknown tool in exclude.</td><td>A tool in your exclusions was renamed or removed on this site. Copy the names again from the RMM page.</td></tr>
+            <tr><td>The run stops because a rule would block Windows, Intune or a Microsoft domain.</td><td>Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</td></tr>
+            <tr><td>The run refuses to overwrite a policy.</td><td>A policy with that name exists, but RMM Guard did not create it. Choose another name with <code>-WdacPolicyName</code> or <code>-MacosPolicyName</code>.</td></tr>
+            <tr><td>The run says the RMM Guard policy already exists under another name.</td><td>You deployed it by hand earlier. Pass that name with <code>-WdacPolicyName</code>.</td></tr>
+            <tr><td>The run stops because the WDAC rule options were changed by hand.</td><td>Someone changed the policy, for example to Audit Mode. Change it back in Intune, or sync to another policy name.</td></tr>
+            <tr><td>The run stops because a device could get both WDAC policies.</td><td>Pilot group only. In Intune, add the pilot group to the main policy's <strong>Excluded groups</strong> and run again.</td></tr>
+            <tr><td>The run skips an update because the release is too new.</td><td>Expected with <code>-MinimumReleaseAgeDays</code>. A later run applies it.</td></tr>
+            <tr><td>Sign-in fails with AADSTS700213 or AADSTS70021.</td><td>The federated credential does not match. Check the repository and branch in its subject; scheduled runs use <code>main</code>.</td></tr>
+            <tr><td>The setup fails with CredentialTypeNotAllowedAsPerAppPolicy.</td><td>Your tenant blocks client secrets. Use a certificate or OIDC.</td></tr>
           </tbody>
         </table>
       </section>
