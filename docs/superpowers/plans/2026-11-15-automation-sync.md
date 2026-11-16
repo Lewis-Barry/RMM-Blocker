@@ -714,7 +714,7 @@ function Get-AccessToken([string]$Resource) {
     (Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$($script:Auth.TenantId)/oauth2/v2.0/token" -Body $body).access_token
 }
 
-function Connect-Graph {
+function Connect-RMMGuardGraph {
     if ($script:Auth.Mode -eq 'Interactive') {
         $connect = @{ Scopes = 'DeviceManagementConfiguration.ReadWrite.All'; NoWelcome = $true }
         if ($TenantId) { $connect.TenantId = $TenantId }
@@ -927,7 +927,7 @@ function Invoke-Sync {
     Import-Module Microsoft.Graph.Authentication
     # Both tokens up front: a federated token from a pipeline is short-lived.
     if ($Target -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
-    if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-Graph }
+    if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-RMMGuardGraph }
     $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? (ConvertFrom-Changelog (Invoke-RestMethod "$script:Site/changelog.json")) : @()
     $failed = 0
     foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $Target }) {

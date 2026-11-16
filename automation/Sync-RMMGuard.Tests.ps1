@@ -765,12 +765,22 @@ Describe 'Review fixes' {
     }
 
     Context 'Invoke-Sync (M10)' {
+        It 'defines no function a Graph module command or alias would shadow' {
+            # Aliases win over functions: a Connect-Graph function was silently replaced by the module's alias for a bare
+            # Connect-MgGraph, which signed in with whatever delegated account was cached instead of the app.
+            $module = Get-Module -ListAvailable Microsoft.Graph.Authentication | Select-Object -First 1
+            if (-not $module) { Set-ItResult -Skipped -Because 'Microsoft.Graph.Authentication is not installed'; return }
+            $module = Import-Module $module -PassThru
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
+            $functions = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true).Name
+            @($functions | Where-Object { $module.ExportedAliases.ContainsKey($_) -or $module.ExportedCommands.ContainsKey($_) }) | Should -BeNullOrEmpty
+        }
         It 'counts a repeated target once' {
             $Target = @('Wdac', 'Wdac')
             Mock Resolve-Auth { @{ Mode = 'Secret' } }
             Mock Get-Module { 'present' }
             Mock Import-Module {}
-            Mock Connect-Graph {}
+            Mock Connect-RMMGuardGraph {}
             Mock Write-Host {}
             Mock Sync-Wdac { throw 'WDAC: boom' }
             { Invoke-Sync } | Should -Throw '1 of 1 target(s) failed.'
