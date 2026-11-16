@@ -145,10 +145,20 @@ test("a tool decided as a separate product gets no suggestions", () => {
 test("bump raises the version only when paths changed and the version did not", () => {
   const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\acme.exe"] } } };
   assert.equal(bump(before, before), null);
-  assert.equal(bump(before, { ...before, products: { Acme: { paths: ["*\ACME.exe"], domains: ["acme.com"] } } }), null);
+  assert.equal(bump(before, { ...before, products: { Acme: { paths: ["*\ACME.exe"] } } }), null);
   const added = { ...before, products: { Acme: { paths: ["*\acme.exe", "*\acme2.exe"] } } };
   assert.equal(bump(before, added).version, "1.0.0.10");
   assert.equal(bump(before, { ...added, version: "1.0.0.10" }), null);
+});
+
+test("bump raises the version when only domains or IPs change, but not for a case change", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"], domains: ["acme.com"] } } };
+  const withDomains = (domains, extra = {}) => ({ ...before, products: { Acme: { paths: ["*\\acme.exe"], domains, ...extra } } });
+  assert.equal(bump(before, withDomains(["acme.com", "relay.acme.com"])).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains([])).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["acme.com"], { vendorDomains: ["acme-cdn.net"] })).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["acme.com"], { ips: ["203.0.113.7"] })).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["ACME.com"])), null);
 });
 
 test("bump also raises the version when a macOS rule is added or refined without a version change", () => {

@@ -12,8 +12,14 @@ const pathSet = data => JSON.stringify(Object.values(data.products).flatMap(prod
   ...(product.macos?.rules || []).map(rule => JSON.stringify(rule)),
 ]).sort());
 
+// The indicator CSV is built from domains and IPs, so those bump the version too (but stay out of the removed-path count).
+const blockSet = data => JSON.stringify([...JSON.parse(pathSet(data)), ...Object.values(data.products).flatMap(product => [
+  ...[...(product.domains || []), ...(product.vendorDomains || [])].map(domain => `domain:${domain.toLowerCase()}`),
+  ...(product.ips || []).map(ip => `ip:${ip}`),
+])].sort());
+
 export function bump(before, after) {
-  if (after.version !== before.version || pathSet(after) === pathSet(before)) return null;
+  if (after.version !== before.version || blockSet(after) === blockSet(before)) return null;
   return { ...after, version: bumpVersion(after.version) };
 }
 
