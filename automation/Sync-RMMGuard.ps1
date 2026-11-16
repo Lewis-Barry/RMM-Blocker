@@ -19,14 +19,13 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][ValidateSet('Wdac', 'Macos', 'Ioc')][string[]]$Target,
-    [string]$WdacPolicyName,
+    [string]$WdacPolicyName = 'RMM Guard - WDAC',
     [string]$MacosPolicyName = 'Block RMM tools (macOS)',
     [string[]]$RingPolicyName = @(),
     [string[]]$Exclude = @(),
     [ValidatePattern('^(AllDevices|AllUsers|[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})$')][string]$Assignment,
     [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$')][string]$ExcludeGroupId,
     [ValidateRange(0, 365)][int]$MinimumReleaseAgeDays = 0,
-    [switch]$Force,
     [string]$TenantId,
     [string]$ClientId,
     [switch]$Interactive,
@@ -360,14 +359,6 @@ function Measure-SetChange([string[]]$Old, [string[]]$New) {
     }
 }
 
-function Test-ChangeSize([int]$Deployed, [int]$Added, [int]$Removed, [switch]$Force, [string]$Label) {
-    if ($Deployed -eq 0 -or $Force) { return }
-    $limit = [math]::Floor($Deployed * 0.25)
-    if ($Added -gt $limit -or $Removed -gt $limit) {
-        throw "${Label}: $Added added and $Removed removed against $Deployed deployed is more than 25 percent. Review the change and rerun with -Force."
-    }
-}
-
 # $null when the version may be applied, otherwise the reason to wait.
 # Invoke-RestMethod hands a JSON array over as one object; enumerate it so each release is its own entry.
 function ConvertFrom-Changelog($Response) { @($Response | ForEach-Object { $_ }) }
@@ -622,13 +613,12 @@ function Sync-Wdac {
     if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { return "unchanged v$($desired.Version)" }
     $deployed = Get-WdacFacts $currentXml
     $deployedOptions = (@($deployed.Policy.Rules.Rule.Option) | Sort-Object) -join '|'
-    if ($deployedOptions -ne ($script:RuleOptions -join '|') -and -not $Force) {
-        throw "WDAC: '$WdacPolicyName' has the rule options $deployedOptions, changed by hand (for example Audit Mode). The update would set $($script:RuleOptions -join '|'). Review, then rerun with -Force."
+    if ($deployedOptions -ne ($script:RuleOptions -join '|')) {
+        throw "WDAC: '$WdacPolicyName' has the rule options $deployedOptions, changed by hand (for example Audit Mode). The sync would switch them back to $($script:RuleOptions -join '|'). Set them back in Intune, or pass another -WdacPolicyName."
     }
     $change = Measure-SetChange $deployed.Rules $desired.Rules
     # Removing rules cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
-    Test-ChangeSize $deployed.Rules.Count $change.Added $change.Removed -Force:$Force -Label 'WDAC'
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
     if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
@@ -666,7 +656,6 @@ function Sync-Macos {
     if (-not $change.Added -and -not $change.Removed) { return "unchanged v$deployedVersion" }
     # Removing entries cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
-    Test-ChangeSize $deployedKeys.Count $change.Added $change.Removed -Force:$Force -Label 'macOS'
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
     if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { return "would be updated: $summary" }
     $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
@@ -694,7 +683,6 @@ function Sync-Ioc {
         $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml')).Version
         if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
     }
-    Test-ChangeSize $deployed.Count $diff.Added $diff.Remove.Count -Force:$Force -Label 'IOC'
     $summary = "$($diff.Upsert.Count) to import ($($diff.Added) new), $($diff.Remove.Count) to delete, $($desired.Count) wanted"
     if (-not $script:Cmdlet.ShouldProcess('Defender indicators', $summary)) { return "would be updated: $summary" }
     for ($i = 0; $i -lt $diff.Upsert.Count; $i += 500) {
@@ -714,6 +702,9 @@ function Sync-Ioc {
 }
 
 function Invoke-Sync {
+    if ($Target -contains 'Wdac' -and $Target -contains 'Macos' -and $WdacPolicyName -eq $MacosPolicyName) {
+        throw '-WdacPolicyName and -MacosPolicyName must differ: they are two separate Intune policies.'
+    }
     $script:Auth = Resolve-Auth
     if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -RequiredVersion '2.39.0' -Scope CurrentUser -Force -WhatIf:$false }
     Import-Module Microsoft.Graph.Authentication

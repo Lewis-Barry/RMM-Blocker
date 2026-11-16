@@ -236,10 +236,15 @@ Describe 'Shared' {
         $change.Added | Should -Be 1
         $change.Removed | Should -Be 2
     }
-    It 'allows a first deployment of any size' { { Test-ChangeSize 0 900 0 -Label T } | Should -Not -Throw }
-    It 'allows exactly 25 percent' { { Test-ChangeSize 100 25 25 -Label T } | Should -Not -Throw }
-    It 'stops above 25 percent' { { Test-ChangeSize 100 26 0 -Label T } | Should -Throw '*-Force*' }
-    It 'lets -Force through' { { Test-ChangeSize 100 0 90 -Force -Label T } | Should -Not -Throw }
+    It 'has no -Force and no change-size limit: the content checks are the safety net' {
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
+        $ast.ParamBlock.Parameters.Name.VariablePath.UserPath | Should -Not -Contain 'Force'
+        Get-Command Test-ChangeSize -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+    }
+    It 'defaults the WDAC policy name' {
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
+        ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'WdacPolicyName' }).DefaultValue.Value | Should -Be 'RMM Guard - WDAC'
+    }
     It 'decides release age' {
         # The same shape Invoke-RestMethod returns: one object holding the array.
         $log = ConvertFrom-Changelog (ConvertFrom-Json -NoEnumerate '[{"version":"1.0.0.22","date":"2026-11-10"},{"version":"1.0.0.21","date":"2026-11-01"}]')
@@ -337,8 +342,6 @@ Describe 'macOS hardening' {
 }
 
 Describe 'Shared hardening' {
-    It 'stops 26 removals of 100' { { Test-ChangeSize 100 0 26 -Label T } | Should -Throw '*-Force*' }
-    It 'stops 5 additions on 19 deployed' { { Test-ChangeSize 19 5 0 -Label T } | Should -Throw '*-Force*' }
     It 'merges g1 and g2' {
         $e = @([pscustomobject]@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g1' })
         @(Merge-AssignmentTargets $e @(@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g2' })).Count | Should -Be 2
@@ -464,7 +467,7 @@ Describe 'Sync decisions' {
     }
     BeforeEach {
         $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Written = $null
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -636,7 +639,7 @@ Describe 'Review fixes' {
     }
     BeforeEach {
         $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -697,11 +700,6 @@ Describe 'Review fixes' {
             Sync-Wdac | Should -BeLike 'skipped*'
             $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
             $script:Posts[0].Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003'
-        }
-        It 'posts the exclusion before the change-size guard stops the update' {
-            $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 300)
-            { Sync-Wdac } | Should -Throw '*-Force*'
-            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
         }
         It 'reports unchanged with -ceq and still assigns' {
             $script:Deployed = $script:PolicyXml
@@ -765,6 +763,11 @@ Describe 'Review fixes' {
     }
 
     Context 'Invoke-Sync (M10)' {
+        It 'refuses one name for the WDAC and the macOS policy before signing in' {
+            $Target = @('Wdac', 'Macos'); $WdacPolicyName = 'RMM Guard'; $MacosPolicyName = 'RMM Guard'
+            Mock Resolve-Auth { throw 'signed in' }
+            { Invoke-Sync } | Should -Throw '*two separate Intune policies*'
+        }
         It 'defines no function a Graph module command or alias would shadow' {
             # Aliases win over functions: a Connect-Graph function was silently replaced by the module's alias for a bare
             # Connect-MgGraph, which signed in with whatever delegated account was cached instead of the app.
@@ -806,7 +809,7 @@ Describe 'Second review' {
     }
     BeforeEach {
         $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -948,13 +951,8 @@ Describe 'Second review' {
             }
         }
         It 'stops instead of switching an Audit Mode policy back to enforced' {
-            { Sync-Wdac } | Should -Throw '*Audit Mode*-Force*'
+            { Sync-Wdac } | Should -Throw '*Audit Mode*Set them back in Intune*'
             $script:Posts | Should -BeNullOrEmpty
-        }
-        It 'lets -Force through' {
-            $Force = [switch]$true
-            Confirm $false
-            Sync-Wdac | Should -BeLike 'would be updated:*'
         }
     }
 
