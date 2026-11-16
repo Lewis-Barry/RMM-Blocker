@@ -21,10 +21,8 @@ param(
     [ValidateSet('All', 'Wdac', 'Macos', 'Ioc')][string[]]$Target = 'All',
     [ValidateNotNullOrEmpty()][string]$WdacPolicyName = 'RMM Guard - WDAC',
     [ValidateNotNullOrEmpty()][string]$MacosPolicyName = 'Block RMM tools (macOS)',
-    [string[]]$RingPolicyName = @(),
     [string[]]$Exclude = @(),
     [ValidatePattern('^(AllDevices|AllUsers|[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})\z')][string]$Assignment,
-    [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\z')][string]$ExcludeGroupId,
     [ValidateRange(0, 365)][int]$MinimumReleaseAgeDays = 0,
     [string]$TenantId,
     [string]$ClientId,
@@ -600,19 +598,10 @@ function Get-RMMGuardWdacPolicy {
     Get-GraphAll "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name" | Where-Object { Test-RMMGuardBase (Get-WdacXml $_.id) }
 }
 
-# The RMM Guard WDAC policy under another name, ignoring the other ring's policy (-RingPolicyName), which shares the PolicyID on purpose.
-function Find-WdacByPolicyId {
-    Get-RMMGuardWdacPolicy | Where-Object { $_.name -notin $RingPolicyName } | Select-Object -First 1
-}
-
-# -ExclusionOnly: an exclusion may go on at once, an inclusion only once the rules are current. The later full call sends the
-# exclusion again, so a stale /assignments read right after the first /assign cannot drop it.
-function Set-Assignment([string]$PolicyId, [switch]$ExclusionOnly) {
-    $wanted = @(
-        if ($Assignment -and -not $ExclusionOnly) { ConvertTo-AssignmentTarget $Assignment }
-        if ($ExcludeGroupId) { @{ '@odata.type' = '#microsoft.graph.exclusionGroupAssignmentTarget'; groupId = $ExcludeGroupId } }
-    )
-    if (-not $wanted.Count -or -not $PolicyId) { return }
+# Called only once the policy holds the current rules, so devices never get an outdated list (one that still blocks an -Exclude tool).
+function Set-Assignment([string]$PolicyId) {
+    if (-not $Assignment -or -not $PolicyId) { return }
+    $wanted = @(ConvertTo-AssignmentTarget $Assignment)
     # Only /assignments is reliable: $expand=assignments returned an empty list for an assigned policy in testing,
     # and a union built from that would wipe the existing assignments on the next /assign.
     $existing = @(Get-GraphAll "/deviceManagement/configurationPolicies/$PolicyId/assignments" | ForEach-Object { $_.target })
@@ -624,48 +613,14 @@ function Set-Assignment([string]$PolicyId, [switch]$ExclusionOnly) {
     }
 }
 
-# The pilot and the main policy share one PolicyID, and a device runs it only once: no device may be targeted by both. Checked against
-# every other policy with the PolicyID (a mistyped -RingPolicyName must not switch it off), with this policy's assignments after this run.
-# An exclusion separates only a device or group assignment, never All users: Intune does not reliably apply it there.
-function Test-RingOverlap([string]$PolicyId) {
-    $exclusion = '#microsoft.graph.exclusionGroupAssignmentTarget'
-    $users = '#microsoft.graph.allLicensedUsersAssignmentTarget'
-    $assigned = @(if ($PolicyId) { Get-GraphAll "/deviceManagement/configurationPolicies/$PolicyId/assignments" | ForEach-Object { $_.target } })
-    $wanted = @(
-        if ($Assignment) { ConvertTo-AssignmentTarget $Assignment }
-        if ($ExcludeGroupId) { @{ '@odata.type' = $exclusion; groupId = $ExcludeGroupId } }
-    )
-    $merged = Merge-AssignmentTargets $assigned $wanted
-    $mine = @($null -eq $merged ? $assigned : $merged)
-    $mineIn = @($mine | Where-Object { $_.'@odata.type' -ne $exclusion })
-    if (-not $mineIn.Count) { return }
-    $mineOut = @($mine | Where-Object { $_.'@odata.type' -eq $exclusion } | ForEach-Object { $_.groupId })
-    foreach ($other in @(Get-RMMGuardWdacPolicy | Where-Object id -ne $PolicyId)) {
-        $theirs = @(Get-GraphAll "/deviceManagement/configurationPolicies/$($other.id)/assignments" | ForEach-Object { $_.target })
-        $theirOut = @($theirs | Where-Object { $_.'@odata.type' -eq $exclusion } | ForEach-Object { $_.groupId })
-        foreach ($r in $theirs | Where-Object { $_.'@odata.type' -ne $exclusion }) {
-            foreach ($t in $mineIn) {
-                # Two different groups count as overlapping too: Entra groups can share members, directly or nested.
-                $separated = ($r.groupId -and $r.groupId -in $mineOut -and $t.'@odata.type' -ne $users) -or
-                    ($t.groupId -and $t.groupId -in $theirOut -and $r.'@odata.type' -ne $users)
-                if ($separated) { continue }
-                $what = $r.groupId ? "group $($r.groupId)" : ($r.'@odata.type' -replace '^#microsoft\.graph\.|AssignmentTarget$', '')
-                throw "WDAC: '$($other.name)' is assigned to $what and carries the same PolicyID as '$WdacPolicyName', so a device could get both WDAC policies. Exclude the pilot group from the main policy (-ExcludeGroupId, or Excluded groups in Intune). Refusing to assign '$WdacPolicyName'."
-            }
-        }
-    }
-}
-
 function Sync-Wdac {
-    if ($RingPolicyName -contains $WdacPolicyName) { throw "WDAC: -RingPolicyName must name the other ring's policy, not this one." }
     $xml = Get-RMMGuardFile 'wdac.xml' 'xml'
     $desired = Test-WdacPolicy $xml
     $policy = Find-Policy $WdacPolicyName
     if (-not $policy) {
-        $other = Find-WdacByPolicyId
+        $other = Get-RMMGuardWdacPolicy | Select-Object -First 1
         if ($other) { throw "WDAC: the RMM Guard policy already exists as '$($other.name)'. Pass -WdacPolicyName '$($other.name)'." }
         if ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
-        Test-RingOverlap
         if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Create App Control for Business policy v$($desired.Version) with $($desired.Rules.Count) deny rules")) { return 'would be created' }
         $created = Invoke-Graph POST '/deviceManagement/configurationPolicies' (New-WdacBody $WdacPolicyName "RMM Guard WDAC policy, created by Sync-RMMGuard.ps1." $xml)
         Set-Assignment $created.id
@@ -682,10 +637,9 @@ function Sync-Wdac {
     if ($deployedOptions -ne ($script:RuleOptions -join '|')) {
         throw "WDAC: '$WdacPolicyName' has the rule options $deployedOptions, changed by hand (for example Audit Mode). The sync would switch them back to $($script:RuleOptions -join '|'). Set them back in Intune, or pass another -WdacPolicyName."
     }
-    # The pilot exclusion goes on before the release age, so a main policy gets it even when its update waits. A new inclusion
-    # waits for the rules: it must never send devices a list that is out of date (for example one that still blocks an -Exclude tool).
-    Test-RingOverlap $policy.id
-    Set-Assignment $policy.id -ExclusionOnly
+    # Windows runs a policy ID only once per device, so a second copy of the RMM Guard policy would conflict with this one.
+    $other = Get-RMMGuardWdacPolicy | Where-Object id -ne $policy.id | Select-Object -First 1
+    if ($other) { throw "WDAC: the RMM Guard policy is also deployed as '$($other.name)', so a device could get both. Delete one of them in Intune." }
     if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { Set-Assignment $policy.id; return "unchanged v$($desired.Version)" }
     $change = Measure-SetChange $deployed.Rules $desired.Rules
     # Removing rules cannot block anything new, so only an addition waits for the release age.
@@ -722,7 +676,6 @@ function Sync-Macos {
     if (@(Get-SettingIds $deployedSettings | Where-Object { $_ -cnotin $script:MacSettingIds }).Count) {
         throw "macOS: '$MacosPolicyName' has settings beyond the RMM Guard deny list. Refusing to overwrite them."
     }
-    Set-Assignment $policy.id -ExclusionOnly
     $deployedKeys = @(Get-MacRules $deployedSettings | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
     $change = Measure-SetChange $deployedKeys $keys -CaseSensitive
     $deployedVersion = Get-MacVersion $policy.description
@@ -789,9 +742,6 @@ function Invoke-Sync {
     if ($Interactive -and $Target -contains 'All' -and $Target -notcontains 'Ioc') {
         $targets = @($targets -ne 'Ioc')
         Write-Warning 'Ioc: skipped, Defender indicators need an app sign-in; -Interactive covers WDAC and macOS.'
-    }
-    if ($Assignment -eq 'AllUsers' -and $ExcludeGroupId) {
-        throw '-Assignment AllUsers cannot be combined with -ExcludeGroupId: Intune does not reliably apply a device-group exclusion to a user-targeted policy. Use -Assignment AllDevices.'
     }
     if ($targets -contains 'Wdac' -and $targets -contains 'Macos' -and $WdacPolicyName -eq $MacosPolicyName) {
         throw '-WdacPolicyName and -MacosPolicyName must differ: they are two separate Intune policies.'

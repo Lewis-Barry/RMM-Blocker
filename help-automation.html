@@ -61,9 +61,8 @@
         <a href="#github" class="help-subsection">Option 1: GitHub Actions</a>
         <a href="#azure-devops" class="help-subsection">Option 2: Azure DevOps</a>
         <a href="#runbook" class="help-subsection">Option 3: Azure Automation Runbooks</a>
-        <a href="#pilot">6. Optional: pilot group</a>
-        <a href="#safety">7. Safety checks</a>
-        <a href="#troubleshooting">8. Troubleshooting</a>
+        <a href="#safety">6. Safety checks</a>
+        <a href="#troubleshooting">7. Troubleshooting</a>
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
@@ -121,6 +120,7 @@
             <tr><th scope="row"><code>-MacosPolicyName</code></th><td>Name of the macOS policy. Default <code>Block RMM tools (macOS)</code>, the name of this site's export. Must differ from the WDAC name: they are two separate policies. Defender indicators have no policy name.</td></tr>
             <tr><th scope="row"><code>-Exclude</code></th><td>Tools to leave out, as the RMM page names them: <code>-Exclude 'AnyDesk','TeamViewer'</code>.</td></tr>
             <tr><th scope="row"><code>-Assignment</code></th><td><code>AllDevices</code>, <code>AllUsers</code> or a group object ID. Added to the policy's assignments; existing ones are kept. Without it, a new policy is created unassigned. Indicators always apply to the whole tenant.</td></tr>
+            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old, for example <code>7</code>. An update that only removes blocks, such as a new exclusion, applies at once. A new <code>-Assignment</code> waits with the update, so devices never get an outdated list.</td></tr>
             <tr><th scope="row"><code>-WhatIf</code></th><td>Show what would change without changing it.</td></tr>
             <tr><th scope="row">Sign-in</th><td>One of:
               <ul class="param-list">
@@ -227,29 +227,8 @@ jobs:
         </table>
         <p>Leave the other parameters empty.</p>
       </section>
-      <section id="pilot" class="help-step" aria-labelledby="pilot-title">
-        <h2 id="pilot-title">6. Optional: pilot group</h2>
-        <p>Want new blocks on a few devices first? Run the script twice: once for a pilot group, and once for everyone else a week later.</p>
-        <p>The pilot run, with its own policy names, assigned to the pilot group:</p>
-        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos `
-    -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
-    -RingPolicyName 'RMM Guard - WDAC' -Assignment &lt;pilot group id&gt; `
-    -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
-        <p>The main run, for all devices except the pilot group, one week behind:</p>
-        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -RingPolicyName 'RMM Guard - WDAC (pilot)' `
-    -Assignment AllDevices -ExcludeGroupId &lt;pilot group id&gt; -MinimumReleaseAgeDays 7 `
-    -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
-        <table class="facts">
-          <tbody>
-            <tr><th scope="row"><code>-RingPolicyName</code></th><td>The name of the other WDAC policy. Windows allows each WDAC policy only once per device, and both policies are the same RMM Guard policy. With this name the script recognises the other one as yours, and stops if a device could get both. Two different groups count too, because groups can share members.</td></tr>
-            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code> or a group; an exclusion on <code>AllUsers</code> is refused, because Intune does not reliably apply it.</td></tr>
-            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. An update that only removes blocks, such as a new exclusion, applies at once. A new <code>-Assignment</code> waits with the update, so devices never get an outdated list.</td></tr>
-          </tbody>
-        </table>
-        <p>The pilot run leaves out the Defender indicators: they apply to the whole tenant, so only the main run syncs them.</p>
-      </section>
       <section id="safety" class="help-step" aria-labelledby="safety-title">
-        <h2 id="safety-title">7. Safety checks</h2>
+        <h2 id="safety-title">6. Safety checks</h2>
         <p>Before it changes anything, the script stops when:</p>
         <ul>
           <li>a WDAC rule would block a Windows, PowerShell, .NET, Office, Edge, Teams, OneDrive, Defender or Intune file or folder, or any .dll other than the ones RMM Guard blocks today;</li>
@@ -259,7 +238,7 @@ jobs:
         </ul>
       </section>
       <section id="troubleshooting" class="help-step" aria-labelledby="troubleshooting-title">
-        <h2 id="troubleshooting-title">8. Troubleshooting</h2>
+        <h2 id="troubleshooting-title">7. Troubleshooting</h2>
         <table class="facts">
           <thead><tr><th scope="col">Problem</th><th scope="col">What to do</th></tr></thead>
           <tbody>
@@ -268,7 +247,7 @@ jobs:
             <tr><td>The run refuses to overwrite a policy.</td><td>A policy with that name exists, but RMM Guard did not create it. Choose another name with <code>-WdacPolicyName</code> or <code>-MacosPolicyName</code>.</td></tr>
             <tr><td>The run says the RMM Guard policy already exists under another name.</td><td>You deployed it by hand earlier. Pass that name with <code>-WdacPolicyName</code>.</td></tr>
             <tr><td>The run stops because the WDAC rule options were changed by hand.</td><td>Someone changed the policy, for example to Audit Mode. Change it back in Intune, or sync to another policy name.</td></tr>
-            <tr><td>The run stops because a device could get both WDAC policies.</td><td>Pilot group only. Exclude the pilot group from the main policy: with <code>-ExcludeGroupId</code> on the main run, or under <strong>Excluded groups</strong> in Intune. Then run again.</td></tr>
+            <tr><td>The run says the RMM Guard policy is also deployed under another name.</td><td>Two Intune policies carry the same WDAC policy, and Windows runs it only once per device. Delete the one the script does not sync.</td></tr>
             <tr><td>The run stops because the indicator list is empty.</td><td>The published list is broken. Nothing was deleted. Report it, as above.</td></tr>
             <tr><td>Only the indicators fail, with <code>Defender sign-in failed</code>.</td><td>The tenant has no Defender for Endpoint, or the app lacks <code>Ti.ReadWrite</code>. Run with <code>-Target Wdac,Macos</code>, or rerun the setup script.</td></tr>
             <tr><td>The run skips an update because the release is too new.</td><td>Expected with <code>-MinimumReleaseAgeDays</code>. A later run applies it.</td></tr>

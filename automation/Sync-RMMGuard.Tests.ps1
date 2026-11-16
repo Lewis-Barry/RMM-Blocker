@@ -476,8 +476,8 @@ Describe 'Sync decisions' {
         function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
     }
     BeforeEach {
-        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $Exclude = @()
+        $Assignment = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Written = $null
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -493,19 +493,6 @@ Describe 'Sync decisions' {
             }
             { Sync-Wdac } | Should -Throw "*already exists as 'RMM Guard - WDAC (pilot)'*"
             Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
-        }
-        It 'creates the policy when the other name is the other ring' {
-            $RingPolicyName = @('RMM Guard - WDAC (pilot)')
-            Mock Invoke-Graph {
-                if ($Method -eq 'POST') { $script:Written = $Body; [pscustomobject]@{ id = 'new' } }
-                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @() } }
-                elseif ($Path -like '*templateFamily*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p2'; name = 'RMM Guard - WDAC (pilot)' }) } }
-                elseif ($Path -like '*/p2/settings') { WdacSettings $script:PolicyXml }
-            }
-            Sync-Wdac | Should -BeLike "created v$script:Version,*"
-            Should -Invoke Invoke-Graph -Times 1 -Exactly -ParameterFilter { $Method -eq 'POST' -and $Path -eq '/deviceManagement/configurationPolicies' }
-            $script:Written.name | Should -Be 'RMM Guard - WDAC'
-            $script:Written.settings[0].settingInstance.choiceSettingValue.children[0].simpleSettingValue.value | Should -Be $script:PolicyXml
         }
         Context 'existing policy' {
             BeforeEach {
@@ -598,16 +585,6 @@ Describe 'Sync decisions' {
             $targets[0].groupId | Should -Be 'g1'
             $targets[1].'@odata.type' | Should -Be '#microsoft.graph.allDevicesAssignmentTarget'
         }
-        It 'posts only the exclusion with -ExclusionOnly' {
-            $Assignment = 'AllDevices'; $ExcludeGroupId = 'aaaaaaaa-0000-0000-0000-000000000001'
-            Set-Assignment 'p1' -ExclusionOnly
-            @($script:Written.assignments.target | Where-Object groupId -ne 'g1').'@odata.type' | Should -Be @('#microsoft.graph.exclusionGroupAssignmentTarget')
-        }
-        It 'keeps the exclusion in the full call even when /assignments does not show it yet' {
-            $Assignment = 'AllDevices'; $ExcludeGroupId = 'aaaaaaaa-0000-0000-0000-000000000001'
-            Set-Assignment 'p1'
-            @($script:Written.assignments.target).'@odata.type' | Should -Contain '#microsoft.graph.exclusionGroupAssignmentTarget'
-        }
         It 'posts nothing when every wanted target exists' {
             $script:Existing += [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }
             $Assignment = 'AllDevices'
@@ -628,14 +605,13 @@ Describe 'Graph paging' {
         Should -Invoke Invoke-Graph -Times 1 -Exactly -ParameterFilter { $Path -eq '/x?$top=2&$skiptoken=t' }
     }
     It 'finds the RMM Guard PolicyID on the second page' {
-        $RingPolicyName = @()
         Mock Invoke-Graph {
             if ($Path -like '*templateFamily*' -and $Path -notlike '*skiptoken*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'a'; name = 'Other' }); '@odata.nextLink' = 'https://graph.microsoft.com/beta/deviceManagement/configurationPolicies?$skiptoken=t' } }
             elseif ($Path -like '*skiptoken*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'b'; name = 'Hidden' }) } }
             elseif ($Path -like '*/a/settings') { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' '<SiPolicy><PolicyID>{11111111-2222-3333-4444-555555555555}</PolicyID></SiPolicy>').settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
             elseif ($Path -like '*/b/settings') { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $script:PolicyXml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
         }
-        (Find-WdacByPolicyId).name | Should -Be 'Hidden'
+        (Get-RMMGuardWdacPolicy).name | Should -Be 'Hidden'
     }
     It 'stops when Defender returns 10000 indicators' {
         $script:Auth = @{ Mode = 'Secret' }; $script:Files = @{ 'iocs.csv' = (Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv") }
@@ -658,8 +634,8 @@ Describe 'Review fixes' {
         function FreshMac { $script:MacJson | ConvertFrom-Json -AsHashtable }
     }
     BeforeEach {
-        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $Exclude = @()
+        $Assignment = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -692,19 +668,13 @@ Describe 'Review fixes' {
                 elseif ($Path -like '*/j/settings') { WdacSettings 'not-base64!!' }
                 elseif ($Path -like '*/l/settings') { WdacSettings ($script:PolicyXml -replace '01A11AD0-7091-7896-89DD-447C515BCB5D', '01a11ad0-7091-7896-89dd-447c515bcb5d') }
             }
-            (Find-WdacByPolicyId).name | Should -Be 'Lower'
-            $RingPolicyName = @('Lower')
-            Find-WdacByPolicyId | Should -BeNullOrEmpty
-        }
-        It 'refuses -RingPolicyName naming this policy (M11)' {
-            $RingPolicyName = @('rmm guard - wdac')
-            { Sync-Wdac } | Should -Throw "*-RingPolicyName must name the other ring's policy, not this one.*"
+            (Get-RMMGuardWdacPolicy).name | Should -Be 'Lower'
         }
     }
 
-    Context 'assignment before the guards (I2)' {
+    Context 'assignment (I2)' {
         BeforeEach {
-            $ExcludeGroupId = 'bbbbbbbb-0000-0000-0000-000000000003'
+            $Assignment = 'bbbbbbbb-0000-0000-0000-000000000003'
             Mock Invoke-Graph {
                 if ($Method -ne 'GET') { $script:Posts += [pscustomobject]@{ Call = "$Method $Path"; Body = $Body } }
                 elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
@@ -713,20 +683,11 @@ Describe 'Review fixes' {
                 elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
             }
         }
-        It 'posts the exclusion even when the release is too young' {
-            $MinimumReleaseAgeDays = 7
-            $script:Changelog = @([pscustomobject]@{ version = $script:Version; date = (Get-Date).AddDays(-2).ToString('yyyy-MM-dd') })
-            $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 1) -replace '<VersionEx>[^<]+</VersionEx>', '<VersionEx>1.0.0.1</VersionEx>'
-            Sync-Wdac | Should -BeLike 'skipped*'
-            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
-            $script:Posts[0].Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003'
-        }
         It 'reports unchanged with -ceq and still assigns' {
             $script:Deployed = $script:PolicyXml
             Sync-Wdac | Should -Be "unchanged v$script:Version"
-            # This mock's /assignments never shows what was posted, so the full call after the exclusion-only one posts again.
-            $script:Posts.Call | Select-Object -Unique | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
-            $script:Posts | ForEach-Object { $_.Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003' }
+            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+            $script:Posts[0].Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003'
         }
         It 'treats a case-only XML difference as a change (M1)' {
             $script:Deployed = $script:PolicyXml.Replace('FilePath="*\ctes.exe"', 'FilePath="*\CTES.exe"')
@@ -851,12 +812,10 @@ Describe 'Second review' {
         $script:Version = (Get-WdacFacts $script:PolicyXml).Version
         function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
         function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
-        function Target($Type, $GroupId) { [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = "#microsoft.graph.$Type"; groupId = $GroupId } } }
-        $script:Pilot = 'aaaaaaaa-0000-0000-0000-000000000001'
     }
     BeforeEach {
-        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $Exclude = @()
+        $Assignment = $null; $MinimumReleaseAgeDays = 0
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
         Confirm $true
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
@@ -894,32 +853,32 @@ Describe 'Second review' {
                 $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
                 Sync-Wdac | Should -BeLike 'skipped*'
             }
-            It 'adds the exclusion at once but holds a new inclusion while an addition waits, and adds it after the PUT' {
+            It 'holds a new assignment while an addition waits, and adds it after the PUT' {
                 $script:Order = [System.Collections.Generic.List[string]]::new()
-                Mock Test-RingOverlap {}
-                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Get-RMMGuardWdacPolicy {}
+                Mock Set-Assignment { $script:Order.Add('assign') }
                 Mock Invoke-Graph { $script:Order.Add('PUT') } -ParameterFilter { $Method -eq 'PUT' }
                 $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
                 Sync-Wdac | Should -BeLike 'skipped*'
-                $script:Order | Should -Be @('exclusion')
+                $script:Order | Should -BeNullOrEmpty
                 $script:Order.Clear(); $MinimumReleaseAgeDays = 0; Confirm $true
                 Sync-Wdac | Should -BeLike 'updated*'
-                $script:Order | Should -Be @('exclusion', 'PUT', 'all')
+                $script:Order | Should -Be @('PUT', 'assign')
                 $script:Order.Clear(); $script:Deployed = $script:X2
                 Sync-Wdac | Should -BeLike 'unchanged*'
-                $script:Order | Should -Be @('exclusion', 'all')
+                $script:Order | Should -Be @('assign')
             }
-            It 'adds no inclusion when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
+            It 'adds no assignment when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
                 $script:Order = [System.Collections.Generic.List[string]]::new()
-                Mock Test-RingOverlap {}
-                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Get-RMMGuardWdacPolicy {}
+                Mock Set-Assignment { $script:Order.Add('assign') }
                 $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
                 $MinimumReleaseAgeDays = 0; Confirm $false
                 Sync-Wdac | Should -BeLike 'would be updated*'
-                $script:Order | Should -Be @('exclusion')
+                $script:Order | Should -BeNullOrEmpty
                 $script:Order.Clear(); $WhatIfPreference = $true
                 Sync-Wdac | Should -BeLike 'would be updated*'
-                $script:Order | Should -Be @('exclusion', 'all')
+                $script:Order | Should -Be @('assign')
             }
         }
         Context 'macOS' {
@@ -946,19 +905,19 @@ Describe 'Second review' {
                 $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
                 Sync-Macos | Should -BeLike 'skipped*'
             }
-            It 'adds the exclusion at once but holds a new inclusion while an addition waits, and adds it after the PUT' {
+            It 'holds a new assignment while an addition waits, and adds it after the PUT' {
                 $script:Order = [System.Collections.Generic.List[string]]::new()
-                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Set-Assignment { $script:Order.Add('assign') }
                 Mock Invoke-Graph { $script:Order.Add('PUT') } -ParameterFilter { $Method -eq 'PUT' }
                 $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
                 Sync-Macos | Should -BeLike 'skipped*'
-                $script:Order | Should -Be @('exclusion')
+                $script:Order | Should -BeNullOrEmpty
                 $script:Order.Clear(); $MinimumReleaseAgeDays = 0; Confirm $true
                 Sync-Macos | Should -BeLike 'updated*'
-                $script:Order | Should -Be @('exclusion', 'PUT', 'all')
+                $script:Order | Should -Be @('PUT', 'assign')
                 $script:Order.Clear(); $script:DeployedMac = DeployedMac { param($items) $items }
                 Sync-Macos | Should -BeLike 'unchanged*'
-                $script:Order | Should -Be @('exclusion', 'all')
+                $script:Order | Should -Be @('assign')
             }
             It 'compares signing IDs case-sensitively' {
                 Mock Set-Assignment {}
@@ -967,17 +926,17 @@ Describe 'Second review' {
                 Sync-Macos | Should -BeLike 'unchanged*'
                 Should -Invoke Measure-SetChange -Times 1 -Exactly -ParameterFilter { $CaseSensitive }
             }
-            It 'adds no inclusion when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
+            It 'adds no assignment when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
                 $script:Order = [System.Collections.Generic.List[string]]::new()
                 
-                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                Mock Set-Assignment { $script:Order.Add('assign') }
                 $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
                 $MinimumReleaseAgeDays = 0; Confirm $false
                 Sync-Macos | Should -BeLike 'would be updated*'
-                $script:Order | Should -Be @('exclusion')
+                $script:Order | Should -BeNullOrEmpty
                 $script:Order.Clear(); $WhatIfPreference = $true
                 Sync-Macos | Should -BeLike 'would be updated*'
-                $script:Order | Should -Be @('exclusion', 'all')
+                $script:Order | Should -Be @('assign')
             }
         }
         Context 'IOC' {
@@ -1034,13 +993,6 @@ Describe 'Second review' {
         }
     }
 
-    Context 'AllUsers with an exclusion (S6)' {
-        It 'refuses -Assignment AllUsers with -ExcludeGroupId for <T>, before signing in' -ForEach @(@{ T = 'Wdac' }, @{ T = 'Macos' }) {
-            $Target = @($T); $Assignment = 'AllUsers'; $ExcludeGroupId = $script:Pilot
-            Mock Resolve-Auth { throw 'signed in' }
-            { Invoke-Sync } | Should -Throw '*AllUsers cannot be combined with -ExcludeGroupId*'
-        }
-    }
 }
 
 Describe 'Third review' {
@@ -1055,13 +1007,12 @@ Describe 'Third review' {
         $script:Version = (Get-WdacFacts $script:PolicyXml).Version
         function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
         function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
-        function Target($Type, $GroupId) { [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = "#microsoft.graph.$Type"; groupId = $GroupId } } }
         $script:P = 'aaaaaaaa-0000-0000-0000-000000000001'
         $script:Young = @([pscustomobject]@{ version = $script:Version; date = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') })
     }
     BeforeEach {
-        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
-        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Interactive = [switch]$false
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $Exclude = @()
+        $Assignment = $null; $MinimumReleaseAgeDays = 0; $Interactive = [switch]$false
         $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
         Confirm $true
         $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
@@ -1185,9 +1136,9 @@ Describe 'Third review' {
         }
     }
 
-    Context 'rings' {
+    Context 'a second copy of the policy' {
         BeforeEach {
-            # p1 is this policy, r1 the other policy with the same PolicyID (its name does not matter any more).
+            # p1 is this policy, r1 another policy with the same PolicyID.
             $script:Exists = $true; $script:Own = @(); $script:Other = @(); $script:OtherExists = $true; $script:Settings = $script:PolicyXml
             Mock Invoke-Graph {
                 if ($Method -ne 'GET') { $script:Posts += "$Method $Path"; if ($Method -eq 'POST' -and $Path -eq '/deviceManagement/configurationPolicies') { [pscustomobject]@{ id = 'new' } } }
@@ -1199,59 +1150,9 @@ Describe 'Third review' {
                 elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
             }
         }
-        It 'allows the main policy on all devices when the pilot group is excluded with -ExcludeGroupId' {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = 'AllDevices'; $ExcludeGroupId = $script:P
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-        }
-        It 'allows the main policy when the pilot exclusion was set in Intune (P2)' {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
-            $script:Own = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P))
+        It 'refuses to update or assign when the RMM Guard policy is also deployed under another name' {
             $Assignment = 'AllDevices'
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-        }
-        It 'allows the pilot when the main policy excludes the pilot group' {
-            $script:Other = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = $script:P
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-        }
-        It 'refuses the main policy on all devices without excluding the pilot, even with a miscased or mistyped ring name' -ForEach @(@{ R = 'pilot wdac' }, @{ R = 'Pilot WDCA' }) {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @($R)
-            $Assignment = 'AllDevices'
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*Refusing*'
-            $script:Posts | Should -BeNullOrEmpty
-        }
-        It 'refuses two different groups without an exclusion: Entra groups can share members' {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = 'cccccccc-0000-0000-0000-000000000009'
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
-            $script:Posts | Should -BeNullOrEmpty
-        }
-        It 'allows two different groups when the main policy excludes the pilot group' {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = 'cccccccc-0000-0000-0000-000000000009'; $ExcludeGroupId = $script:P
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-        }
-        It 'refuses the pilot when its own policy is already assigned to all devices (P11)' {
-            $script:Other = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
-            $script:Own = @(Target 'allDevicesAssignmentTarget')
-            $Assignment = $script:P
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
-        }
-        It 'refuses the pilot when the other policy targets all users, even with the pilot group excluded (P8)' {
-            $script:Other = @((Target 'allLicensedUsersAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = $script:P
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
-        }
-        It 'refuses this policy on all users even when it excludes the pilot group (an exclusion does not separate All users)' {
-            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
-            $script:Own = @((Target 'allLicensedUsersAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P))
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
-        }
-        It 'refuses on the create path before anything is written' {
-            $script:Exists = $false; $script:Other = @(Target 'allDevicesAssignmentTarget'); $RingPolicyName = @('Pilot WDAC')
-            $Assignment = $script:P
-            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+            { Sync-Wdac } | Should -Throw "WDAC: the RMM Guard policy is also deployed as 'Pilot WDAC'*"
             $script:Posts | Should -BeNullOrEmpty
         }
         It 'assigns when no other policy carries the PolicyID' {
