@@ -1,0 +1,55 @@
+# RMM Guard sync for Azure DevOps. Copy to the root of an Azure Repos repository, next to Sync-RMMGuard.ps1.
+# Setup, service connection and variables: https://rmmguard.com/help-automation.html#azure-devops
+trigger: none
+schedules:
+  - cron: '0 6 * * 1'      # Mondays 06:00 UTC
+    displayName: Weekly RMM Guard sync
+    branches:
+      include: [main]
+    always: true
+pool:
+  vmImage: ubuntu-latest
+variables:
+  - group: rmm-guard       # RMMGUARD_PILOT_GROUP_ID and EXCLUDE (comma-separated tool names, may be empty)
+stages:
+  - stage: pilot
+    jobs:
+      - job: sync
+        steps:
+          - task: AzureCLI@2
+            displayName: Sync the pilot policies
+            inputs:
+              azureSubscription: rmm-guard   # workload identity federation service connection to the RMM Guard Sync app
+              scriptType: pscore
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true      # exposes tenantId, servicePrincipalId and idToken
+              inlineScript: |
+                ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
+                  -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+                  -RingPolicyName 'RMM Guard - WDAC' `
+                  -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) -Assignment '$(RMMGUARD_PILOT_GROUP_ID)' `
+                  -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
+  - stage: production
+    dependsOn: pilot
+    jobs:
+      - job: sync
+        steps:
+          - task: AzureCLI@2
+            displayName: Sync the production policies and Defender indicators
+            inputs:
+              azureSubscription: rmm-guard
+              scriptType: pscore
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
+                  -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
+                  -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+                  -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) `
+                  -Assignment AllDevices -ExcludeGroupId '$(RMMGUARD_PILOT_GROUP_ID)' `
+                  -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
+# Without a service connection: use a PowerShell@2 task (pwsh: true) instead of AzureCLI@2 and either
+#  - upload the .pfx as a Secure file, add a DownloadSecureFile@1 step (name: pfx) and pass
+#    -TenantId <tenant> -ClientId <app id> -CertificatePath $(pfx.secureFilePath), with RMMGUARD_CERT_PASSWORD as a secret variable
+#    mapped into the task's env; or
+#  - put the client secret in secret variable RMMGUARD_CLIENT_SECRET, map it into env, and pass only -TenantId and -ClientId.

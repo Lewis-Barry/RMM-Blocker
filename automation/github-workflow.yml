@@ -1,0 +1,57 @@
+# RMM Guard sync for GitHub Actions.
+# Copy to .github/workflows/rmm-guard-sync.yml in a private repository, with Sync-RMMGuard.ps1 in the repository root.
+# Setup, permissions and variables: https://rmmguard.com/help-automation.html#github
+name: RMM Guard sync
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write          # lets the job request an OIDC token for the app's federated credential
+env:
+  EXCLUDE: ''              # tool names to leave out, comma-separated, exactly as on rmmguard.com, e.g. AnyDesk,TeamViewer
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync the pilot policies
+        shell: pwsh
+        run: |
+          $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
+            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
+            -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+            -RingPolicyName 'RMM Guard - WDAC' `
+            -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
+            -Assignment '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
+            -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
+  production:
+    needs: pilot           # a pilot run stopped by a safety rule also stops production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync the production policies and Defender indicators
+        shell: pwsh
+        run: |
+          $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
+            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
+            -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
+            -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+            -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
+            -Assignment AllDevices -ExcludeGroupId '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
+            -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
+# Certificate instead of OIDC: store the .pfx as base64 in secret RMMGUARD_CERT_BASE64 and its password in
+# RMMGUARD_CERT_PASSWORD, then replace the token lines and -FederatedToken $token with:
+#   env:
+#     RMMGUARD_CERT_BASE64: ${{ secrets.RMMGUARD_CERT_BASE64 }}
+#     RMMGUARD_CERT_PASSWORD: ${{ secrets.RMMGUARD_CERT_PASSWORD }}
+#   run: |
+#     [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/rmmguard.pfx", [Convert]::FromBase64String($env:RMMGUARD_CERT_BASE64))
+#     ./Sync-RMMGuard.ps1 ... -CertificatePath "$env:RUNNER_TEMP/rmmguard.pfx"
+# Client secret (only if your tenant allows secrets): store it in secret RMMGUARD_CLIENT_SECRET, add
+#   env:
+#     RMMGUARD_CLIENT_SECRET: ${{ secrets.RMMGUARD_CLIENT_SECRET }}
+# and drop the token lines and -FederatedToken $token; the script reads the variable itself.
