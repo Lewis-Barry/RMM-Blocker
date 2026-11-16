@@ -432,3 +432,194 @@ function Connect-Graph {
         Connect-MgGraph -AccessToken (ConvertTo-SecureString (Get-AccessToken 'https://graph.microsoft.com') -AsPlainText -Force) -NoWelcome
     }
 }
+
+function Invoke-Graph([string]$Method, [string]$Path, $Body) {
+    $request = @{ Method = $Method; Uri = "$script:Graph$Path"; OutputType = 'PSObject' }
+    if ($null -ne $Body) { $request.Body = $Body | ConvertTo-Json -Depth 32; $request.ContentType = 'application/json' }
+    Invoke-MgGraphRequest @request
+}
+
+function Invoke-Defender([string]$Method, [string]$Path, $Body) {
+    $request = @{ Method = $Method; Uri = "$script:Defender$Path"; Headers = @{ Authorization = "Bearer $script:DefenderToken" } }
+    if ($null -ne $Body) { $request.Body = $Body | ConvertTo-Json -Depth 8; $request.ContentType = 'application/json' }
+    Invoke-RestMethod @request
+}
+
+# One download per file per run; a non-200 or a body of the wrong type (a Cloudflare challenge page) stops the target.
+function Get-RMMGuardFile([string]$File, [string]$Type) {
+    if ($script:Files.ContainsKey($File)) { return $script:Files[$File] }
+    $response = Invoke-WebRequest -Uri (Get-ApiUrl $File $Exclude) -SkipHttpErrorCheck
+    $content = $response.Content -is [byte[]] ? [Text.Encoding]::UTF8.GetString($response.Content) : [string]$response.Content
+    if ($response.StatusCode -ne 200) { throw "${File}: HTTP $($response.StatusCode). $($content.Trim())" }
+    if ("$($response.Headers['Content-Type'])" -notmatch [regex]::Escape($Type)) { throw "${File}: unexpected content type $($response.Headers['Content-Type'])." }
+    $script:Files[$File] = $content
+    $content
+}
+
+function Find-Policy([string]$Name) {
+    $filter = [uri]::EscapeDataString("name eq '$($Name.Replace("'", "''"))'")
+    # The filter has returned extra rows in testing, so the name is checked here as well.
+    $found = @((Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name,description").value | Where-Object name -ceq $Name)
+    if ($found.Count -gt 1) { throw "More than one Intune policy is named '$Name'. Rename the duplicates first." }
+    $found | Select-Object -First 1
+}
+
+function Get-WdacXml([string]$PolicyId) {
+    $settings = @((Invoke-Graph GET "/deviceManagement/configurationPolicies/$PolicyId/settings").value)
+    $value = $settings.settingInstance.choiceSettingValue.children | Where-Object settingDefinitionId -like '*_xml' |
+        ForEach-Object { $_.simpleSettingValue.value } | Select-Object -First 1
+    # Graph returns what was posted (plain text); decode in case the portal's upload stored base64.
+    if ($value -and -not $value.TrimStart().StartsWith('<')) { $value = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($value)) }
+    $value
+}
+
+# The RMM Guard WDAC policy under another name, ignoring the other ring's policy (-RingPolicyName), which shares the PolicyID on purpose.
+function Find-WdacByPolicyId {
+    $filter = [uri]::EscapeDataString("templateReference/templateFamily eq 'endpointSecurityApplicationControl'")
+    foreach ($candidate in (Invoke-Graph GET "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name").value | Where-Object { $_.name -cnotin $RingPolicyName }) {
+        if ("$(Get-WdacXml $candidate.id)".Contains($script:PolicyId)) { return $candidate }
+    }
+}
+
+function Set-Assignment([string]$PolicyId) {
+    $wanted = @(
+        if ($Assignment) { ConvertTo-AssignmentTarget $Assignment }
+        if ($ExcludeGroupId) { @{ '@odata.type' = '#microsoft.graph.exclusionGroupAssignmentTarget'; groupId = $ExcludeGroupId } }
+    )
+    if (-not $wanted.Count -or -not $PolicyId) { return }
+    # Only /assignments is reliable: $expand=assignments returned an empty list for an assigned policy in testing,
+    # and a union built from that would wipe the existing assignments on the next /assign.
+    $existing = @((Invoke-Graph GET "/deviceManagement/configurationPolicies/$PolicyId/assignments").value | ForEach-Object { $_.target })
+    $targets = Merge-AssignmentTargets $existing $wanted
+    if ($null -eq $targets) { return }
+    $labels = ($wanted | ForEach-Object { "$($_.'@odata.type' -replace '^#microsoft\.graph\.', '') $($_.groupId)".Trim() }) -join ', '
+    if ($script:Cmdlet.ShouldProcess($PolicyId, "Add assignment $labels")) {
+        Invoke-Graph POST "/deviceManagement/configurationPolicies/$PolicyId/assign" @{ assignments = @($targets | ForEach-Object { @{ target = $_ } }) } | Out-Null
+    }
+}
+
+function Sync-Wdac {
+    if (-not $WdacPolicyName) { throw 'WDAC: -WdacPolicyName is required.' }
+    $xml = Get-RMMGuardFile 'wdac.xml' 'xml'
+    $desired = Test-WdacPolicy $xml
+    $policy = Find-Policy $WdacPolicyName
+    if (-not $policy) {
+        $other = Find-WdacByPolicyId
+        if ($other) { throw "WDAC: the RMM Guard policy already exists as '$($other.name)'. Pass -WdacPolicyName '$($other.name)'." }
+        if ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+        if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Create App Control for Business policy v$($desired.Version) with $($desired.Rules.Count) deny rules")) { return 'would be created' }
+        $created = Invoke-Graph POST '/deviceManagement/configurationPolicies' (New-WdacBody $WdacPolicyName "RMM Guard WDAC policy, created by Sync-RMMGuard.ps1." $xml)
+        Set-Assignment $created.id
+        return "created v$($desired.Version), $($desired.Rules.Count) deny rules"
+    }
+    $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=id,name,description,roleScopeTagIds,templateReference,settingCount"
+    if ($current.templateReference.templateId -ne $script:WdacTemplateId -or $current.settingCount -ne 1) {
+        throw "WDAC: '$WdacPolicyName' is not an App Control for Business XML policy. Refusing to change it."
+    }
+    $currentXml = Get-WdacXml $policy.id
+    if (-not "$currentXml".Contains($script:PolicyId)) { throw "WDAC: '$WdacPolicyName' does not carry the RMM Guard PolicyID. Refusing to overwrite it." }
+    if ((ConvertTo-NormalizedXml $currentXml) -eq (ConvertTo-NormalizedXml $xml)) {
+        Set-Assignment $policy.id
+        return "unchanged v$($desired.Version)"
+    }
+    $deployed = Get-WdacFacts $currentXml
+    if ($deployed.Version -ne $desired.Version -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
+    $change = Measure-SetChange $deployed.Rules $desired.Rules
+    Test-ChangeSize $deployed.Rules.Count $change.Added $change.Removed -Force:$Force -Label 'WDAC'
+    $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
+    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
+    Set-Assignment $policy.id
+    "updated $summary"
+}
+
+function Sync-Macos {
+    $body = Get-RMMGuardFile 'macos.json' 'json' | ConvertFrom-Json -AsHashtable
+    Test-MacBody $body
+    $rules = Get-MacRules $body.settings
+    Test-MacRules $rules
+    $version = Get-MacVersion $body.description
+    if (-not $version) { throw 'macOS: the policy description carries no version.' }
+    $body.name = $MacosPolicyName
+    $keys = @($rules | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
+    $policy = Find-Policy $MacosPolicyName
+    if (-not $policy) {
+        if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+        if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Create macOS deny list v$version with $($keys.Count) entries")) { return 'would be created' }
+        $created = Invoke-Graph POST '/deviceManagement/configurationPolicies' $body
+        Set-Assignment $created.id
+        return "created v$version, $($keys.Count) entries"
+    }
+    if (-not "$($policy.description)".StartsWith($script:MacDescriptionPrefix)) {
+        throw "macOS: '$MacosPolicyName' is not an RMM Guard deny list (description does not start with '$script:MacDescriptionPrefix'). Refusing to overwrite it."
+    }
+    $deployedKeys = @(Get-MacRules (Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)/settings").value | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
+    $change = Measure-SetChange $deployedKeys $keys
+    $deployedVersion = Get-MacVersion $policy.description
+    if (-not $change.Added -and -not $change.Removed) {
+        Set-Assignment $policy.id
+        return "unchanged v$deployedVersion"
+    }
+    if ($deployedVersion -ne $version -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
+    Test-ChangeSize $deployedKeys.Count $change.Added $change.Removed -Force:$Force -Label 'macOS'
+    $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
+    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { return "would be updated: $summary" }
+    $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
+    Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" @{
+        name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies
+        roleScopeTagIds = @($current.roleScopeTagIds); settings = $body.settings
+    } | Out-Null
+    Set-Assignment $policy.id
+    "updated $summary"
+}
+
+function Sync-Ioc {
+    if ($script:Auth.Mode -eq 'Interactive') {
+        throw 'IOC: Defender indicators need an app identity (-CertificatePath, -CertificateThumbprint, -FederatedToken, -Identity or -ClientSecret); -Interactive cannot reach the Defender API.'
+    }
+    $desired = @(ConvertFrom-IocCsv (Get-RMMGuardFile 'iocs.csv' 'csv'))
+    # With Ti.ReadWrite the app only sees the indicators it created; the title filter also covers Ti.ReadWrite.All.
+    $deployed = @((Invoke-Defender GET '/indicators?$top=10000').value | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') })
+    $diff = Compare-IocSet $desired $deployed
+    if (-not $diff.Upsert.Count -and -not $diff.Remove.Count) { return "unchanged, $($desired.Count) indicators" }
+    # The CSV has no version of its own; it is built from the same release as the WDAC policy.
+    $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml')).Version
+    if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+    Test-ChangeSize $deployed.Count $diff.Added $diff.Remove.Count -Force:$Force -Label 'IOC'
+    $summary = "$($diff.Upsert.Count) to import ($($diff.Added) new), $($diff.Remove.Count) to delete, $($desired.Count) wanted"
+    if (-not $script:Cmdlet.ShouldProcess('Defender indicators', $summary)) { return "would be updated: $summary" }
+    for ($i = 0; $i -lt $diff.Upsert.Count; $i += 500) {
+        $batch = $diff.Upsert[$i..([math]::Min($i + 499, $diff.Upsert.Count - 1))]
+        $result = Invoke-Defender POST '/indicators/import' @{ Indicators = @($batch) }
+        $failed = @($result.value | Where-Object isFailed)
+        if ($failed.Count) { throw "IOC: $($failed.Count) indicators failed to import, first: $($failed[0].indicator) ($($failed[0].failureReason))." }
+    }
+    for ($i = 0; $i -lt $diff.Remove.Count; $i += 500) {
+        $ids = @($diff.Remove[$i..([math]::Min($i + 499, $diff.Remove.Count - 1))] | ForEach-Object { [string]$_.id })
+        Invoke-Defender POST '/indicators/BatchDelete' @{ IndicatorIds = $ids } | Out-Null
+    }
+    "updated: $summary"
+}
+
+function Invoke-Sync {
+    $script:Auth = Resolve-Auth
+    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -WhatIf:$false }
+    Import-Module Microsoft.Graph.Authentication
+    # Both tokens up front: a federated token from a pipeline is short-lived.
+    if ($Target -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
+    if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-Graph }
+    $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? (ConvertFrom-Changelog (Invoke-RestMethod "$script:Site/changelog.json")) : @()
+    $failed = 0
+    foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $Target }) {
+        try {
+            $result = & "Sync-$name"
+            if ($result -like 'skipped*') { Write-Warning "${name}: $result" } else { Write-Host "${name}: $result" }
+        } catch {
+            $failed++
+            Write-Host "${name}: FAILED. $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    if ($failed) { throw "$failed of $($Target.Count) target(s) failed." }
+}
+
+Invoke-Sync
