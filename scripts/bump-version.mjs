@@ -32,8 +32,11 @@ export function changelogEntry(before, after, version, date) {
   const products = Object.entries(after.products).map(([name, product]) => {
     const old = before.products[name];
     const added = field => (product[field] || []).filter(value => !lowered(old, field).has(value.toLowerCase()));
-    const oldIndicators = new Set(indicators(old));
-    return { name, new: !old, paths: added("paths"), domains: [...product.domains || [], ...product.vendorDomains || [], ...product.ips || []].filter(value => !oldIndicators.has(value.toLowerCase())) };
+    // Seen holds the old values plus every value listed so far, so a value in two fields or two cases shows once.
+    const seen = new Set(indicators(old));
+    const domains = [...product.domains || [], ...product.vendorDomains || [], ...product.ips || []]
+      .filter(value => !seen.has(value.toLowerCase()) && seen.add(value.toLowerCase()));
+    return { name, new: !old, paths: added("paths"), domains };
   }).filter(change => change.paths.length || change.domains.length);
   const afterPaths = new Set(JSON.parse(pathSet(after)));
   const removed = JSON.parse(pathSet(before)).filter(path => !afterPaths.has(path)).length;

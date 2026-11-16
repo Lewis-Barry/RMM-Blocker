@@ -116,6 +116,12 @@ test("changelogEntry lists added IPs and counts removed domains and IPs, so an i
   });
 });
 
+test("changelogEntry lists an indicator once, whatever its case or field", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { domains: ["acme.com"] } } };
+  const after = { version: "1.0.0.10", products: { Acme: { domains: ["acme.com", "New.com"], vendorDomains: ["new.com"] } } };
+  assert.deepEqual(changelogEntry(before, after, "1.0.0.10", "2026-01-01").products[0].domains, ["New.com"]);
+});
+
 test("a tool named after one part of a combined product joins that product", () => {
   const data = { version: "1.0.0.9", products: { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"] } } };
   const { products, changes } = sync(data, [tool("NinjaRMM", [], ["ninja-backup.com"])], none);
