@@ -176,6 +176,14 @@ test("bump raises the version when only domains or IPs change, but not for a cas
   assert.equal(bump(before, withDomains(["ACME.com"])), null);
 });
 
+test("bump raises the version when a path or indicator moves to another product, because -Exclude works per product", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"], domains: ["relay.example.com"] }, Beta: { paths: ["*\\beta.exe"] } } };
+  const domainMoved = { ...before, products: { Acme: { paths: ["*\\acme.exe"] }, Beta: { paths: ["*\\beta.exe"], domains: ["relay.example.com"] } } };
+  assert.equal(bump(before, domainMoved).version, "1.0.0.10");
+  const pathMoved = { ...before, products: { Acme: { paths: [], domains: ["relay.example.com"] }, Beta: { paths: ["*\\beta.exe", "*\\acme.exe"] } } };
+  assert.equal(bump(before, pathMoved).version, "1.0.0.10");
+});
+
 test("bump also raises the version when a macOS rule is added or refined without a version change", () => {
   const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"] } } };
   const macos = { rules: [{ teamId: "ABCDEFGHIJ" }], source: "https://example.com/acme.dmg", verified: "2026-01-01" };

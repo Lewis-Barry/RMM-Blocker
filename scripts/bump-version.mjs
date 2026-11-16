@@ -6,17 +6,20 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { bumpVersion } from "./sync-lolrmm.mjs";
 
-// Deny paths and macOS rules both change what devices block, so either bumps the version.
+// Deny paths and macOS rules across all products, for the removed count in the changelog.
 const pathSet = data => JSON.stringify(Object.values(data.products).flatMap(product => [
   ...(product.paths || []).map(path => path.toLowerCase()),
   ...(product.macos?.rules || []).map(rule => JSON.stringify(rule)),
 ]).sort());
 
-// The indicator CSV is built from domains and IPs, so those bump the version too (but stay out of the removed-path count).
-const blockSet = data => JSON.stringify([...JSON.parse(pathSet(data)), ...Object.values(data.products).flatMap(product => [
+// Everything that blocks, per product: the indicator CSV is built from domains and IPs, and -Exclude works per product,
+// so a value moving to another product changes what an excluding tenant blocks and needs its own version (and release date).
+const blockSet = data => JSON.stringify(Object.entries(data.products).flatMap(([name, product]) => [
+  ...(product.paths || []).map(path => `path:${path.toLowerCase()}`),
+  ...(product.macos?.rules || []).map(rule => `macos:${JSON.stringify(rule)}`),
   ...[...(product.domains || []), ...(product.vendorDomains || [])].map(domain => `domain:${domain.toLowerCase()}`),
   ...(product.ips || []).map(ip => `ip:${ip}`),
-])].sort());
+].map(value => `${name}|${value}`)).sort());
 
 export function bump(before, after) {
   if (after.version !== before.version || blockSet(after) === blockSet(before)) return null;
