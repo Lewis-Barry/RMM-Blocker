@@ -20,7 +20,6 @@ steps:
       addSpnToEnvironment: true
       inlineScript: |
         $sync = @{
-          Target         = 'Wdac', 'Macos', 'Ioc'
           Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
           TenantId       = $env:tenantId
           ClientId       = $env:servicePrincipalId

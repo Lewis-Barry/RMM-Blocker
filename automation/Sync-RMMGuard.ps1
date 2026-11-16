@@ -9,16 +9,16 @@
     Guide: https://rmmguard.com/help-automation.html
 
 .EXAMPLE
-    ./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf
+    ./Sync-RMMGuard.ps1 -Interactive -WhatIf
 
 .EXAMPLE
-    ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -WdacPolicyName 'RMM Guard - WDAC' -Exclude 'AnyDesk' `
+    ./Sync-RMMGuard.ps1 -Exclude 'AnyDesk' `
         -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId <app id> -CertificatePath ./RMMGuardSync.pfx
 #>
 #Requires -Version 7.4
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [Parameter(Mandatory)][ValidateSet('Wdac', 'Macos', 'Ioc')][string[]]$Target,
+    [ValidateSet('All', 'Wdac', 'Macos', 'Ioc')][string[]]$Target = 'All',
     [string]$WdacPolicyName = 'RMM Guard - WDAC',
     [string]$MacosPolicyName = 'Block RMM tools (macOS)',
     [string[]]$RingPolicyName = @(),
@@ -701,20 +701,29 @@ function Sync-Ioc {
     "updated: $summary"
 }
 
+function Resolve-Target([string[]]$Target) {
+    @('Wdac', 'Macos', 'Ioc') | Where-Object { $Target -contains 'All' -or $Target -contains $_ }
+}
+
 function Invoke-Sync {
-    if ($Target -contains 'Wdac' -and $Target -contains 'Macos' -and $WdacPolicyName -eq $MacosPolicyName) {
+    $targets = @(Resolve-Target $Target)
+    # Defender has no personal sign-in: with All, an interactive run covers WDAC and macOS; an explicit Ioc still fails.
+    if ($Interactive -and $Target -contains 'All') {
+        $targets = @($targets -ne 'Ioc')
+        Write-Warning 'Ioc: skipped, Defender indicators need an app sign-in; -Interactive covers WDAC and macOS.'
+    }
+    if ($targets -contains 'Wdac' -and $targets -contains 'Macos' -and $WdacPolicyName -eq $MacosPolicyName) {
         throw '-WdacPolicyName and -MacosPolicyName must differ: they are two separate Intune policies.'
     }
     $script:Auth = Resolve-Auth
     if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -RequiredVersion '2.39.0' -Scope CurrentUser -Force -WhatIf:$false }
     Import-Module Microsoft.Graph.Authentication
     # Both tokens up front: a federated token from a pipeline is short-lived.
-    if ($Target -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
-    if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-RMMGuardGraph }
+    if ($targets -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
+    if ($targets -contains 'Wdac' -or $targets -contains 'Macos') { Connect-RMMGuardGraph }
     $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? (ConvertFrom-Changelog (Invoke-RestMethod "$script:Site/changelog.json")) : @()
     $failed = 0
-    $targets = @($Target | Sort-Object -Unique)
-    foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $targets }) {
+    foreach ($name in $targets) {
         try {
             $result = & "Sync-$name"
             if ($result -like 'skipped*') { Write-Warning "${name}: $result" } else { Write-Host "${name}: $result" }

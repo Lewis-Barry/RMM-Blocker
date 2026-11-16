@@ -23,7 +23,6 @@ jobs:
           $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
             -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
           $sync = @{
-            Target         = 'Wdac', 'Macos', 'Ioc'
             Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
             TenantId       = $env:TENANT_ID
             ClientId       = $env:CLIENT_ID

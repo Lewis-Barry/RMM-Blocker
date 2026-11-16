@@ -740,7 +740,7 @@ run();
 function testAutomation() {
   test("Sync command without exclusions has no -Exclude", () => {
     const command = buildSyncCommand(new Set());
-    assert(command === "./Sync-RMMGuard.ps1 -Target Wdac,Macos -Interactive -WhatIf", command);
+    assert(command === "./Sync-RMMGuard.ps1 -Interactive -WhatIf", command);
   });
   test("Sync command lists exclusions sorted and quoted", () => {
     const command = buildSyncCommand(new Set(["TeamViewer", "AnyDesk", "Splashtop"]));

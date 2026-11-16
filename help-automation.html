@@ -116,7 +116,7 @@
         <h2 id="parameters-title">4. Parameters</h2>
         <table class="facts">
           <tbody>
-            <tr><th scope="row"><code>-Target</code></th><td>What to sync: <code>Wdac</code>, <code>Macos</code> and/or <code>Ioc</code>. All three: <code>-Target Wdac,Macos,Ioc</code>.</td></tr>
+            <tr><th scope="row"><code>-Target</code></th><td>What to sync. Default <code>All</code>: WDAC, macOS and the Defender indicators. To sync less, name them: <code>-Target Macos</code> or <code>-Target Wdac,Ioc</code>. With <code>-Interactive</code>, <code>All</code> skips the indicators, which need the app.</td></tr>
             <tr><th scope="row"><code>-WdacPolicyName</code></th><td>Name of the WDAC policy in Intune. Default <code>RMM Guard - WDAC</code>. Created when it does not exist.</td></tr>
             <tr><th scope="row"><code>-MacosPolicyName</code></th><td>Name of the macOS policy. Default <code>Block RMM tools (macOS)</code>, the name of this site's export. Must differ from the WDAC name: they are two separate policies. Defender indicators have no policy name.</td></tr>
             <tr><th scope="row"><code>-Exclude</code></th><td>Tools to leave out, as the RMM page names them: <code>-Exclude 'AnyDesk','TeamViewer'</code>.</td></tr>
@@ -135,7 +135,7 @@
         </table>
         <h3>Examples</h3>
         <p>Everything, assigned to all devices:</p>
-        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx</code></pre>
         <p>Only macOS, as a preview with your own account:</p>
         <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Macos -Interactive -WhatIf</code></pre>
         <p>Only WDAC, without AnyDesk and TeamViewer:</p>
@@ -187,7 +187,6 @@ jobs:
           $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&amp;audience=api://AzureADTokenExchange" `
             -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
           $sync = @{
-            Target         = 'Wdac', 'Macos', 'Ioc'
             Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
             TenantId       = $env:TENANT_ID
             ClientId       = $env:CLIENT_ID
@@ -209,7 +208,7 @@ jobs:
           <li>In the Automation account: <strong>Identity</strong> → <strong>System assigned</strong> → <strong>On</strong>. Copy the <strong>Object (principal) ID</strong> and run the <a href="#app">managed identity</a> setup command with it.</li>
           <li><strong>Runtime Environments</strong>: PowerShell 7.4 with the module <code>Microsoft.Graph.Authentication</code>.</li>
           <li><strong>Runbooks</strong> → <strong>Create</strong>: type PowerShell, runtime 7.4. Paste <code>Sync-RMMGuard.ps1</code> and <strong>Publish</strong>.</li>
-          <li>Link a weekly <strong>Schedule</strong> with the parameters <code>TARGET</code> <code>["Wdac","Macos","Ioc"]</code>, <code>IDENTITY</code> <code>true</code>, and optionally <code>ASSIGNMENT</code> and <code>EXCLUDE</code> (<code>["AnyDesk","TeamViewer"]</code>).</li>
+          <li>Link a weekly <strong>Schedule</strong> with the parameter <code>IDENTITY</code> <code>true</code>, and optionally <code>ASSIGNMENT</code> and <code>EXCLUDE</code> (<code>["AnyDesk","TeamViewer"]</code>).</li>
         </ol>
       </section>
       <section id="pilot" class="help-step" aria-labelledby="pilot-title">
@@ -220,7 +219,7 @@ jobs:
     -RingPolicyName 'RMM Guard - WDAC' -Assignment &lt;pilot group id&gt; ...
 
 # Everyone else: one week behind, without the pilot group
-./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+./Sync-RMMGuard.ps1 -RingPolicyName 'RMM Guard - WDAC (pilot)' `
     -Assignment AllDevices -ExcludeGroupId &lt;pilot group id&gt; -MinimumReleaseAgeDays 7 ...</code></pre>
         <ul>
           <li><code>-RingPolicyName</code> names the other WDAC policy. Both carry the same policy ID, so the script refuses to assign when a device could get both.</li>

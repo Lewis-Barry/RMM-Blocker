@@ -763,6 +763,31 @@ Describe 'Review fixes' {
     }
 
     Context 'Invoke-Sync (M10)' {
+        It 'defaults -Target to All' {
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
+            ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'Target' }).DefaultValue.Value | Should -Be 'All'
+        }
+        It 'expands All and removes duplicates' {
+            Resolve-Target @('All') | Should -Be @('Wdac', 'Macos', 'Ioc')
+            Resolve-Target @('All', 'Ioc') | Should -Be @('Wdac', 'Macos', 'Ioc')
+            Resolve-Target @('Ioc', 'Wdac', 'Wdac') | Should -Be @('Wdac', 'Ioc')
+        }
+        It 'skips the indicators with a warning for All with -Interactive' {
+            $Target = @('All'); $Interactive = [switch]$true
+            Mock Resolve-Auth { @{ Mode = 'Interactive' } }
+            Mock Get-Module { 'present' }
+            Mock Import-Module {}
+            Mock Connect-RMMGuardGraph {}
+            Mock Write-Host {}
+            Mock Write-Warning {}
+            Mock Sync-Wdac { 'unchanged' }
+            Mock Sync-Macos { 'unchanged' }
+            Mock Sync-Ioc { throw 'should not run' }
+            Invoke-Sync
+            Should -Invoke Sync-Ioc -Times 0 -Exactly
+            Should -Invoke Sync-Wdac -Times 1 -Exactly
+            Should -Invoke Write-Warning -ParameterFilter { $Message -like 'Ioc: skipped*app*' }
+        }
         It 'refuses one name for the WDAC and the macOS policy before signing in' {
             $Target = @('Wdac', 'Macos'); $WdacPolicyName = 'RMM Guard'; $MacosPolicyName = 'RMM Guard'
             Mock Resolve-Auth { throw 'signed in' }
