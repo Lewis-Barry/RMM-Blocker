@@ -8,15 +8,15 @@
       - WindowsDefenderATP         Ti.ReadWrite                                 (Defender indicators it creates itself)
     and adds a credential that expires after -CredentialDays days:
       - Certificate (default): a self-signed certificate. Only its public key is uploaded to the app; the private key
-        is saved as a password-protected .pfx at -CertificatePath (readable by you only on macOS/Linux). Works in
+        is saved as a password-protected .pfx at -CertificatePath, by default ~/RMMGuardSync-<TenantId>.pfx (readable by you only on macOS/Linux). Works in
         tenants whose app management policy blocks client secrets.
       - Secret: a client secret, shown once and never written to disk.
       - None: no credential, for OIDC (federated credential) or when you add one yourself.
     If any step after creating the app fails, the app is deleted again so nothing half-configured is left behind.
 
     -Remove: deletes every app registration this script created (display name AND the RMMGuardSync tag must match),
-    including its service principal and permission grants, purges it from the deleted-items recycle bin, and deletes
-    the .pfx at -CertificatePath. Policies and indicators the app created are left in place.
+    including its service principal and permission grants, purges it from the deleted-items recycle bin, and then deletes
+    the .pfx at -CertificatePath (only when an app was removed). Policies and indicators the app created are left in place.
 
     -FederatedSubject: also adds a federated credential (OIDC) for that subject, so GitHub Actions or Azure DevOps sign in
     without any secret or certificate. Combine with -CredentialType None.
@@ -39,7 +39,7 @@ param(
     [string]$DisplayName = 'RMM Guard Sync',
     [ValidateSet('Certificate', 'Secret', 'None')][string]$CredentialType = 'Certificate',
     [ValidateRange(1, 730)][int]$CredentialDays = 30,
-    [string]$CertificatePath = (Join-Path $HOME 'RMMGuardSync.pfx'),
+    [string]$CertificatePath,                                         # default: ~/RMMGuardSync-<TenantId>.pfx, one file per tenant
     [string]$FederatedSubject,                                        # e.g. repo:contoso/rmm-guard:ref:refs/heads/main
     [string]$FederatedIssuer = 'https://token.actions.githubusercontent.com',
     [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$')][string]$ManagedIdentityObjectId,
@@ -47,6 +47,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $CertificatePath) { $CertificatePath = Join-Path $HOME "RMMGuardSync-$($TenantId -replace '[^A-Za-z0-9.-]', '-').pfx" }
 $tag = 'RMMGuardSync'
 $graphAppId = '00000003-0000-0000-c000-000000000000'
 $defenderAppId = 'fc780465-2017-40d4-a0c5-307022471b92'   # WindowsDefenderATP
@@ -121,13 +122,16 @@ if ($ManagedIdentityObjectId) {
 
 if ($Remove) {
     if (-not $existing) { Write-Host "No app registration '$DisplayName' tagged $tag found." }
+    $removed = 0
     foreach ($app in $existing) {
         if ($PSCmdlet.ShouldProcess("$($app.displayName) (appId $($app.appId))", 'Delete app registration and purge it')) {
             Remove-App $app
+            $removed++
             Write-Host "Removed and purged '$($app.displayName)' (appId $($app.appId))."
         }
     }
-    if ((Test-Path -LiteralPath $CertificatePath) -and $PSCmdlet.ShouldProcess($CertificatePath, 'Delete certificate file')) {
+    # Only together with an app removed in this run: the .pfx of another tenant must never go because of a typo.
+    if ($removed -and (Test-Path -LiteralPath $CertificatePath) -and $PSCmdlet.ShouldProcess($CertificatePath, 'Delete certificate file')) {
         Remove-Item -LiteralPath $CertificatePath
         Write-Host "Deleted $CertificatePath."
     }
@@ -162,6 +166,8 @@ $app = Invoke-Graph POST '/applications' @{
 
 $secret = $null
 $certificate = $null
+$finished = $false
+# finally instead of catch: Ctrl+C during the retry waits must also roll back, and catch does not run on Ctrl+C.
 try {
     $principal = Invoke-Graph POST '/servicePrincipals' @{ appId = $app.appId; tags = @($tag) }
     foreach ($grant in $grants) {
@@ -207,11 +213,14 @@ try {
         } | Out-Null
         Write-Host "Added federated credential for $FederatedSubject."
     }
-} catch {
-    Write-Warning "Setup failed, deleting the half-created app '$DisplayName' again: $($_.Exception.Message)"
-    Remove-App $app
-    if ($CredentialType -eq 'Certificate' -and (Test-Path -LiteralPath $CertificatePath)) { Remove-Item -LiteralPath $CertificatePath }
-    throw
+    $finished = $true
+} finally {
+    if (-not $finished) {
+        Write-Warning "Setup did not finish, deleting the half-created app '$DisplayName' again."
+        Remove-App $app
+        # The check above refused an existing file, so a .pfx here was written by this run.
+        if ($CredentialType -eq 'Certificate' -and (Test-Path -LiteralPath $CertificatePath)) { Remove-Item -LiteralPath $CertificatePath }
+    }
 }
 
 Write-Host ''
