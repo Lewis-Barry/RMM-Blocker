@@ -285,7 +285,9 @@ jobs:
           <li><strong>More than 25 percent:</strong> a large release or a big exclusion change. Check the numbers with <code>-WhatIf</code>, then run once with <code>-Force</code> (in a pipeline: the <strong>force</strong> option on a manual run).</li>
           <li><strong>would block …:</strong> the published file contains a rule that would break Windows, Intune or sign-in. Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</li>
           <li><strong>Refusing to overwrite:</strong> the policy with that name is not an RMM Guard policy. Pick another name.</li>
-          <li><strong>Refusing … both rings:</strong> the other ring's WDAC policy reaches devices this one targets. Exclude the pilot group from the production policy (<code>-ExcludeGroupId</code>) and run again.</li>
+          <li><strong>Refusing … could get both rings:</strong> the other ring's WDAC policy reaches devices this one targets, typically a hand-deployed production policy on All devices. In Intune, open the production policy → <strong>Assignments</strong>, add the pilot group under <strong>Excluded groups</strong>, and run again. From then on the production run keeps that exclusion itself (<code>-ExcludeGroupId</code>).</li>
+          <li><strong>first-party … host; RMM Guard never blocks those:</strong> the published indicators contain a Microsoft or Apple domain. Nothing was changed. Report it as above.</li>
+          <li><strong>rule options … changed by hand:</strong> someone changed the WDAC policy's options, for example to Audit Mode. Check why, then run once with <code>-Force</code> to restore the RMM Guard options.</li>
           <li><strong>Skipped, version … days old:</strong> expected with <code>-MinimumReleaseAgeDays</code>. The next run applies it.</li>
           <li><strong>CredentialTypeNotAllowedAsPerAppPolicy:</strong> your tenant blocks client secrets. Use the certificate or OIDC.</li>
         </ul>
