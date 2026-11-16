@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Keep the RMM Guard WDAC policy, macOS deny list and Defender indicators in sync automatically with one PowerShell script, from GitHub Actions, Azure DevOps or an Azure Automation runbook.">
+  <meta name="theme-color" content="#1b1b1f">
+  <title>Automate RMM Guard with PowerShell, GitHub Actions and Azure DevOps | RMM Guard</title>
+  <meta name="author" content="Lewis Barry, Microsoft MVP for Intune">
+  <link rel="canonical" href="https://rmmguard.com/help-automation.html">
+  <meta property="og:title" content="Block RMM Tools on macOS with Intune App Control | RMM Guard">
+  <meta property="og:description" content="Keep the RMM Guard WDAC policy, macOS deny list and Defender indicators in sync automatically with one PowerShell script, from GitHub Actions, Azure DevOps or an Azure Automation runbook.">
+  <meta property="og:url" content="https://rmmguard.com/help-automation.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://rmmguard.com/social-card.png">
+  <meta property="og:site_name" content="RMM Guard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Block RMM Tools on macOS with Intune App Control | RMM Guard">
+  <meta name="twitter:description" content="Keep the RMM Guard WDAC policy, macOS deny list and Defender indicators in sync automatically with one PowerShell script, from GitHub Actions, Azure DevOps or an Azure Automation runbook.">
+  <meta name="twitter:image" content="https://rmmguard.com/social-card.png">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Person", "@id": "https://conditionalaccess.uk/#author", "name": "Lewis Barry", "url": "https://conditionalaccess.uk/about/", "jobTitle": "Principal Security Architect, Microsoft MVP for Intune", "description": "Microsoft MVP for Intune. Principal Security Architect at inforcer. Specialist in Microsoft 365, Intune, Entra ID, and Conditional Access security.", "image": {"@type": "ImageObject", "url": "https://conditionalaccess.uk/site/assets/files/1/memvp-v1.520x0.png"}, "sameAs": ["https://www.linkedin.com/in/lewis-barry/", "https://inforcer.com/"]}, {"@type": "WebSite", "@id": "https://rmmguard.com/#website", "name": "RMM Guard", "url": "https://rmmguard.com/", "author": {"@id": "https://conditionalaccess.uk/#author"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "RMM Guard", "item": "https://rmmguard.com/"}, {"@type": "ListItem", "position": 2, "name": "Automate", "item": "https://rmmguard.com/help-automation.html"}]}]}</script>
+  <link rel="icon" type="image/png" href="./RMMBlocker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./theme.js"></script>
+  <script type="module" src="./credits.js"></script>
+  <script async src="./analytics.js"></script>
+</head>
+<body class="help-page">
+  <a class="skip-link" href="#guide">Skip to guide</a>
+  <header>
+    <div class="container header-content">
+      <a class="brand" href="./index.html" aria-label="RMM Guard home">
+        <img class="brand-mark" src="./RMMBlocker.png" alt="">
+        <span>RMM Guard</span>
+      </a>
+      <div class="header-actions">
+        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./tools/index.html">Tools</a><a href="./browsers.html">Browsers</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
+        <span class="header-divider" aria-hidden="true"></span>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
+        <a class="source-link" href="https://github.com/Lewis-Barry/RMM-Blocker" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="container help-layout">
+    <aside class="help-sidebar">
+      <nav class="help-nav" aria-labelledby="guides-title">
+        <h2 id="guides-title">Guides</h2>
+        <a href="./help.html">WDAC</a>
+        <a href="./help-ioc.html">Defender IOCs</a>
+        <a href="./help-macos.html">macOS</a>
+        <a href="./help-automation.html" aria-current="page">Automation</a>
+      </nav>
+      <nav class="help-nav help-sections" aria-labelledby="sections-title">
+        <h2 id="sections-title">On this page</h2>
+        <a href="#how">1. How it works</a>
+        <a href="#safety">2. Safety rules</a>
+        <a href="#app">3. App registration</a>
+        <a href="#github">4. GitHub Actions</a>
+        <a href="#azure-devops">5. Azure DevOps</a>
+        <a href="#runbook">6. Azure Automation</a>
+        <a href="#local">7. Run it yourself</a>
+        <a href="#troubleshooting">8. Troubleshooting</a>
+      </nav>
+    </aside>
+    <article id="guide" class="help-guide" tabindex="-1">
+      <div class="page-heading"><div><h1>Automate</h1><p>One PowerShell script keeps the WDAC policy, the macOS deny list and the Defender indicators in your tenant up to date with this site. Run it on a schedule and new tools are blocked without anyone downloading a file.</p><p><a href="./automation/Sync-RMMGuard.ps1" download>Download Sync-RMMGuard.ps1</a> · <a href="./automation/Setup-RMMGuardApp.ps1" download>Download Setup-RMMGuardApp.ps1</a></p></div></div>
+      <aside class="help-warning" role="note">The policies are enforced. Every run can change what your devices block. Keep a pilot group, and let production follow a week later.</aside>
+      <section id="how" class="help-step" aria-labelledby="how-title">
+        <h2 id="how-title">1. How it works</h2>
+        <ol>
+          <li>The script downloads the <a href="./index.html">retrieval links</a> with your exclusions: <code>/api/wdac.xml</code>, <code>/api/macos.json</code> and <code>/api/iocs.csv</code>.</li>
+          <li>It checks every file against fixed safety rules (step 2) before anything is sent to your tenant.</li>
+          <li>It finds your policy by name. Missing: it creates it and assigns it. Present: it compares and only writes when something changed.</li>
+          <li>Defender indicators are compared one by one: new ones are imported, changed ones updated, removed ones deleted. Indicators you created yourself are never touched.</li>
+        </ol>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -WdacPolicyName 'RMM Guard - WDAC' -Exclude 'AnyDesk','TeamViewer' `
+    -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ./RMMGuardSync.pfx -WhatIf</code></pre>
+        <p>Needs PowerShell 7.4 or later. <code>-WhatIf</code> shows what would change without changing it. Every run ends with one line per target: created, updated, unchanged or skipped.</p>
+        <p>Exclusions are tool names exactly as the RMM page shows them. Copy them from <strong>Copy custom retrieval links</strong> on the RMM page, which shows the command with your current exclusions.</p>
+      </section>
+      <section id="safety" class="help-step" aria-labelledby="safety-title">
+        <h2 id="safety-title">2. Safety rules</h2>
+        <ul>
+          <li><strong>Structure:</strong> the WDAC file must be the RMM Guard base policy (same PolicyID, same rule options, two allow-all rules). Indicators must be Block rules titled <code>LOLRMM - …</code>. macOS entries need a Team ID, and Google, Adobe, 1Password and Cloudflare need a Signing ID too. A rule for Microsoft's Team ID stops the run: Company Portal, the Intune agent and Defender are Microsoft-signed.</li>
+          <li><strong>Canaries:</strong> a deny rule that would match Explorer, svchost, lsass, PowerShell, Defender or the Intune agent, or an indicator for Microsoft sign-in, Intune, Windows Update or Defender, stops the run.</li>
+          <li><strong>Size:</strong> when more than 25 percent of the deployed rules or indicators would be added or removed, the run stops. Review the change, then run once with <code>-Force</code>.</li>
+          <li><strong>Ownership:</strong> the script only updates a WDAC policy that carries the RMM Guard PolicyID and a macOS policy whose description starts with <code>RMM Guard macOS deny list</code>. Your other policies are never overwritten.</li>
+          <li><strong>Release age:</strong> with <code>-MinimumReleaseAgeDays 7</code> a new version is applied only once it has been published for seven days. Exclusion changes on the version you already run apply at once to the WDAC and macOS policies; Defender indicators carry no version of their own, so indicator changes always wait for the release age.</li>
+          <li><strong>Pilot ring:</strong> the pilot and production WDAC policies share one PolicyID, so a device must never get both. Assign the pilot policy to the pilot group, and the production policy to all devices with <code>-ExcludeGroupId</code> set to the pilot group. Pass the other ring's WDAC policy name with <code>-RingPolicyName</code> so the script does not mistake it for a duplicate. The templates below do this. Defender indicators are tenant-wide and are only synced by the production run.</li>
+          <li><strong>Rolling back:</strong> disable the workflow, pipeline or schedule first, otherwise the next run puts the policy back. Then unassign or change the policy in Intune.</li>
+          <li>A failure or a stop makes the run exit with an error, so the pipeline turns red and production does not run after a failed pilot.</li>
+        </ul>
+      </section>
+      <section id="app" class="help-step" aria-labelledby="app-title">
+        <h2 id="app-title">3. App registration</h2>
+        <p>The script signs in as an app with two permissions: Microsoft Graph <code>DeviceManagementConfiguration.ReadWrite.All</code> and WindowsDefenderATP <code>Ti.ReadWrite</code>. <code>Ti.ReadWrite</code> only lets the app see and change the indicators it created itself. Indicators you imported earlier by hand stay in place; delete them in Defender once the sync runs.</p>
+        <p><code>Setup-RMMGuardApp.ps1</code> creates the app, grants admin consent and adds a credential. Sign in as Global Administrator, or as Cloud Application Administrator plus Privileged Role Administrator.</p>
+        <pre class="kql-code"><code># Certificate (default; works in tenants that block client secrets)
+./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com
+
+# OIDC for GitHub Actions: no secret and no certificate
+./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -CredentialType None -FederatedSubject 'repo:contoso/rmm-guard:ref:refs/heads/main'
+
+# Remove the app, its permissions and the .pfx again
+./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove</code></pre>
+        <p>The script prints the <strong>ClientId</strong> you need below. A client secret is possible with <code>-CredentialType Secret</code>, but many tenants block secrets and they expire; prefer OIDC or a certificate.</p>
+      </section>
+      <section id="github" class="help-step" aria-labelledby="github-title">
+        <h2 id="github-title">4. GitHub Actions</h2>
+        <ol>
+          <li>Create a <strong>private</strong> repository. Add <code>Sync-RMMGuard.ps1</code> to its root and <a href="./automation/github-workflow.yml" download>github-workflow.yml</a> as <code>.github/workflows/rmm-guard-sync.yml</code>.</li>
+          <li>Run <code>Setup-RMMGuardApp.ps1</code> with <code>-CredentialType None -FederatedSubject 'repo:&lt;owner&gt;/&lt;repo&gt;:ref:refs/heads/main'</code>.</li>
+          <li>In the repository, <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong> → <strong>Variables</strong>, add <code>RMMGUARD_TENANT_ID</code>, <code>RMMGUARD_CLIENT_ID</code> and <code>RMMGUARD_PILOT_GROUP_ID</code> (the object ID of your pilot device group). These are not secrets: OIDC needs none.</li>
+          <li>Put your exclusions in <code>EXCLUDE</code> at the top of the workflow.</li>
+          <li><strong>Actions</strong> → <strong>RMM Guard sync</strong> → <strong>Run workflow</strong>. Check both jobs, then the policies in Intune. After that it runs every Monday.</li>
+        </ol>
+        <p>Certificate instead of OIDC: the end of the workflow file shows the two secrets and the lines to change.</p>
+      </section>
+      <section id="azure-devops" class="help-step" aria-labelledby="azure-devops-title">
+        <h2 id="azure-devops-title">5. Azure DevOps</h2>
+        <ol>
+          <li>Add <code>Sync-RMMGuard.ps1</code> and <a href="./automation/azure-pipelines.yml" download>azure-pipelines.yml</a> to the root of an Azure Repos repository.</li>
+          <li>Run <code>Setup-RMMGuardApp.ps1 -CredentialType None</code> and note the ClientId.</li>
+          <li><strong>Project settings</strong> → <strong>Service connections</strong> → <strong>New</strong> → <strong>Azure Resource Manager</strong> → <strong>Workload identity federation (manual)</strong>. Name it <code>rmm-guard</code>, enter the tenant, the ClientId and any subscription the app can read (the task requires one; give the app the Reader role on it). Copy the <strong>Issuer</strong> and <strong>Subject identifier</strong> it shows.</li>
+          <li>In Entra, open the app → <strong>Certificates &amp; secrets</strong> → <strong>Federated credentials</strong> → <strong>Add</strong> → <strong>Other issuer</strong>, and paste both values. Then finish the service connection.</li>
+          <li><strong>Pipelines</strong> → <strong>Library</strong> → variable group <code>rmm-guard</code> with <code>RMMGUARD_PILOT_GROUP_ID</code> and <code>EXCLUDE</code>.</li>
+          <li>Create the pipeline from the YAML file and run it once by hand.</li>
+        </ol>
+      </section>
+      <section id="runbook" class="help-step" aria-labelledby="runbook-title">
+        <h2 id="runbook-title">6. Azure Automation</h2>
+        <ol>
+          <li>In your Automation account, <strong>Identity</strong> → <strong>System assigned</strong> → <strong>On</strong>. Copy the <strong>Object (principal) ID</strong>.</li>
+          <li>Grant the permissions to it: <code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -ManagedIdentityObjectId &lt;object id&gt;</code>.</li>
+          <li><strong>Runtime Environments</strong>: use PowerShell 7.4 and add the module <code>Microsoft.Graph.Authentication</code> from the gallery.</li>
+          <li><strong>Runbooks</strong> → <strong>Create</strong>, type PowerShell, runtime 7.4. Paste the contents of <code>Sync-RMMGuard.ps1</code> and <strong>Publish</strong>.</li>
+          <li>Add two weekly <strong>Schedules</strong> with parameters. Pilot: <code>TARGET</code> <code>["Wdac","Macos"]</code>, the pilot policy names, <code>ASSIGNMENT</code> your pilot group ID, <code>IDENTITY</code> <code>true</code>. Production: <code>["Wdac","Macos","Ioc"]</code>, the production names, <code>ASSIGNMENT</code> <code>AllDevices</code>, <code>EXCLUDEGROUPID</code> the pilot group, <code>MINIMUMRELEASEAGEDAYS</code> <code>7</code>, <code>IDENTITY</code> <code>true</code>.</li>
+        </ol>
+      </section>
+      <section id="local" class="help-step" aria-labelledby="local-title">
+        <h2 id="local-title">7. Run it yourself</h2>
+        <p>With your own Intune admin account. Defender indicators need the app, so this covers WDAC and macOS:</p>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf</code></pre>
+        <p>Already deployed the policies by hand from this site? Pass their names: the macOS export is called <code>Block RMM tools (macOS)</code>, and for WDAC use the name you gave it. The script recognises them and updates them in place. If it finds the RMM Guard WDAC policy under another name, it stops and tells you which name to pass.</p>
+      </section>
+      <section id="troubleshooting" class="help-step" aria-labelledby="troubleshooting-title">
+        <h2 id="troubleshooting-title">8. Troubleshooting</h2>
+        <ul>
+          <li><strong>HTTP 400, unknown tool in exclude:</strong> a tool was renamed or removed. Copy the names again from the RMM page.</li>
+          <li><strong>More than 25 percent:</strong> a large release or a big exclusion change. Run with <code>-WhatIf</code>, check the numbers, then once with <code>-Force</code>.</li>
+          <li><strong>would block …:</strong> the published file contains a rule that would break Windows or Intune. Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</li>
+          <li><strong>Refusing to overwrite:</strong> the policy with that name is not an RMM Guard policy. Pick another name.</li>
+          <li><strong>Skipped, version … days old:</strong> expected with <code>-MinimumReleaseAgeDays</code>. The next run applies it.</li>
+          <li><strong>CredentialTypeNotAllowedAsPerAppPolicy:</strong> your tenant blocks client secrets. Use the certificate or OIDC.</li>
+        </ul>
+      </section>
+    </article>
+  </main>
+  <footer><div class="container footer-content"><a href="./index.html">Back to tools</a><a href="./index.html#exports">Downloads</a></div></footer>
+  <script type="module">
+    // Copy icon on every code block. Styles live here so the block and its button always ship together.
+    document.head.insertAdjacentHTML("beforeend", `<style>
+      .code-block { position: relative; margin: 12px 0 0; }
+      .code-block .kql-code { padding-right: 52px; }
+      .code-copy { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--muted); cursor: pointer; }
+      .code-copy:hover, .code-copy.copied { border-color: var(--accent); color: var(--accent); }
+    </style>`);
+    const copy = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" stroke="currentColor"/></svg>';
+    const check = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="1.5"/></svg>';
+    for (const pre of document.querySelectorAll("pre.kql-code")) {
+      const wrap = Object.assign(document.createElement("div"), { className: "code-block" });
+      const button = Object.assign(document.createElement("button"), { type: "button", className: "code-copy", title: "Copy", innerHTML: copy });
+      button.setAttribute("aria-label", "Copy code");
+      button.addEventListener("click", async () => {
+        let ok = true;
+        try { await navigator.clipboard.writeText(pre.textContent); } catch { ok = false; }
+        button.innerHTML = ok ? check : copy;
+        button.title = ok ? "Copied" : "Copy failed";
+        button.classList.toggle("copied", ok);
+        setTimeout(() => { button.innerHTML = copy; button.title = "Copy"; button.classList.remove("copied"); }, 2000);
+      });
+      pre.replaceWith(wrap);
+      wrap.append(pre, button);
+    }
+  </script>
+</body>
+</html>

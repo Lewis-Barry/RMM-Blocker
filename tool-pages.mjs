@@ -157,7 +157,7 @@ ${names.map(name => `      <li><a href="./tools/${slug(name)}.html">${escape(nam
   });
   files["sitemap.xml"] = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${["", "browsers.html", "help.html", "help-ioc.html", "help-macos.html", "changelog.html", "tools/", ...pages].map(path => `  <url><loc>${site}/${path}</loc></url>`).join("\n")}
+${["", "browsers.html", "help.html", "help-ioc.html", "help-macos.html", "help-automation.html", "changelog.html", "tools/", ...pages].map(path => `  <url><loc>${site}/${path}</loc></url>`).join("\n")}
 </urlset>
 `;
   return files;
