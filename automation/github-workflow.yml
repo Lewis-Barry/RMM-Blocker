@@ -1,16 +1,26 @@
 # RMM Guard sync for GitHub Actions.
-# Copy to .github/workflows/rmm-guard-sync.yml in a private repository, with Sync-RMMGuard.ps1 in the repository root.
-# Setup, permissions and variables: https://rmmguard.com/help-automation.html#github
+# Copy to .github/workflows/rmm-guard-sync.yml in a private repository, with Sync-RMMGuard.ps1 in the repository root,
+# and fill in the four values under env. With OIDC none of them is a secret.
+# Guide: https://rmmguard.com/help-automation.html#github
 name: RMM Guard sync
 on:
   schedule:
     - cron: '0 6 * * 1'   # Mondays 06:00 UTC
   workflow_dispatch:
+    inputs:
+      force:
+        description: Apply a change larger than 25 percent (after checking it with a normal run)
+        type: boolean
+        default: false
 permissions:
   contents: read
   id-token: write          # lets the job request an OIDC token for the app's federated credential
 env:
+  TENANT_ID: ''            # Directory (tenant) ID, e.g. 00000000-0000-0000-0000-000000000000
+  CLIENT_ID: ''            # ClientId printed by Setup-RMMGuardApp.ps1
+  PILOT_GROUP_ID: ''       # object ID of the Entra device group that gets new versions first
   EXCLUDE: ''              # tool names to leave out, comma-separated, exactly as on rmmguard.com, e.g. AnyDesk,TeamViewer
+  FORCE: ${{ inputs.force }}
 jobs:
   pilot:
     runs-on: ubuntu-latest
@@ -24,9 +34,9 @@ jobs:
           ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
             -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
             -RingPolicyName 'RMM Guard - WDAC' `
-            -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
-            -Assignment '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
-            -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
+            -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+            -Assignment $env:PILOT_GROUP_ID -Force:($env:FORCE -eq 'true') `
+            -TenantId $env:TENANT_ID -ClientId $env:CLIENT_ID -FederatedToken $token
   production:
     needs: pilot           # a pilot run stopped by a safety rule also stops production
     runs-on: ubuntu-latest
@@ -40,11 +50,11 @@ jobs:
           ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
             -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
             -RingPolicyName 'RMM Guard - WDAC (pilot)' `
-            -Exclude ($env:EXCLUDE -split ',' | Where-Object { $_ }) `
-            -Assignment AllDevices -ExcludeGroupId '${{ vars.RMMGUARD_PILOT_GROUP_ID }}' `
-            -TenantId '${{ vars.RMMGUARD_TENANT_ID }}' -ClientId '${{ vars.RMMGUARD_CLIENT_ID }}' -FederatedToken $token
+            -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+            -Assignment AllDevices -ExcludeGroupId $env:PILOT_GROUP_ID -Force:($env:FORCE -eq 'true') `
+            -TenantId $env:TENANT_ID -ClientId $env:CLIENT_ID -FederatedToken $token
 # Certificate instead of OIDC: store the .pfx as base64 in secret RMMGUARD_CERT_BASE64 and its password in
-# RMMGUARD_CERT_PASSWORD, then replace the token lines and -FederatedToken $token with:
+# RMMGUARD_CERT_PASSWORD, then in both jobs replace the two token lines and -FederatedToken $token with:
 #   env:
 #     RMMGUARD_CERT_BASE64: ${{ secrets.RMMGUARD_CERT_BASE64 }}
 #     RMMGUARD_CERT_PASSWORD: ${{ secrets.RMMGUARD_CERT_PASSWORD }}

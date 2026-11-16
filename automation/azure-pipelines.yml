@@ -1,5 +1,5 @@
 # RMM Guard sync for Azure DevOps. Copy to the root of an Azure Repos repository, next to Sync-RMMGuard.ps1.
-# Setup, service connection and variables: https://rmmguard.com/help-automation.html#azure-devops
+# Guide (service connection and variables): https://rmmguard.com/help-automation.html#azure-devops
 trigger: none
 schedules:
   - cron: '0 6 * * 1'      # Mondays 06:00 UTC
@@ -7,10 +7,19 @@ schedules:
     branches:
       include: [main]
     always: true
+parameters:
+  - name: force
+    displayName: Apply a change larger than 25 percent (after checking it with a normal run)
+    type: boolean
+    default: false
 pool:
   vmImage: ubuntu-latest
 variables:
-  - group: rmm-guard       # RMMGUARD_PILOT_GROUP_ID and EXCLUDE (comma-separated tool names, may be empty)
+  # Variable group with RMMGUARD_PILOT_GROUP_ID and EXCLUDE (comma-separated tool names, may be empty).
+  # The script reads them as environment variables, so a value is never pasted into the script text.
+  - group: rmm-guard
+  - name: FORCE
+    value: ${{ parameters.force }}
 stages:
   - stage: pilot
     jobs:
@@ -27,7 +36,8 @@ stages:
                 ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
                   -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
                   -RingPolicyName 'RMM Guard - WDAC' `
-                  -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) -Assignment '$(RMMGUARD_PILOT_GROUP_ID)' `
+                  -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+                  -Assignment $env:RMMGUARD_PILOT_GROUP_ID -Force:($env:FORCE -eq 'True') `
                   -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
   - stage: production
     dependsOn: pilot
@@ -45,8 +55,8 @@ stages:
                 ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
                   -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
                   -RingPolicyName 'RMM Guard - WDAC (pilot)' `
-                  -Exclude ('$(EXCLUDE)' -split ',' | Where-Object { $_ }) `
-                  -Assignment AllDevices -ExcludeGroupId '$(RMMGUARD_PILOT_GROUP_ID)' `
+                  -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+                  -Assignment AllDevices -ExcludeGroupId $env:RMMGUARD_PILOT_GROUP_ID -Force:($env:FORCE -eq 'True') `
                   -TenantId $env:tenantId -ClientId $env:servicePrincipalId -FederatedToken $env:idToken
 # Without a service connection: use a PowerShell@2 task (pwsh: true) instead of AzureCLI@2 and either
 #  - upload the .pfx as a Secure file, add a DownloadSecureFile@1 step (name: pfx) and pass
