@@ -178,8 +178,8 @@ Describe 'IOC' {
     ) {
         { ConvertFrom-IocCsv (Row 'DomainName' $Value) } | Should -Throw '*would block*'
     }
-    It 'accepts a subdomain under a canary, which does not block the canary itself' {
-        @(ConvertFrom-IocCsv (Row 'DomainName' 'x.windowsupdate.com')).Count | Should -Be 1
+    It 'accepts a subdomain under a canary outside the first-party suffixes, which does not block the canary itself' {
+        @(ConvertFrom-IocCsv (Row 'DomainName' 'x.contoso.sharepoint.com')).Count | Should -Be 1
     }
     It 'rejects <Name>' -ForEach @(
         @{ Name = 'an Allowed action'; Type = 'DomainName'; Action = 'Allowed'; Title = 'LOLRMM - Test' }
@@ -785,6 +785,224 @@ Describe 'Review fixes' {
             Mock Sync-Wdac { throw 'WDAC: boom' }
             { Invoke-Sync } | Should -Throw '1 of 1 target(s) failed.'
             Should -Invoke Sync-Wdac -Times 1 -Exactly
+        }
+    }
+}
+
+Describe 'Second review' {
+    BeforeAll {
+        $script:X2 = ConvertTo-NormalizedXml $script:PolicyXml
+        $script:Ctes2 = 'FilePath="*\ctes.exe"'
+        $script:H2 = (Get-Content "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv" -TotalCount 1)
+        function DomainRow($Value) { "$script:H2`r`nDomainName,$Value,2035-07-23T00:00:00Z,Block,Medium,LOLRMM - Test,d,r,,,,true`r`n" }
+        $root = $script:Root.Replace('\', '/')
+        $script:MacJson = (node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$root/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$root/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" 2>$null) -join "`n"
+        $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
+        $script:Version = (Get-WdacFacts $script:PolicyXml).Version
+        function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+        function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
+        function Target($Type, $GroupId) { [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = "#microsoft.graph.$Type"; groupId = $GroupId } } }
+        $script:Pilot = 'aaaaaaaa-0000-0000-0000-000000000001'
+    }
+    BeforeEach {
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
+        Confirm $true
+        Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
+    }
+
+    Context 'WDAC canaries (C1)' {
+        It 'rejects the path <Path> that hits a Windows or Microsoft binary' -ForEach @(
+            @{ Path = '*\kernel32.dll' }, @{ Path = '*\csrss.exe' }, @{ Path = '*\WinSxS\*' }, @{ Path = '*\Microsoft.NET\*' },
+            @{ Path = '*\WindowsApps\*' }, @{ Path = '*\Common Files\*' }, @{ Path = '*\rundll32.exe' }, @{ Path = '*\MpCmdRun.exe' }
+        ) {
+            { Test-WdacPolicy $script:X2.Replace($script:Ctes2, "FilePath=`"$Path`"") } | Should -Throw '*would block*'
+        }
+    }
+
+    Context 'IOC first-party hosts (C2)' {
+        It 'rejects <V>' -ForEach @(@{ V = 'r.manage.microsoft.com' }, @{ V = 'login.windows.net' }, @{ V = 'winatp-gw-cus.microsoft.com' }, @{ V = 'x.windowsupdate.com' }) {
+            { ConvertFrom-IocCsv (DomainRow $V) } | Should -Throw 'IOC:*first-party*'
+        }
+        It 'accepts the first-party hosts the site blocks on purpose: <V>' -ForEach @(@{ V = 'support.services.microsoft.com' }, @{ V = 'agentreportingstore.blob.core.windows.net' }) {
+            @(ConvertFrom-IocCsv (DomainRow $V)).Count | Should -Be 1
+        }
+    }
+
+    Context 'release age only for additions (I1)' {
+        BeforeEach {
+            $MinimumReleaseAgeDays = 7
+            $script:Changelog = @([pscustomobject]@{ version = $script:Version; date = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') })
+            Confirm $false
+        }
+        Context 'WDAC' {
+            BeforeEach {
+                Mock Invoke-Graph {
+                    if ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                    elseif ($Path -like '*/p1/settings') { WdacSettings $script:Deployed }
+                    elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+                }
+            }
+            It 'applies a removal-only change at once, even on an older deployed version' {
+                $extra = '<Deny ID="ID_DENY_ZZZ" FriendlyName="Old tool" FilePath="*\oldtool.exe" />'
+                $script:Deployed = $script:X2.Replace('<FileRules>', "<FileRules>$extra").Replace('<FileRulesRef>', '<FileRulesRef><FileRuleRef RuleID="ID_DENY_ZZZ" />') -replace '<VersionEx>[^<]+</VersionEx>', '<VersionEx>1.0.0.1</VersionEx>'
+                Sync-Wdac | Should -BeLike 'would be updated:*+0/-1 deny rules'
+            }
+            It 'holds an addition on the same version until the release is old enough' {
+                $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
+                Sync-Wdac | Should -BeLike 'skipped*'
+            }
+        }
+        Context 'macOS' {
+            BeforeEach {
+                $script:DeployedDescription = ($script:MacJson | ConvertFrom-Json).description
+                Mock Invoke-Graph {
+                    if ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'm1'; name = 'Block RMM tools (macOS)'; description = $script:DeployedDescription }) } }
+                    elseif ($Path -like '*/m1/settings') { [pscustomobject]@{ value = @($script:DeployedMac.settings) } }
+                }
+                # The deployed policy as Graph returns it, with its list of denied binaries changed by $Edit.
+                function DeployedMac([scriptblock]$Edit) {
+                    $body = $script:MacJson | ConvertFrom-Json
+                    $list = $body.settings[0].settingInstance.groupSettingCollectionValue[0].children[0].groupSettingCollectionValue[0].children[0]
+                    $list.groupSettingCollectionValue = @(& $Edit $list.groupSettingCollectionValue)
+                    $body
+                }
+            }
+            It 'applies a removal-only change at once, even on an older deployed version' {
+                $script:DeployedMac = DeployedMac { param($items) $extra = $items[0] | ConvertTo-Json -Depth 16 | ConvertFrom-Json; $extra.children[0].simpleSettingValue.value = 'ZZZZZZZZZZ'; $items; $extra }
+                $script:DeployedDescription = $script:DeployedDescription -replace 'v\d+\.\d+\.\d+\.\d+', 'v1.0.0.1'
+                Sync-Macos | Should -BeLike 'would be updated:*+0/-1 entries'
+            }
+            It 'holds an addition on the same version until the release is old enough' {
+                $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
+                Sync-Macos | Should -BeLike 'skipped*'
+            }
+        }
+        Context 'IOC' {
+            BeforeEach { $script:Present = @(ConvertFrom-IocCsv $script:IocText) }
+            It 'deletes withdrawn indicators at once' {
+                $extra = [pscustomobject]@{ id = '99'; indicatorType = 'DomainName'; indicatorValue = 'withdrawn.example'; title = 'LOLRMM - Old'; description = 'd'; severity = 'Medium'; action = 'Block' }
+                Mock Invoke-Defender { [pscustomobject]@{ value = @($script:Present) + $extra } }
+                Sync-Ioc | Should -Be "would be updated: 0 to import (0 new), 1 to delete, $($script:Present.Count) wanted"
+            }
+            It 'holds new indicators until the release is old enough' {
+                Mock Invoke-Defender { [pscustomobject]@{ value = @($script:Present | Select-Object -Skip 1) } }
+                Sync-Ioc | Should -BeLike 'skipped*'
+            }
+        }
+    }
+
+    Context 'rings never overlap (I2)' {
+        BeforeEach {
+            $script:RingTargets = @()
+            $RingPolicyName = @('RMM Guard - WDAC (pilot)')
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += "$Method $Path" }
+                elseif ($Path -like '*name%20eq*pilot*') { [pscustomobject]@{ value = @($script:RingTargets.Count -ge 0 -and $script:RingExists ? [pscustomobject]@{ id = 'r1'; name = 'RMM Guard - WDAC (pilot)'; description = 'd' } : $null) | Where-Object { $_ } } }
+                elseif ($Path -like '*/r1/assignments') { [pscustomobject]@{ value = @($script:RingTargets) } }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                elseif ($Path -like '*/p1/settings') { WdacSettings $script:PolicyXml }
+                elseif ($Path -like '*/p1/assignments') { [pscustomobject]@{ value = @() } }
+                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+            }
+        }
+        It 'assigns production to all devices when the pilot ring targets the excluded pilot group' {
+            $script:RingExists = $true; $script:RingTargets = @(Target 'groupAssignmentTarget' $script:Pilot)
+            $Assignment = 'AllDevices'; $ExcludeGroupId = $script:Pilot
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+            $script:Posts | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+        }
+        It 'assigns the pilot when production excludes the pilot group' {
+            $script:RingExists = $true; $script:RingTargets = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:Pilot))
+            $Assignment = $script:Pilot
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+        }
+        It 'refuses the pilot when a hand-deployed policy covers all devices without excluding the pilot' {
+            $script:RingExists = $true; $script:RingTargets = @(Target 'allDevicesAssignmentTarget')
+            $Assignment = $script:Pilot
+            { Sync-Wdac } | Should -Throw 'WDAC:*Refusing*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'refuses production on all devices when the pilot group is not excluded' {
+            $script:RingExists = $true; $script:RingTargets = @(Target 'groupAssignmentTarget' $script:Pilot)
+            $Assignment = 'AllDevices'
+            { Sync-Wdac } | Should -Throw 'WDAC:*Refusing*'
+        }
+        It 'assigns when the other ring does not exist yet' {
+            $script:RingExists = $false
+            $Assignment = $script:Pilot
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+            $script:Posts | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+        }
+    }
+
+    Context 'rule options changed by hand (S1)' {
+        BeforeEach {
+            $script:Deployed = $script:X2.Replace('<Rule><Option>Enabled:UMCI</Option></Rule>', '<Rule><Option>Enabled:UMCI</Option></Rule><Rule><Option>Enabled:Audit Mode</Option></Rule>')
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += "$Method $Path" }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                elseif ($Path -like '*/p1/settings') { WdacSettings $script:Deployed }
+                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+            }
+        }
+        It 'stops instead of switching an Audit Mode policy back to enforced' {
+            { Sync-Wdac } | Should -Throw '*Audit Mode*-Force*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'lets -Force through' {
+            $Force = [switch]$true
+            Confirm $false
+            Sync-Wdac | Should -BeLike 'would be updated:*'
+        }
+    }
+
+    Context 'IOC alert and expiry (S2)' {
+        BeforeAll {
+            function Ioc([hashtable]$Extra) {
+                $i = [ordered]@{ indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block'; expirationTime = '2035-07-23T00:00:00Z'; generateAlert = $true }
+                foreach ($k in $Extra.Keys) { $i[$k] = $Extra[$k] }
+                [pscustomobject]$i
+            }
+        }
+        It 'upserts when <Name> changed' -ForEach @(
+            @{ Name = 'generateAlert'; Old = @{ id = '1'; generateAlert = $false } }
+            @{ Name = 'expirationTime'; Old = @{ id = '1'; expirationTime = '2034-01-01T00:00:00Z' } }
+        ) {
+            @((Compare-IocSet @(Ioc @{}) @(Ioc $Old)).Upsert).Count | Should -Be 1
+        }
+        It 'treats Defender''s returned formats as equal: <Name>' -ForEach @(
+            @{ Name = 'a parsed UTC date'; Old = @{ id = '1'; expirationTime = [datetime]::SpecifyKind([datetime]'2035-07-23', 'Utc') } }
+            @{ Name = 'milliseconds'; Old = @{ id = '1'; expirationTime = '2035-07-23T00:00:00.000Z' } }
+            @{ Name = 'an alert flag as text'; Old = @{ id = '1'; generateAlert = 'True' } }
+            @{ Name = 'fields Defender left out'; Old = @{ id = '1'; expirationTime = $null; generateAlert = $null } }
+        ) {
+            @((Compare-IocSet @(Ioc @{}) @(Ioc $Old)).Upsert).Count | Should -Be 0
+        }
+    }
+
+    Context 'AllUsers with an exclusion (S6)' {
+        It 'refuses -Assignment AllUsers with -ExcludeGroupId' {
+            $Assignment = 'AllUsers'; $ExcludeGroupId = $script:Pilot
+            Mock Invoke-Graph {}
+            { Sync-Wdac } | Should -Throw 'WDAC:*AllUsers*'
+            Should -Invoke Invoke-Graph -Times 0 -Exactly
+        }
+    }
+
+    Context 'module install (S4)' {
+        It 'installs a pinned Microsoft.Graph.Authentication when none is present' {
+            $Target = @('Wdac')
+            Mock Resolve-Auth { @{ Mode = 'Secret' } }
+            Mock Install-Module {}
+            Mock Get-Module -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' } {}
+            Mock Import-Module {}
+            Mock Connect-RMMGuardGraph {}
+            Mock Write-Host {}
+            Mock Sync-Wdac { 'unchanged' }
+            Invoke-Sync
+            Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter { $RequiredVersion -eq '2.39.0' }
         }
     }
 }

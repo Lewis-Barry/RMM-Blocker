@@ -63,6 +63,26 @@ $script:WdacCanaries = @(
     'C:\Windows\System32\conhost.exe'
     'C:\Program Files (x86)\Microsoft Intune Management Extension\AgentExecutor.exe'
     'C:\Program Files\Windows Defender Advanced Threat Protection\MsSense.exe'
+    'C:\Program Files\Windows Defender Advanced Threat Protection\SenseIR.exe'
+    'C:\Program Files\Windows Defender Advanced Threat Protection\SenseCncProxy.exe'
+    'C:\Program Files\Windows Defender\MpCmdRun.exe'
+    'C:\ProgramData\Microsoft\Windows Defender\Platform\4.18.25010.11-0\MpDefenderCoreService.exe'
+    'C:\ProgramData\Microsoft\Windows Defender\Platform\4.18.25010.11-0\NisSrv.exe'
+    'C:\Windows\WinSxS\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.26100.1_none_0\TiWorker.exe'
+    'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\clr.dll'
+    'C:\Program Files\WindowsApps\Microsoft.CompanyPortal_11.2.1002.0_x64__8wekyb3d8bbwe\CompanyPortal.exe'
+    'C:\Program Files\Common Files\microsoft shared\ClickToRun\OfficeClickToRun.exe'
+    'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+    'C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe'
+    # The loader, session and management binaries every process or enrolment depends on, in both system folders.
+    foreach ($folder in 'System32', 'SysWOW64') {
+        foreach ($file in 'kernel32.dll', 'KernelBase.dll', 'user32.dll', 'gdi32.dll', 'advapi32.dll', 'combase.dll', 'rpcrt4.dll', 'sechost.dll',
+            'ucrtbase.dll', 'msvcrt.dll', 'ole32.dll', 'shell32.dll', 'ws2_32.dll', 'crypt32.dll', 'bcrypt.dll', 'smss.exe', 'csrss.exe', 'wininit.exe',
+            'services.exe', 'userinit.exe', 'LogonUI.exe', 'dwm.exe', 'sihost.exe', 'rundll32.exe', 'dllhost.exe', 'taskhostw.exe', 'RuntimeBroker.exe',
+            'ctfmon.exe', 'fontdrvhost.exe', 'spoolsv.exe', 'WmiPrvSE.exe', 'consent.exe', 'dmclient.exe', 'DeviceEnroller.exe', 'wermgr.exe') {
+            "C:\Windows\$folder\$file"
+        }
+    }
 )
 # SHA-256 of the policy with VersionEx, Settings, every Deny and the Deny FileRuleRefs removed: allows, signers and scenarios are fixed.
 $script:WdacShape = 'FE8E5A67C78533BA256D928244F99DD689592A150614C4CA9A9AF6763C862653'
@@ -75,6 +95,12 @@ $script:IocCanaries = @(
     'contoso.sharepoint.com', 'contoso.azurewebsites.net', 'contoso.blob.core.windows.net', 'naprodimedatapri.azureedge.net',
     'api.push.apple.com', 'mdmenrollment.apple.com', 'deviceenrollment.apple.com'
 )
+# A domain indicator equal to or under these is refused: blocking any host there can cut off sign-in, Intune, Defender or updates.
+$script:IocFirstPartySuffixes = @('microsoft.com', 'microsoftonline.com', 'windows.net', 'msauth.net', 'msftauth.net', 'windowsupdate.com', 'office.com',
+    'office365.com', 'live.com', 'azure.com', 'microsoftazuread-sso.com', 'msocsp.com', 'msftconnecttest.com', 'apple.com')
+# The first-party hosts the site blocks on purpose: RMM vendor storage and relays, and Microsoft's own remote support tool.
+$script:IocFirstPartyAllowed = @('agentreportingstore.blob.core.windows.net', 'atera-agent-heartbeat.servicebus.windows.net', 'gerwconline.blob.core.windows.net',
+    'packagesstore.blob.core.windows.net', 'support.services.microsoft.com')
 # IPv4 ranges an IP indicator must not fall in: non-public space, Entra ID sign-in and the Microsoft 365 front doors.
 $script:IocIpCanaries = @('0.0.0.0/8', '10.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/4', '240.0.0.0/4', '100.64.0.0/10',
     '20.20.32.0/19', '20.190.128.0/18', '20.231.128.0/19', '40.126.0.0/18', '13.107.0.0/16', '52.96.0.0/14', '40.96.0.0/13')
@@ -205,6 +231,11 @@ function ConvertFrom-IocCsv([string]$Text) {
             foreach ($canary in $script:IocCanaries) {
                 if ($canary -eq $value -or $canary.EndsWith(".$value")) { throw "IOC: indicator '$value' would block $canary." }
             }
+            foreach ($suffix in $script:IocFirstPartySuffixes) {
+                if (($value -eq $suffix -or $value.EndsWith(".$suffix")) -and $value -notin $script:IocFirstPartyAllowed) {
+                    throw "IOC: indicator '$value' is a first-party $suffix host; RMM Guard never blocks those."
+                }
+            }
         } else {
             $ip = $null
             if ($row.IndicatorType -cne 'IpAddress' -or -not [ipaddress]::TryParse($value, [ref]$ip) -or $ip.AddressFamily -ne 'InterNetwork' -or $ip.ToString() -ne $value) { throw "IOC: '$value' is not a plain IPv4 address." }
@@ -231,6 +262,13 @@ function ConvertFrom-IocCsv([string]$Text) {
     }
 }
 
+# A date from the CSV (text) or from Defender (text, or a DateTime that ConvertFrom-Json made of it) as UTC to the second.
+function ConvertTo-UtcText($Value) {
+    $date = $Value -is [datetime] ? $Value : [datetime]::Parse("$Value", [cultureinfo]::InvariantCulture, 'AdjustToUniversal, AssumeUniversal')
+    if ($date.Kind -eq 'Local') { $date = $date.ToUniversalTime() }
+    $date.ToString('yyyy-MM-ddTHH:mm:ss')
+}
+
 # Upsert: new values plus values whose text changed. Remove: deployed values no longer wanted (they carry Defender ids).
 function Compare-IocSet($Desired, $Deployed) {
     $key = { param($i) "$($i.indicatorType):$($i.indicatorValue)".ToLowerInvariant() }
@@ -238,7 +276,10 @@ function Compare-IocSet($Desired, $Deployed) {
     $wanted = @{}; foreach ($i in $Desired) { $wanted[(& $key $i)] = $i }
     $upsert = @($Desired | Where-Object {
         $old = $current[(& $key $_)]
-        -not $old -or $old.title -ne $_.title -or $old.description -ne $_.description -or $old.severity -ne $_.severity -or $old.action -ne $_.action
+        -not $old -or $old.title -ne $_.title -or $old.description -ne $_.description -or $old.severity -ne $_.severity -or $old.action -ne $_.action -or
+        # Compared only when Defender returns them, so a field it leaves out does not re-import every indicator on every run.
+        ($null -ne $old.generateAlert -and "$($old.generateAlert)" -ne "$($_.generateAlert)") -or
+        ($null -ne $old.expirationTime -and (ConvertTo-UtcText $old.expirationTime) -ne (ConvertTo-UtcText $_.expirationTime))
     })
     [pscustomobject]@{
         Upsert = $upsert
@@ -526,9 +567,36 @@ function Set-Assignment([string]$PolicyId) {
     }
 }
 
+# The pilot and production policies share one PolicyID, so no device may be targeted by both. Read from /assignments only.
+function Test-RingOverlap {
+    if (-not $Assignment) { return }
+    $everyone = '#microsoft.graph.allDevicesAssignmentTarget', '#microsoft.graph.allLicensedUsersAssignmentTarget'
+    $exclusion = '#microsoft.graph.exclusionGroupAssignmentTarget'
+    foreach ($name in $RingPolicyName) {
+        $ring = Find-Policy $name
+        if (-not $ring) { continue }
+        $targets = @(Get-GraphAll "/deviceManagement/configurationPolicies/$($ring.id)/assignments" | ForEach-Object { $_.target })
+        $ringExcludes = @($targets | Where-Object { $_.'@odata.type' -eq $exclusion } | ForEach-Object { $_.groupId })
+        foreach ($target in $targets | Where-Object { $_.'@odata.type' -ne $exclusion }) {
+            $ringAll = $target.'@odata.type' -in $everyone
+            $thisAll = $Assignment -in 'AllDevices', 'AllUsers'
+            # Two different groups cannot be checked for shared members here; everything else overlaps unless one side excludes the other.
+            if (-not ($ringAll -or $thisAll -or $target.groupId -eq $Assignment)) { continue }
+            $separated = ($target.groupId -and $target.groupId -eq $ExcludeGroupId) -or (-not $thisAll -and $Assignment -in $ringExcludes)
+            if (-not $separated) {
+                $what = $ringAll ? ($target.'@odata.type' -replace '^#microsoft\.graph\.|AssignmentTarget$', '') : "group $($target.groupId)"
+                throw "WDAC: '$name' is assigned to $what and carries the same PolicyID, so a device could get both rings. Exclude the pilot group from the production policy first. Refusing to assign '$WdacPolicyName'."
+            }
+        }
+    }
+}
+
 function Sync-Wdac {
     if (-not $WdacPolicyName) { throw 'WDAC: -WdacPolicyName is required.' }
     if ($RingPolicyName -contains $WdacPolicyName) { throw "WDAC: -RingPolicyName must name the other ring's policy, not this one." }
+    if ($Assignment -eq 'AllUsers' -and $ExcludeGroupId) {
+        throw 'WDAC: -Assignment AllUsers cannot be combined with -ExcludeGroupId: Intune does not reliably apply a device-group exclusion to a user-targeted policy. Use -Assignment AllDevices.'
+    }
     $xml = Get-RMMGuardFile 'wdac.xml' 'xml'
     $desired = Test-WdacPolicy $xml
     $policy = Find-Policy $WdacPolicyName
@@ -536,6 +604,7 @@ function Sync-Wdac {
         $other = Find-WdacByPolicyId
         if ($other) { throw "WDAC: the RMM Guard policy already exists as '$($other.name)'. Pass -WdacPolicyName '$($other.name)'." }
         if ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+        Test-RingOverlap
         if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Create App Control for Business policy v$($desired.Version) with $($desired.Rules.Count) deny rules")) { return 'would be created' }
         $created = Invoke-Graph POST '/deviceManagement/configurationPolicies' (New-WdacBody $WdacPolicyName "RMM Guard WDAC policy, created by Sync-RMMGuard.ps1." $xml)
         Set-Assignment $created.id
@@ -548,11 +617,17 @@ function Sync-Wdac {
     $currentXml = Get-WdacXml $policy.id
     if (-not (Test-RMMGuardBase $currentXml)) { throw "WDAC: '$WdacPolicyName' is not the RMM Guard base policy. Refusing to overwrite it." }
     # Assign before release age and change size: a production policy must get the pilot exclusion even when its update waits.
+    Test-RingOverlap
     Set-Assignment $policy.id
     if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { return "unchanged v$($desired.Version)" }
     $deployed = Get-WdacFacts $currentXml
-    if ($deployed.Version -ne $desired.Version -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
+    $deployedOptions = (@($deployed.Policy.Rules.Rule.Option) | Sort-Object) -join '|'
+    if ($deployedOptions -ne ($script:RuleOptions -join '|') -and -not $Force) {
+        throw "WDAC: '$WdacPolicyName' has the rule options $deployedOptions, changed by hand (for example Audit Mode). The update would set $($script:RuleOptions -join '|'). Review, then rerun with -Force."
+    }
     $change = Measure-SetChange $deployed.Rules $desired.Rules
+    # Removing rules cannot block anything new, so only an addition waits for the release age.
+    if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     Test-ChangeSize $deployed.Rules.Count $change.Added $change.Removed -Force:$Force -Label 'WDAC'
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
     if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
@@ -589,7 +664,8 @@ function Sync-Macos {
     $change = Measure-SetChange $deployedKeys $keys
     $deployedVersion = Get-MacVersion $policy.description
     if (-not $change.Added -and -not $change.Removed) { return "unchanged v$deployedVersion" }
-    if ($deployedVersion -ne $version -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
+    # Removing entries cannot block anything new, so only an addition waits for the release age.
+    if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     Test-ChangeSize $deployedKeys.Count $change.Added $change.Removed -Force:$Force -Label 'macOS'
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
     if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { return "would be updated: $summary" }
@@ -613,8 +689,11 @@ function Sync-Ioc {
     $diff = Compare-IocSet $desired $deployed
     if (-not $diff.Upsert.Count -and -not $diff.Remove.Count) { return "unchanged, $($desired.Count) indicators" }
     # The CSV has no version of its own; it is built from the same release as the WDAC policy.
-    $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml')).Version
-    if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+    # Deleting indicators cannot block anything new, so only imports (new or changed indicators) wait for the release age.
+    if ($diff.Upsert.Count) {
+        $version = (Get-WdacFacts (Get-RMMGuardFile 'wdac.xml' 'xml')).Version
+        if ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date)) { return "skipped, $reason" }
+    }
     Test-ChangeSize $deployed.Count $diff.Added $diff.Remove.Count -Force:$Force -Label 'IOC'
     $summary = "$($diff.Upsert.Count) to import ($($diff.Added) new), $($diff.Remove.Count) to delete, $($desired.Count) wanted"
     if (-not $script:Cmdlet.ShouldProcess('Defender indicators', $summary)) { return "would be updated: $summary" }
@@ -636,7 +715,7 @@ function Sync-Ioc {
 
 function Invoke-Sync {
     $script:Auth = Resolve-Auth
-    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force -WhatIf:$false }
+    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) { Install-Module Microsoft.Graph.Authentication -RequiredVersion '2.39.0' -Scope CurrentUser -Force -WhatIf:$false }
     Import-Module Microsoft.Graph.Authentication
     # Both tokens up front: a federated token from a pipeline is short-lived.
     if ($Target -contains 'Ioc' -and $script:Auth.Mode -ne 'Interactive') { $script:DefenderToken = Get-AccessToken 'https://api.securitycenter.microsoft.com' }
