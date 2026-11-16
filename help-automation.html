@@ -74,15 +74,15 @@
         <table class="facts">
           <tbody>
             <tr><th scope="row">WDAC and macOS</th><td>Microsoft Intune Plan 1, for example through Microsoft 365 Business Premium, E3 or E5.</td></tr>
-            <tr><th scope="row">Windows devices</th><td>Windows 11 or 10 Pro, Enterprise or Education, enrolled in Intune.</td></tr>
-            <tr><th scope="row">Macs</th><td>macOS 27, supervised through Automated Device Enrollment.</td></tr>
+            <tr><th scope="row">Windows devices</th><td>Windows 11 24H2 or newer, Pro, Enterprise or Education, enrolled in Intune. The rules use wildcards older Windows does not support.</td></tr>
+            <tr><th scope="row">Macs</th><td>macOS 27 or newer, supervised through Automated Device Enrollment.</td></tr>
             <tr><th scope="row">Defender indicators</th><td>Microsoft Defender for Endpoint Plan 1 or 2, or Defender for Business. In the Defender portal turn on <strong>Settings</strong> → <strong>Endpoints</strong> → <strong>Advanced features</strong> → <strong>Custom network indicators</strong>, and set network protection to block mode.</td></tr>
             <tr><th scope="row">A place to run it</th><td>A GitHub repository, an Azure DevOps project or an Azure Automation account. Your own computer is enough to try it.</td></tr>
             <tr><th scope="row">PowerShell</th><td>7.4 or later.</td></tr>
             <tr><th scope="row">Admin for the setup</th><td>Global Administrator, or Cloud Application Administrator plus Privileged Role Administrator. Needed once, to create the app.</td></tr>
           </tbody>
         </table>
-        <p>You only need the licences for the targets you sync: <code>-Target Macos</code> on its own needs no Defender.</p>
+        <p>You only need the licences for what you sync. Without Defender for Endpoint, run with <code>-Target Wdac,Macos</code>; otherwise WDAC and macOS are synced and only the indicators fail.</p>
       </section>
       <section id="downloads" class="help-step" aria-labelledby="downloads-title">
         <h2 id="downloads-title">2. Downloads</h2>
@@ -107,7 +107,7 @@
         <p>For an Azure Automation account. Creates no app; it gives the account's managed identity the two permissions.</p>
         <pre class="kql-code"><code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -ManagedIdentityObjectId &lt;object id&gt;</code></pre>
         <h3>Remove</h3>
-        <p>Deletes the app, its permissions and its <code>.pfx</code>. With <code>-ManagedIdentityObjectId</code> it takes the permissions away from the managed identity.</p>
+        <p>Deletes the app, its permissions and its default <code>.pfx</code> (pass <code>-CertificatePath</code> if you saved it elsewhere). With <code>-ManagedIdentityObjectId</code> it takes the permissions away from the managed identity.</p>
         <pre class="kql-code"><code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove</code></pre>
         <p>The setup script prints the <strong>ClientId</strong> you need in the next steps.</p>
         <p><strong>Imported the indicator CSVs by hand before?</strong> The app only sees the indicators it created itself. Delete the indicators you imported (their titles start with <code>LOLRMM</code>), otherwise you end up with two sets. An indicator of your own for the same domain or IP, such as an Allow for a tool you use, is changed to Block: exclude that tool instead.</p>
@@ -125,7 +125,7 @@
             <tr><th scope="row">Sign-in</th><td>One of:
               <ul class="param-list">
                 <li><code>-Interactive</code>: your own admin account. WDAC and macOS only; Defender needs the app.</li>
-                <li><code>-CertificatePath</code>: the <code>.pfx</code>, with its password in <code>$env:RMMGUARD_CERT_PASSWORD</code>. On Windows also <code>-CertificateThumbprint</code> for a certificate in the certificate store.</li>
+                <li><code>-CertificatePath</code>: the <code>.pfx</code>, with its password in <code>$env:RMMGUARD_CERT_PASSWORD</code> or <code>-CertificatePassword</code>. On Windows also <code>-CertificateThumbprint</code> for a certificate in the certificate store.</li>
                 <li><code>-FederatedToken</code>: an OIDC token from GitHub Actions or Azure DevOps.</li>
                 <li><code>-Identity</code>: the managed identity of an Azure Automation account.</li>
                 <li><code>-ClientSecret</code> or <code>$env:RMMGUARD_CLIENT_SECRET</code>: a client secret.</li>
@@ -222,7 +222,7 @@ jobs:
           <tbody>
             <tr><td><code>IDENTITY</code></td><td><code>True</code>. The runbook signs in with the managed identity.</td></tr>
             <tr><td><code>ASSIGNMENT</code></td><td><code>AllDevices</code>, <code>AllUsers</code> or the object ID of a group. Leave it empty to create the policies unassigned.</td></tr>
-            <tr><td><code>EXCLUDE</code></td><td>The tools you want to keep using, as a list: <code>["AnyDesk","TeamViewer"]</code>. Leave it empty to block every tool.</td></tr>
+            <tr><td><code>EXCLUDE</code></td><td>The tools you want to keep using, separated by commas: <code>AnyDesk,TeamViewer</code>. Leave it empty to block every tool.</td></tr>
           </tbody>
         </table>
         <p>Leave the other parameters empty.</p>
@@ -242,8 +242,8 @@ jobs:
         <table class="facts">
           <tbody>
             <tr><th scope="row"><code>-RingPolicyName</code></th><td>The name of the other WDAC policy. Windows allows each WDAC policy only once per device, and both policies are the same RMM Guard policy. With this name the script recognises the other one as yours, and stops if a device would get both.</td></tr>
-            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code>.</td></tr>
-            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. Removing a block, such as a new exclusion, applies at once.</td></tr>
+            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>The pilot group, kept out of the main policy. Use it with <code>-Assignment AllDevices</code>; an exclusion on <code>AllUsers</code> is refused, because Intune does not reliably apply it.</td></tr>
+            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>New blocks wait until the release is this many days old. An update that only removes blocks, such as a new exclusion, applies at once.</td></tr>
           </tbody>
         </table>
         <p>The pilot run leaves out the Defender indicators: they apply to the whole tenant, so only the main run syncs them.</p>
@@ -252,7 +252,7 @@ jobs:
         <h2 id="safety-title">7. Safety checks</h2>
         <p>Before it changes anything, the script stops when:</p>
         <ul>
-          <li>a WDAC rule would block part of Windows, or the Intune or Defender agent;</li>
+          <li>a WDAC rule would block a Windows, PowerShell, .NET, Office, Edge, Teams, OneDrive, Defender or Intune file or folder, or any .dll other than the ones RMM Guard blocks today;</li>
           <li>an indicator would block a Microsoft or Apple domain, such as sign-in, Intune or Windows Update;</li>
           <li>a macOS rule would block Microsoft apps, such as Company Portal or Defender;</li>
           <li>a policy with the chosen name exists but was not created by RMM Guard.</li>
@@ -264,11 +264,13 @@ jobs:
           <thead><tr><th scope="col">Problem</th><th scope="col">What to do</th></tr></thead>
           <tbody>
             <tr><td>The run stops with HTTP 400: unknown tool in exclude.</td><td>A tool in your exclusions was renamed or removed on this site. Copy the names again from the RMM page.</td></tr>
-            <tr><td>The run stops because a rule would block Windows, Intune or a Microsoft domain.</td><td>Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</td></tr>
+            <tr><td>The run stops because a rule would block Windows, Intune or a Microsoft domain.</td><td>Nothing was changed for that part (WDAC, macOS or the indicators). <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</td></tr>
             <tr><td>The run refuses to overwrite a policy.</td><td>A policy with that name exists, but RMM Guard did not create it. Choose another name with <code>-WdacPolicyName</code> or <code>-MacosPolicyName</code>.</td></tr>
             <tr><td>The run says the RMM Guard policy already exists under another name.</td><td>You deployed it by hand earlier. Pass that name with <code>-WdacPolicyName</code>.</td></tr>
             <tr><td>The run stops because the WDAC rule options were changed by hand.</td><td>Someone changed the policy, for example to Audit Mode. Change it back in Intune, or sync to another policy name.</td></tr>
-            <tr><td>The run stops because a device could get both WDAC policies.</td><td>Pilot group only. In Intune, add the pilot group to the main policy's <strong>Excluded groups</strong> and run again.</td></tr>
+            <tr><td>The run stops because a device could get both WDAC policies.</td><td>Pilot group only. Exclude the pilot group from the main policy: with <code>-ExcludeGroupId</code> on the main run, or under <strong>Excluded groups</strong> in Intune. Then run again.</td></tr>
+            <tr><td>The run stops because the indicator list is empty.</td><td>The published list is broken. Nothing was deleted. Report it, as above.</td></tr>
+            <tr><td>Only the indicators fail, with <code>Defender sign-in failed</code>.</td><td>The tenant has no Defender for Endpoint, or the app lacks <code>Ti.ReadWrite</code>. Run with <code>-Target Wdac,Macos</code>, or rerun the setup script.</td></tr>
             <tr><td>The run skips an update because the release is too new.</td><td>Expected with <code>-MinimumReleaseAgeDays</code>. A later run applies it.</td></tr>
             <tr><td>Sign-in fails with AADSTS700213 or AADSTS70021.</td><td>The federated credential does not match. Check the repository and branch in its subject; scheduled runs use <code>main</code>.</td></tr>
             <tr><td>The setup fails with CredentialTypeNotAllowedAsPerAppPolicy.</td><td>Your tenant blocks client secrets. Use a certificate or OIDC.</td></tr>
