@@ -354,7 +354,13 @@ Describe 'Authentication' {
         $decode = { param($s) $s = $s.Replace('-', '+').Replace('_', '/'); [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($s.PadRight($s.Length + (4 - $s.Length % 4) % 4, '='))) }
         $header = & $decode $parts[0] | ConvertFrom-Json
         $payload = & $decode $parts[1] | ConvertFrom-Json
+        $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
         $header.alg | Should -Be 'RS256'
+        $header.typ | Should -Be 'JWT'
+        $payload.jti | Should -Match '^[0-9a-f]{8}-'
+        $payload.nbf | Should -BeLessOrEqual $now
+        $payload.exp | Should -BeGreaterThan $now
+        ($payload.exp - $payload.nbf) | Should -BeLessOrEqual 600
         $header.x5t | Should -Be ([Convert]::ToBase64String($certificate.GetCertHash()).TrimEnd('=').Replace('+', '-').Replace('/', '_'))
         $payload.aud | Should -Be 'https://login.microsoftonline.com/tenant-id/oauth2/v2.0/token'
         $payload.iss | Should -Be 'client-id'
@@ -363,5 +369,63 @@ Describe 'Authentication' {
         $signature = [Convert]::FromBase64String($signature.PadRight($signature.Length + (4 - $signature.Length % 4) % 4, '='))
         $rsa.VerifyData([Text.Encoding]::UTF8.GetBytes("$($parts[0]).$($parts[1])"), $signature,
             [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1) | Should -BeTrue
+    }
+    Context 'Resolve-Auth rules' {
+        BeforeEach { $savedSecret = $env:RMMGUARD_CLIENT_SECRET; $env:RMMGUARD_CLIENT_SECRET = $null }
+        AfterEach { $env:RMMGUARD_CLIENT_SECRET = $savedSecret }
+        It 'rejects two sign-in modes' {
+            $Interactive = [switch]$true; $Identity = [switch]$true
+            { Resolve-Auth } | Should -Throw '*Choose one*'
+        }
+        It 'rejects no sign-in mode' { { Resolve-Auth } | Should -Throw '*Choose one*' }
+        It 'falls back to the secret from the environment' {
+            $env:RMMGUARD_CLIENT_SECRET = 'envsecret'; $TenantId = 't'; $ClientId = 'c'
+            $auth = Resolve-Auth
+            $auth.Mode | Should -Be 'Secret'
+            $auth.Secret | Should -Be 'envsecret'
+        }
+        It 'lets -Interactive win over the environment secret' {
+            $env:RMMGUARD_CLIENT_SECRET = 'envsecret'; $Interactive = [switch]$true
+            (Resolve-Auth).Mode | Should -Be 'Interactive'
+        }
+        It 'requires tenant and client id with a secret' {
+            $ClientSecret = 'x'; $TenantId = $null; $ClientId = 'c'
+            { Resolve-Auth } | Should -Throw '*-TenantId and -ClientId*'
+        }
+        It 'rejects both certificate parameters' {
+            $TenantId = 't'; $ClientId = 'c'; $CertificatePath = '/x.pfx'; $CertificateThumbprint = 'AB'
+            { Resolve-Auth } | Should -Throw '*not both*'
+        }
+        It 'treats [ in a certificate path literally' {
+            $TenantId = 't'; $ClientId = 'c'; $CertificatePath = '/nonexistent/[a].pfx'
+            { Resolve-Auth } | Should -Throw '*Cannot find path*'
+        }
+    }
+
+    Context 'Get-AccessToken requests' {
+        BeforeEach { Mock Invoke-RestMethod { [pscustomobject]@{ access_token = 'T' } } }
+        AfterEach { $env:IDENTITY_ENDPOINT = $null; $env:IDENTITY_HEADER = $null }
+        It 'posts a client secret request' {
+            $script:Auth = @{ Mode = 'Secret'; TenantId = 't1'; ClientId = 'c1'; Secret = 's' }
+            Get-AccessToken 'https://api.securitycenter.microsoft.com' | Should -Be 'T'
+            Should -Invoke Invoke-RestMethod -Exactly 1 -ParameterFilter {
+                $Uri -eq 'https://login.microsoftonline.com/t1/oauth2/v2.0/token' -and $Method -eq 'Post' -and
+                $Body.scope -eq 'https://api.securitycenter.microsoft.com/.default' -and
+                $Body.grant_type -eq 'client_credentials' -and $Body.client_secret -eq 's' }
+        }
+        It 'posts a federated assertion without a secret' {
+            $script:Auth = @{ Mode = 'Federated'; TenantId = 't1'; ClientId = 'c1'; FederatedToken = 'fed' }
+            Get-AccessToken 'https://graph.microsoft.com' | Out-Null
+            Should -Invoke Invoke-RestMethod -Exactly 1 -ParameterFilter {
+                $Body.client_assertion_type -eq 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer' -and
+                $Body.client_assertion -eq 'fed' -and -not $Body.ContainsKey('client_secret') }
+        }
+        It 'asks the managed identity endpoint' {
+            $env:IDENTITY_ENDPOINT = 'http://localhost/msi'; $env:IDENTITY_HEADER = 'h'
+            $script:Auth = @{ Mode = 'Identity' }
+            Get-AccessToken 'https://graph.microsoft.com' | Out-Null
+            Should -Invoke Invoke-RestMethod -Exactly 1 -ParameterFilter {
+                $Uri -like '*resource=https%3A%2F%2Fgraph.microsoft.com*' -and $Headers['X-IDENTITY-HEADER'] -eq 'h' }
+        }
     }
 }

@@ -356,7 +356,7 @@ function New-ClientAssertion([System.Security.Cryptography.X509Certificates.X509
     $header = @{ alg = 'RS256'; typ = 'JWT'; x5t = (ConvertTo-Base64Url $Certificate.GetCertHash()) } | ConvertTo-Json -Compress
     $payload = @{
         aud = "https://login.microsoftonline.com/$Tenant/oauth2/v2.0/token"; iss = $Client; sub = $Client
-        jti = [guid]::NewGuid().ToString(); nbf = $now - 60; exp = $now + 600
+        jti = [guid]::NewGuid().ToString(); nbf = $now - 60; exp = $now + 540
     } | ConvertTo-Json -Compress
     $unsigned = (ConvertTo-Base64Url ([Text.Encoding]::UTF8.GetBytes($header))) + '.' + (ConvertTo-Base64Url ([Text.Encoding]::UTF8.GetBytes($payload)))
     $rsa = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($Certificate)
@@ -378,6 +378,7 @@ function Resolve-Auth {
     if ($modes.Count -ne 1) {
         throw 'Choose one sign-in: -Interactive, -Identity, -CertificatePath, -CertificateThumbprint, -FederatedToken or -ClientSecret ($env:RMMGUARD_CLIENT_SECRET).'
     }
+    if ($CertificatePath -and $CertificateThumbprint) { throw 'Use either -CertificatePath or -CertificateThumbprint, not both.' }
     $auth = @{ Mode = $modes[0]; TenantId = $TenantId; ClientId = $ClientId }
     if ($auth.Mode -in 'Secret', 'Certificate', 'Federated' -and (-not $TenantId -or -not $ClientId)) {
         throw "-TenantId and -ClientId are required with $($auth.Mode) sign-in."
@@ -389,9 +390,10 @@ function Resolve-Auth {
             if ($CertificatePath) {
                 $password = $CertificatePassword
                 if (-not $password -and $env:RMMGUARD_CERT_PASSWORD) { $password = ConvertTo-SecureString $env:RMMGUARD_CERT_PASSWORD -AsPlainText -Force }
-                $auth.Certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new((Resolve-Path $CertificatePath).Path, $password)
+                $auth.Certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new((Resolve-Path -LiteralPath $CertificatePath).Path, $password)
             } else {
-                $auth.Certificate = @('CurrentUser', 'LocalMachine') | ForEach-Object { Get-Item "Cert:\$_\My\$CertificateThumbprint" -ErrorAction SilentlyContinue } | Select-Object -First 1
+                $thumbprint = $CertificateThumbprint -replace '[^0-9A-Fa-f]', ''
+                $auth.Certificate = @('CurrentUser', 'LocalMachine') | ForEach-Object { Get-Item "Cert:\$_\My\$thumbprint" -ErrorAction SilentlyContinue } | Select-Object -First 1
                 if (-not $auth.Certificate) { throw "Certificate $CertificateThumbprint is not in CurrentUser\My or LocalMachine\My. On macOS or Linux use -CertificatePath." }
             }
         }

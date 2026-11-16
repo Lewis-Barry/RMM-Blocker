@@ -105,9 +105,10 @@ The pilot and production WDAC policies carry the same PolicyID, so a device must
 
 ## Authentication
 
-- Graph: `Connect-MgGraph` (Microsoft.Graph.Authentication) with `-Identity`, `-ClientSecretCredential`, `-CertificateThumbprint`, `-Certificate` (loaded from `-CertificatePath`), or `-AccessToken` after exchanging the federated token.
+- One `Get-AccessToken <resource>` serves both Graph and Defender: a client-credentials request to `login.microsoftonline.com/<tenant>/oauth2/v2.0/token` (scope `<resource>/.default`) using a client secret, a federated `client_assertion` or a certificate-signed JWT assertion; with `-Identity` it uses the Automation `IDENTITY_ENDPOINT` instead.
+- Graph is connected with `Connect-MgGraph -AccessToken` for every non-interactive mode and with `-Scopes` for `-Interactive`.
 - Client secrets are a fallback only: Entra's default app management policy can block password credentials entirely (seen in the test tenant: `CredentialTypeNotAllowedAsPerAppPolicy`). The guide and templates default to OIDC, then certificate.
-- Defender: `Get-DefenderToken`, built into the script. It sends a client-credentials request to `login.microsoftonline.com/<tenant>/oauth2/v2.0/token` with scope `https://api.securitycenter.microsoft.com/.default`, using a client secret, a federated `client_assertion` or a certificate-signed JWT assertion. With `-Identity` it uses the Automation `IDENTITY_ENDPOINT` instead.
+- Defender: the same `Get-AccessToken` with resource `https://api.securitycenter.microsoft.com`.
 - Both tokens are acquired up front, so a short-lived OIDC id token is used only at the start.
 - Permissions: Graph `DeviceManagementConfiguration.ReadWrite.All`; WindowsDefenderATP `Ti.ReadWrite`. The guide includes a PowerShell snippet to grant both to a managed identity.
 
