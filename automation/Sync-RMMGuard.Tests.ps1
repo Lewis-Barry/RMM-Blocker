@@ -620,3 +620,161 @@ Describe 'Graph paging' {
         { Sync-Ioc } | Should -Throw 'IOC: more than 10000 indicators are visible; paging is not supported.'
     }
 }
+
+# Adversarial review: ownership by parsed XML, assignment before the guards, stricter macOS and IOC writes.
+Describe 'Review fixes' {
+    BeforeAll {
+        $root = $script:Root.Replace('\', '/')
+        $script:MacJson = (node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$root/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$root/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" 2>$null) -join "`n"
+        $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
+        $script:Version = (Get-WdacFacts $script:PolicyXml).Version
+        # A customer's supplemental policy: its own PolicyID, the RMM Guard GUID as BasePolicyID.
+        $script:Supplemental = '<?xml version="1.0"?><SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy" PolicyType="Supplemental Policy"><VersionEx>10.0.0.0</VersionEx><PolicyID>{22222222-2222-2222-2222-222222222222}</PolicyID><BasePolicyID>{01A11AD0-7091-7896-89DD-447C515BCB5D}</BasePolicyID><FileRules><Allow ID="ID_ALLOW_X" FileName="mytool.exe"/></FileRules></SiPolicy>'
+        function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+        function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
+        function FreshMac { $script:MacJson | ConvertFrom-Json -AsHashtable }
+    }
+    BeforeEach {
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
+        Confirm $true
+        Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
+    }
+
+    Context 'WDAC ownership (I1)' {
+        It 'recognises only the RMM Guard base policy' {
+            Test-RMMGuardBase $script:PolicyXml | Should -BeTrue
+            Test-RMMGuardBase ($script:PolicyXml -replace '01A11AD0-7091-7896-89DD-447C515BCB5D', '01a11ad0-7091-7896-89dd-447c515bcb5d') | Should -BeTrue
+            Test-RMMGuardBase $script:Supplemental | Should -BeFalse
+            Test-RMMGuardBase 'not xml' | Should -BeFalse
+            Test-RMMGuardBase $null | Should -BeFalse
+        }
+        It 'refuses a supplemental policy on our base: no PUT, no assignment' {
+            $Assignment = 'AllDevices'
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += "$Method $Path" }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                elseif ($Path -like '*/p1/settings') { WdacSettings $script:Supplemental }
+                elseif ($Path -like '*/p1/assignments') { [pscustomobject]@{ value = @() } }
+                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+            }
+            { Sync-Wdac } | Should -Throw '*Refusing*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'does not report a supplemental policy, a lower-case GUID is ours, and undecodable XML is not ours' {
+            Mock Invoke-Graph {
+                if ($Path -like '*templateFamily*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 's'; name = 'Supp' }, [pscustomobject]@{ id = 'j'; name = 'Junk' }, [pscustomobject]@{ id = 'l'; name = 'Lower' }) } }
+                elseif ($Path -like '*/s/settings') { WdacSettings $script:Supplemental }
+                elseif ($Path -like '*/j/settings') { WdacSettings 'not-base64!!' }
+                elseif ($Path -like '*/l/settings') { WdacSettings ($script:PolicyXml -replace '01A11AD0-7091-7896-89DD-447C515BCB5D', '01a11ad0-7091-7896-89dd-447c515bcb5d') }
+            }
+            (Find-WdacByPolicyId).name | Should -Be 'Lower'
+            $RingPolicyName = @('Lower')
+            Find-WdacByPolicyId | Should -BeNullOrEmpty
+        }
+        It 'refuses -RingPolicyName naming this policy (M11)' {
+            $RingPolicyName = @('rmm guard - wdac')
+            { Sync-Wdac } | Should -Throw "*-RingPolicyName must name the other ring's policy, not this one.*"
+        }
+    }
+
+    Context 'assignment before the guards (I2)' {
+        BeforeEach {
+            $ExcludeGroupId = 'bbbbbbbb-0000-0000-0000-000000000003'
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += [pscustomobject]@{ Call = "$Method $Path"; Body = $Body } }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                elseif ($Path -like '*/p1/settings') { WdacSettings $script:Deployed }
+                elseif ($Path -like '*/p1/assignments') { [pscustomobject]@{ value = @([pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }) } }
+                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+            }
+        }
+        It 'posts the exclusion even when the release is too young' {
+            $MinimumReleaseAgeDays = 7
+            $script:Changelog = @([pscustomobject]@{ version = $script:Version; date = (Get-Date).AddDays(-2).ToString('yyyy-MM-dd') })
+            $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 1) -replace '<VersionEx>[^<]+</VersionEx>', '<VersionEx>1.0.0.1</VersionEx>'
+            Sync-Wdac | Should -BeLike 'skipped*'
+            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+            $script:Posts[0].Body.assignments.target.groupId | Should -Contain 'bbbbbbbb-0000-0000-0000-000000000003'
+        }
+        It 'posts the exclusion before the change-size guard stops the update' {
+            $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 300)
+            { Sync-Wdac } | Should -Throw '*-Force*'
+            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+        }
+        It 'reports unchanged with -ceq and still assigns' {
+            $script:Deployed = $script:PolicyXml
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+            $script:Posts.Call | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+        }
+        It 'treats a case-only XML difference as a change (M1)' {
+            $script:Deployed = $script:PolicyXml.Replace('FilePath="*\ctes.exe"', 'FilePath="*\CTES.exe"')
+            Confirm $false
+            Sync-Wdac | Should -BeLike 'would be updated:*'
+        }
+    }
+
+    Context 'macOS (M2, M3, M4)' {
+        It 'rejects a case-shifted key' {
+            $b = FreshMac; $b.Remove('name'); $b['Name'] = 'x'
+            { Test-MacBody $b } | Should -Throw 'macOS:*'
+        }
+        It 'rejects a foreign setting under choiceSettingValue.children' {
+            $b = FreshMac
+            $b.settings[0].settingInstance.choiceSettingValue = @{ children = @(@{ settingDefinitionId = 'com.apple.security.firewall_enablefirewall' }) }
+            { Test-MacBody $b } | Should -Throw '*unexpected setting*'
+        }
+        It 'rejects a foreign setting in a PSCustomObject tree' {
+            $b = FreshMac
+            $b.settings[0].settingInstance.extra = [pscustomobject]@{ list = @([pscustomobject]@{ settingDefinitionId = 'evil' }) }
+            { Test-MacBody $b } | Should -Throw '*unexpected setting*'
+        }
+        It 'refuses a deployed policy with settings beyond the deny list' {
+            $Assignment = 'AllDevices'
+            $script:MacDescription = ($script:MacJson | ConvertFrom-Json).description
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += "$Method $Path" }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'm1'; name = 'Block RMM tools (macOS)'; description = $script:MacDescription }) } }
+                elseif ($Path -like '*/m1/settings') { [pscustomobject]@{ value = @(@(($script:MacJson | ConvertFrom-Json).settings) + [pscustomobject]@{ settingInstance = [pscustomobject]@{ settingDefinitionId = 'com.apple.security.firewall_enablefirewall' } }) } }
+                elseif ($Path -like '*/m1/assignments') { [pscustomobject]@{ value = @() } }
+            }
+            { Sync-Macos } | Should -Throw "macOS: 'Block RMM tools (macOS)' has settings beyond the RMM Guard deny list. Refusing to overwrite them."
+            $script:Posts | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'IOC (M5, M6)' {
+        BeforeEach { $script:Present = @(ConvertFrom-IocCsv $script:IocText) }
+        It 'ignores LOLRMM-titled indicators of other types' {
+            Mock Invoke-Defender { [pscustomobject]@{ value = @($script:Present) + [pscustomobject]@{ id = '9'; indicatorType = 'FileSha256'; indicatorValue = 'ab'; title = 'LOLRMM - Hash' } } }
+            Sync-Ioc | Should -Be "unchanged, $($script:Present.Count) indicators"
+        }
+        It 'stops when BatchDelete <Name>' -ForEach @(
+            @{ Name = 'fails (404)'; Fail = $true; Reply = $null }
+            @{ Name = 'reports failures in a body'; Fail = $false; Reply = [pscustomobject]@{ value = @([pscustomobject]@{ id = '9'; isFailed = $true }) } }
+        ) {
+            $script:Fail = $Fail; $script:Reply = $Reply
+            Mock Invoke-Defender {
+                if ($Method -eq 'GET') { [pscustomobject]@{ value = @($script:Present) + [pscustomobject]@{ id = '9'; indicatorType = 'DomainName'; indicatorValue = 'gone.example.org'; title = 'LOLRMM - Gone' } } }
+                elseif ($script:Fail) { throw 'Response status code does not indicate success: 404 (Not Found).' }
+                else { $script:Reply }
+            }
+            { Sync-Ioc } | Should -Throw 'IOC: 1 indicators could not be deleted*'
+        }
+    }
+
+    Context 'Invoke-Sync (M10)' {
+        It 'counts a repeated target once' {
+            $Target = @('Wdac', 'Wdac')
+            Mock Resolve-Auth { @{ Mode = 'Secret' } }
+            Mock Get-Module { 'present' }
+            Mock Import-Module {}
+            Mock Connect-Graph {}
+            Mock Write-Host {}
+            Mock Sync-Wdac { throw 'WDAC: boom' }
+            { Invoke-Sync } | Should -Throw '1 of 1 target(s) failed.'
+            Should -Invoke Sync-Wdac -Times 1 -Exactly
+        }
+    }
+}

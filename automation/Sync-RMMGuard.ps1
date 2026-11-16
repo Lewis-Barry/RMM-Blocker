@@ -145,6 +145,12 @@ function Test-WdacPolicy([string]$Text) {
     $facts
 }
 
+# Ownership by parsed XML: a customer's supplemental policy carries the RMM Guard GUID as its BasePolicyID.
+function Test-RMMGuardBase([string]$Text) {
+    try { $policy = (Get-WdacFacts $Text).Policy } catch { return $false }
+    $policy.PolicyType -eq 'Base Policy' -and "$($policy.PolicyID)" -eq $script:PolicyId
+}
+
 function New-WdacBody([string]$Name, [string]$Description, [string]$Xml, [string[]]$RoleScopeTagIds = @('0')) {
     @{
         name              = $Name
@@ -259,18 +265,30 @@ function Get-MacRules($Settings) {
     @()
 }
 
-# The body is posted as is, so nothing but the deny list may be in it.
-function Test-MacBody($Body) {
-    $allowed = 'app_app', 'app_allowed', 'app_allowed_deniedbinaries', 'app_allowed_deniedbinaries_item_teamid', 'app_allowed_deniedbinaries_item_signingid'
-    if ((@($Body.Keys) | Sort-Object) -join ',' -ne 'description,name,platforms,roleScopeTagIds,settings,technologies' -or
-        $Body.platforms -cne 'macOS' -or $Body.technologies -cne 'appleRemoteManagement' -or @($Body.settings).Count -ne 1) { throw 'macOS: the policy body is not the RMM Guard deny list.' }
-    $stack = [System.Collections.Generic.Stack[object]]::new(); $stack.Push($Body.settings[0].settingInstance); $lists = 0
+$script:MacSettingIds = 'app_app', 'app_allowed', 'app_allowed_deniedbinaries', 'app_allowed_deniedbinaries_item_teamid', 'app_allowed_deniedbinaries_item_signingid'
+
+# Every settingDefinitionId anywhere in a tree of dictionaries, objects and lists, wherever it is hidden.
+function Get-SettingIds($Tree) {
+    $stack = [System.Collections.Generic.Stack[object]]::new(); $stack.Push($Tree)
     while ($stack.Count) {
         $node = $stack.Pop()
-        if ($node.settingDefinitionId -cnotin $allowed) { throw "macOS: unexpected setting '$($node.settingDefinitionId)'." }
-        if ($node.settingDefinitionId -ceq 'app_allowed_deniedbinaries') { $lists++ }
-        foreach ($group in $node.groupSettingCollectionValue) { foreach ($child in $group.children) { $stack.Push($child) } }
+        if ($node -is [System.Management.Automation.PSCustomObject]) {
+            foreach ($p in $node.PSObject.Properties) { if ($p.Name -eq 'settingDefinitionId') { "$($p.Value)" } else { $stack.Push($p.Value) } }
+        } elseif ($node -is [System.Collections.IDictionary]) {
+            foreach ($key in @($node.Keys)) { if ($key -eq 'settingDefinitionId') { "$($node[$key])" } else { $stack.Push($node[$key]) } }
+        } elseif ($node -is [System.Collections.IEnumerable] -and $node -isnot [string]) {
+            foreach ($item in $node) { $stack.Push($item) }
+        }
     }
+}
+
+# The body is posted as is, so nothing but the deny list may be in it.
+function Test-MacBody($Body) {
+    if ((@($Body.Keys) | Sort-Object) -join ',' -cne 'description,name,platforms,roleScopeTagIds,settings,technologies' -or
+        $Body.platforms -cne 'macOS' -or $Body.technologies -cne 'appleRemoteManagement' -or @($Body.settings).Count -ne 1) { throw 'macOS: the policy body is not the RMM Guard deny list.' }
+    $ids = @(Get-SettingIds $Body.settings)
+    foreach ($id in $ids) { if ($id -cnotin $script:MacSettingIds) { throw "macOS: unexpected setting '$id'." } }
+    $lists = @($ids | Where-Object { $_ -ceq 'app_allowed_deniedbinaries' }).Count
     if ($lists -ne 1) { throw "macOS: expected one denied-binaries list, found $lists." }
 }
 
@@ -478,7 +496,8 @@ function Get-WdacXml([string]$PolicyId) {
     $value = $settings.settingInstance.choiceSettingValue.children | Where-Object settingDefinitionId -like '*_xml' |
         ForEach-Object { $_.simpleSettingValue.value } | Select-Object -First 1
     # Graph returns what was posted (plain text); decode in case the portal's upload stored base64.
-    if ($value -and -not $value.TrimStart().StartsWith('<')) { $value = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($value)) }
+    # An undecodable value stays as is and is then simply not the RMM Guard policy.
+    if ($value -and -not $value.TrimStart().StartsWith('<')) { try { $value = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($value)) } catch { Write-Verbose "Policy $PolicyId holds neither XML nor base64." } }
     $value
 }
 
@@ -486,7 +505,7 @@ function Get-WdacXml([string]$PolicyId) {
 function Find-WdacByPolicyId {
     $filter = [uri]::EscapeDataString("templateReference/templateFamily eq 'endpointSecurityApplicationControl'")
     foreach ($candidate in Get-GraphAll "/deviceManagement/configurationPolicies?`$filter=$filter&`$select=id,name" | Where-Object { $_.name -cnotin $RingPolicyName }) {
-        if ("$(Get-WdacXml $candidate.id)".Contains($script:PolicyId)) { return $candidate }
+        if (Test-RMMGuardBase (Get-WdacXml $candidate.id)) { return $candidate }
     }
 }
 
@@ -509,6 +528,7 @@ function Set-Assignment([string]$PolicyId) {
 
 function Sync-Wdac {
     if (-not $WdacPolicyName) { throw 'WDAC: -WdacPolicyName is required.' }
+    if ($RingPolicyName -contains $WdacPolicyName) { throw "WDAC: -RingPolicyName must name the other ring's policy, not this one." }
     $xml = Get-RMMGuardFile 'wdac.xml' 'xml'
     $desired = Test-WdacPolicy $xml
     $policy = Find-Policy $WdacPolicyName
@@ -526,11 +546,10 @@ function Sync-Wdac {
         throw "WDAC: '$WdacPolicyName' is not an App Control for Business XML policy. Refusing to change it."
     }
     $currentXml = Get-WdacXml $policy.id
-    if (-not "$currentXml".Contains($script:PolicyId)) { throw "WDAC: '$WdacPolicyName' does not carry the RMM Guard PolicyID. Refusing to overwrite it." }
-    if ((ConvertTo-NormalizedXml $currentXml) -eq (ConvertTo-NormalizedXml $xml)) {
-        Set-Assignment $policy.id
-        return "unchanged v$($desired.Version)"
-    }
+    if (-not (Test-RMMGuardBase $currentXml)) { throw "WDAC: '$WdacPolicyName' is not the RMM Guard base policy. Refusing to overwrite it." }
+    # Assign before release age and change size: a production policy must get the pilot exclusion even when its update waits.
+    Set-Assignment $policy.id
+    if ((ConvertTo-NormalizedXml $currentXml) -ceq (ConvertTo-NormalizedXml $xml)) { return "unchanged v$($desired.Version)" }
     $deployed = Get-WdacFacts $currentXml
     if ($deployed.Version -ne $desired.Version -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     $change = Measure-SetChange $deployed.Rules $desired.Rules
@@ -538,7 +557,6 @@ function Sync-Wdac {
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
     if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { return "would be updated: $summary" }
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
-    Set-Assignment $policy.id
     "updated $summary"
 }
 
@@ -562,13 +580,15 @@ function Sync-Macos {
     if (-not "$($policy.description)".StartsWith($script:MacDescriptionPrefix)) {
         throw "macOS: '$MacosPolicyName' is not an RMM Guard deny list (description does not start with '$script:MacDescriptionPrefix'). Refusing to overwrite it."
     }
-    $deployedKeys = @(Get-MacRules (Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)/settings").value | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
+    $deployedSettings = @(Get-GraphAll "/deviceManagement/configurationPolicies/$($policy.id)/settings")
+    if (@(Get-SettingIds $deployedSettings | Where-Object { $_ -cnotin $script:MacSettingIds }).Count) {
+        throw "macOS: '$MacosPolicyName' has settings beyond the RMM Guard deny list. Refusing to overwrite them."
+    }
+    Set-Assignment $policy.id
+    $deployedKeys = @(Get-MacRules $deployedSettings | ForEach-Object { "$($_.TeamId)|$($_.SigningId)" })
     $change = Measure-SetChange $deployedKeys $keys
     $deployedVersion = Get-MacVersion $policy.description
-    if (-not $change.Added -and -not $change.Removed) {
-        Set-Assignment $policy.id
-        return "unchanged v$deployedVersion"
-    }
+    if (-not $change.Added -and -not $change.Removed) { return "unchanged v$deployedVersion" }
     if ($deployedVersion -ne $version -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     Test-ChangeSize $deployedKeys.Count $change.Added $change.Removed -Force:$Force -Label 'macOS'
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
@@ -578,7 +598,6 @@ function Sync-Macos {
         name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies
         roleScopeTagIds = @($current.roleScopeTagIds); settings = $body.settings
     } | Out-Null
-    Set-Assignment $policy.id
     "updated $summary"
 }
 
@@ -590,7 +609,7 @@ function Sync-Ioc {
     # With Ti.ReadWrite the app only sees the indicators it created; the title filter also covers Ti.ReadWrite.All.
     $visible = @((Invoke-Defender GET '/indicators?$top=10000').value)
     if ($visible.Count -ge 10000) { throw 'IOC: more than 10000 indicators are visible; paging is not supported.' }
-    $deployed = @($visible | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') })
+    $deployed = @($visible | Where-Object { "$($_.title)".StartsWith('LOLRMM - ') -and $_.indicatorType -in 'DomainName', 'IpAddress' })
     $diff = Compare-IocSet $desired $deployed
     if (-not $diff.Upsert.Count -and -not $diff.Remove.Count) { return "unchanged, $($desired.Count) indicators" }
     # The CSV has no version of its own; it is built from the same release as the WDAC policy.
@@ -607,7 +626,10 @@ function Sync-Ioc {
     }
     for ($i = 0; $i -lt $diff.Remove.Count; $i += 500) {
         $ids = @($diff.Remove[$i..([math]::Min($i + 499, $diff.Remove.Count - 1))] | ForEach-Object { [string]$_.id })
-        Invoke-Defender POST '/indicators/BatchDelete' @{ IndicatorIds = $ids } | Out-Null
+        # Documented: 204 without content when every id was deleted; 400, 403 or 404 otherwise, which Invoke-RestMethod throws.
+        # No response body is documented, so a failure list in one (value[].isFailed or errors) is treated as a failure too.
+        try { $result = Invoke-Defender POST '/indicators/BatchDelete' @{ IndicatorIds = $ids } } catch { throw "IOC: $($ids.Count) indicators could not be deleted ($($_.Exception.Message))." }
+        if (@($result.value | Where-Object isFailed).Count -or @($result.errors | Where-Object { $_ }).Count) { throw "IOC: $($ids.Count) indicators could not be deleted (the response reports failures)." }
     }
     "updated: $summary"
 }
@@ -621,7 +643,8 @@ function Invoke-Sync {
     if ($Target -contains 'Wdac' -or $Target -contains 'Macos') { Connect-Graph }
     $script:Changelog = $MinimumReleaseAgeDays -gt 0 ? (ConvertFrom-Changelog (Invoke-RestMethod "$script:Site/changelog.json")) : @()
     $failed = 0
-    foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $Target }) {
+    $targets = @($Target | Sort-Object -Unique)
+    foreach ($name in @('Wdac', 'Macos', 'Ioc') | Where-Object { $_ -in $targets }) {
         try {
             $result = & "Sync-$name"
             if ($result -like 'skipped*') { Write-Warning "${name}: $result" } else { Write-Host "${name}: $result" }
@@ -630,7 +653,7 @@ function Invoke-Sync {
             Write-Host "${name}: FAILED. $($_.Exception.Message)" -ForegroundColor Red
         }
     }
-    if ($failed) { throw "$failed of $($Target.Count) target(s) failed." }
+    if ($failed) { throw "$failed of $($targets.Count) target(s) failed." }
 }
 
 Invoke-Sync
