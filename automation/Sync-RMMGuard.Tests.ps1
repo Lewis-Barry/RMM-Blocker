@@ -247,8 +247,7 @@ Describe 'Shared' {
     }
     It 'decides release age' {
         # The same shape Invoke-RestMethod returns: one object holding the array.
-        $log = ConvertFrom-Changelog (ConvertFrom-Json -NoEnumerate '[{"version":"1.0.0.22","date":"2026-11-10"},{"version":"1.0.0.21","date":"2026-11-01"}]')
-        $log.Count | Should -Be 2
+        $log = ConvertFrom-Json -NoEnumerate '[{"version":"1.0.0.22","date":"2026-11-10"},{"version":"1.0.0.21","date":"2026-11-01"}]'
         $now = [datetime]'2026-11-15'
         Test-ReleaseAge $log '1.0.0.22' 0 $now | Should -BeNullOrEmpty
         Test-ReleaseAge $log '1.0.0.22' 5 $now | Should -BeNullOrEmpty
@@ -840,15 +839,6 @@ Describe 'Second review' {
         Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
     }
 
-    Context 'WDAC canaries (C1)' {
-        It 'rejects the path <Path> that hits a Windows or Microsoft binary' -ForEach @(
-            @{ Path = '*\kernel32.dll' }, @{ Path = '*\csrss.exe' }, @{ Path = '*\WinSxS\*' }, @{ Path = '*\Microsoft.NET\*' },
-            @{ Path = '*\WindowsApps\*' }, @{ Path = '*\Common Files\*' }, @{ Path = '*\rundll32.exe' }, @{ Path = '*\MpCmdRun.exe' }
-        ) {
-            { Test-WdacPolicy $script:X2.Replace($script:Ctes2, "FilePath=`"$Path`"") } | Should -Throw '*would block*'
-        }
-    }
-
     Context 'IOC first-party hosts (C2)' {
         It 'rejects <V>' -ForEach @(@{ V = 'r.manage.microsoft.com' }, @{ V = 'login.windows.net' }, @{ V = 'winatp-gw-cus.microsoft.com' }, @{ V = 'x.windowsupdate.com' }) {
             { ConvertFrom-IocCsv (DomainRow $V) } | Should -Throw 'IOC:*first-party*'
@@ -921,50 +911,6 @@ Describe 'Second review' {
         }
     }
 
-    Context 'rings never overlap (I2)' {
-        BeforeEach {
-            $script:RingTargets = @()
-            $RingPolicyName = @('RMM Guard - WDAC (pilot)')
-            Mock Invoke-Graph {
-                if ($Method -ne 'GET') { $script:Posts += "$Method $Path" }
-                elseif ($Path -like '*name%20eq*pilot*') { [pscustomobject]@{ value = @($script:RingTargets.Count -ge 0 -and $script:RingExists ? [pscustomobject]@{ id = 'r1'; name = 'RMM Guard - WDAC (pilot)'; description = 'd' } : $null) | Where-Object { $_ } } }
-                elseif ($Path -like '*/r1/assignments') { [pscustomobject]@{ value = @($script:RingTargets) } }
-                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
-                elseif ($Path -like '*/p1/settings') { WdacSettings $script:PolicyXml }
-                elseif ($Path -like '*/p1/assignments') { [pscustomobject]@{ value = @() } }
-                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
-            }
-        }
-        It 'assigns production to all devices when the pilot ring targets the excluded pilot group' {
-            $script:RingExists = $true; $script:RingTargets = @(Target 'groupAssignmentTarget' $script:Pilot)
-            $Assignment = 'AllDevices'; $ExcludeGroupId = $script:Pilot
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-            $script:Posts | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
-        }
-        It 'assigns the pilot when production excludes the pilot group' {
-            $script:RingExists = $true; $script:RingTargets = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:Pilot))
-            $Assignment = $script:Pilot
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-        }
-        It 'refuses the pilot when a hand-deployed policy covers all devices without excluding the pilot' {
-            $script:RingExists = $true; $script:RingTargets = @(Target 'allDevicesAssignmentTarget')
-            $Assignment = $script:Pilot
-            { Sync-Wdac } | Should -Throw 'WDAC:*Refusing*'
-            $script:Posts | Should -BeNullOrEmpty
-        }
-        It 'refuses production on all devices when the pilot group is not excluded' {
-            $script:RingExists = $true; $script:RingTargets = @(Target 'groupAssignmentTarget' $script:Pilot)
-            $Assignment = 'AllDevices'
-            { Sync-Wdac } | Should -Throw 'WDAC:*Refusing*'
-        }
-        It 'assigns when the other ring does not exist yet' {
-            $script:RingExists = $false
-            $Assignment = $script:Pilot
-            Sync-Wdac | Should -Be "unchanged v$script:Version"
-            $script:Posts | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
-        }
-    }
-
     Context 'rule options changed by hand (S1)' {
         BeforeEach {
             $script:Deployed = $script:X2.Replace('<Rule><Option>Enabled:UMCI</Option></Rule>', '<Rule><Option>Enabled:UMCI</Option></Rule><Rule><Option>Enabled:Audit Mode</Option></Rule>')
@@ -1006,26 +952,261 @@ Describe 'Second review' {
     }
 
     Context 'AllUsers with an exclusion (S6)' {
-        It 'refuses -Assignment AllUsers with -ExcludeGroupId' {
-            $Assignment = 'AllUsers'; $ExcludeGroupId = $script:Pilot
-            Mock Invoke-Graph {}
-            { Sync-Wdac } | Should -Throw 'WDAC:*AllUsers*'
-            Should -Invoke Invoke-Graph -Times 0 -Exactly
+        It 'refuses -Assignment AllUsers with -ExcludeGroupId for <T>, before signing in' -ForEach @(@{ T = 'Wdac' }, @{ T = 'Macos' }) {
+            $Target = @($T); $Assignment = 'AllUsers'; $ExcludeGroupId = $script:Pilot
+            Mock Resolve-Auth { throw 'signed in' }
+            { Invoke-Sync } | Should -Throw '*AllUsers cannot be combined with -ExcludeGroupId*'
+        }
+    }
+}
+
+Describe 'Third review' {
+    BeforeAll {
+        $script:X3 = ConvertTo-NormalizedXml $script:PolicyXml
+        $script:Ctes3 = 'FilePath="*\ctes.exe"'
+        $script:H3 = (Get-Content "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv" -TotalCount 1)
+        function Row3($Type, $Value, $Sev = 'Medium') { "$script:H3`r`n$Type,`"$Value`",2035-07-23T00:00:00Z,Block,$Sev,LOLRMM - Test,d,r,,,,true`r`n" }
+        $root = $script:Root.Replace('\', '/')
+        $script:MacJson = (node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$root/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$root/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" 2>$null) -join "`n"
+        $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
+        $script:Version = (Get-WdacFacts $script:PolicyXml).Version
+        function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+        function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
+        function Target($Type, $GroupId) { [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = "#microsoft.graph.$Type"; groupId = $GroupId } } }
+        $script:P = 'aaaaaaaa-0000-0000-0000-000000000001'
+        $script:Young = @([pscustomobject]@{ version = $script:Version; date = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd') })
+    }
+    BeforeEach {
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Interactive = [switch]$false
+        $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Posts = @()
+        Confirm $true
+        $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
+        Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
+    }
+
+    Context 'WDAC deny paths' {
+        It 'rejects a deny rule on the file name of every canary' {
+            $missed = foreach ($canary in $script:WdacCanaries) {
+                $leaf = Split-Path $canary -Leaf
+                try { Test-WdacDenyPath "*\$leaf" 'T'; $canary } catch { if ("$_" -notlike '*would block*') { "$canary ($_)" } }
+            }
+            $script:WdacCanaries.Count | Should -BeGreaterThan 100
+            $missed | Should -BeNullOrEmpty
+        }
+        It 'rejects the canary files the third review found: <Leaf>' -ForEach @(
+            @{ Leaf = 'pwsh.exe' }, @{ Leaf = 'System.Management.Automation.dll' }, @{ Leaf = 'mscoree.dll' }, @{ Leaf = 'comctl32.dll' }, @{ Leaf = 'amsi.dll' },
+            @{ Leaf = 'wuauclt.exe' }, @{ Leaf = 'TrustedInstaller.exe' }, @{ Leaf = 'SenseNdr.exe' }, @{ Leaf = 'Microsoft.AAD.BrokerPlugin.exe' },
+            @{ Leaf = 'msedge.exe' }, @{ Leaf = 'msedgewebview2.exe' }, @{ Leaf = 'OUTLOOK.EXE' }, @{ Leaf = 'OneDrive.exe' }, @{ Leaf = 'ms-teams.exe' }
+        ) {
+            { Test-WdacDenyPath "*\$Leaf" 'T' } | Should -Throw '*would block*'
+        }
+        It 'rejects a rule on the protected folder in <Path>' -ForEach @(
+            @{ Path = '*\WinSxS\*' }, @{ Path = '*\Microsoft.NET\*' }, @{ Path = '*\WindowsApps\*' }, @{ Path = '*\Common Files\*' },
+            @{ Path = '*\Sys*\tool.exe' }, @{ Path = 'C:\Windows\System32\tool.exe' }, @{ Path = '*\SystemApps\*' }, @{ Path = '*\ImmersiveControlPanel\*' },
+            @{ Path = '*\PowerShell\*' }, @{ Path = '*\Teams\*' }, @{ Path = '*\Microsoft\*' }, @{ Path = '*\Microsoft Teams\tool.exe' },
+            @{ Path = '*\Windows Defender*\*' }, @{ Path = '*\Program Files (x86)\Microsoft\Edge\*' }, @{ Path = '*\M*\tool.exe' }
+        ) {
+            { Test-WdacDenyPath $Path 'T' } | Should -Throw '*would block*'
+        }
+        It 'rejects a .dll rule outside the pinned list: <Path>' -ForEach @(@{ Path = '*\vendor.dll' }, @{ Path = '*\vendor.DLL' }, @{ Path = '*\vendor.d*' }, @{ Path = '*\vendor.*' }) {
+            { Test-WdacDenyPath $Path 'T' } | Should -Throw '*would block*'
+        }
+        It 'accepts <Path>' -ForEach @(
+            @{ Path = '*\BlackCryptAgent*.dll' }, @{ Path = '*\AppData\Roaming\Microsoft\DeviceSync\ovd_*.exe' }, @{ Path = '*\Windows\Action1\*' },
+            @{ Path = '*\apps\support\netsupport\*' }, @{ Path = '*\Remote Manipulator System*\*' }, @{ Path = '*\Vendor\*' }
+        ) {
+            { Test-WdacDenyPath $Path 'T' } | Should -Not -Throw
+        }
+        It 'pins the exceptions to what the site publishes today' {
+            $script:WdacDllAllowed | Should -Be @('*\BlackCryptAgent*.dll')
+            $script:WdacFolderAllowed | Should -Be @('*\AppData\Roaming\Microsoft\DeviceSync\ovd_*.exe')
+        }
+        It 'runs the deny-path check inside Test-WdacPolicy' {
+            { Test-WdacPolicy $script:X3.Replace($script:Ctes3, 'FilePath="*\WinSxS\*"') } | Should -Throw '*would block*'
         }
     }
 
-    Context 'module install (S4)' {
-        It 'installs a pinned Microsoft.Graph.Authentication when none is present' {
-            $Target = @('Wdac')
-            Mock Resolve-Auth { @{ Mode = 'Secret' } }
-            Mock Install-Module {}
-            Mock Get-Module -ParameterFilter { $Name -eq 'Microsoft.Graph.Authentication' } {}
+    Context 'IOC values' {
+        It 'rejects a value with a trailing line feed: <V>' -ForEach @(@{ V = 'login.microsoftonline.com' }, @{ V = 'microsoft.com' }, @{ V = 'example.org' }) {
+            { ConvertFrom-IocCsv (Row3 'DomainName' "$V`n") } | Should -Throw 'IOC:*'
+        }
+        It 'rejects a macOS Team ID with a trailing line feed' {
+            { Test-MacRules @([pscustomobject]@{ TeamId = "UBF8T346G9`n"; SigningId = $null }) } | Should -Throw '*Team ID*'
+            { Test-MacRules @([pscustomobject]@{ TeamId = "UBF8T346G9`n"; SigningId = 'com.microsoft.CompanyPortalMac' }) } | Should -Throw '*Team ID*'
+        }
+        It 'rejects the first-party suffix <S> and a host under it' -ForEach @(
+            'microsoft.com', 'microsoftonline.com', 'windows.net', 'msauth.net', 'msftauth.net', 'windowsupdate.com', 'office.com', 'office365.com', 'live.com',
+            'azure.com', 'microsoftazuread-sso.com', 'msocsp.com', 'msftconnecttest.com', 'apple.com', 'windows.com', 'cloud.microsoft', 'static.microsoft',
+            'office.net', 'skype.com', 'lync.com', 'microsoftonline-p.com', 'microsoftonline-p.net', 'msidentity.com', 'msftidentity.com', 'msauthimages.net',
+            'windowsazure.com', 'azureedge.net', 'azurefd.net', 'azure.net', 'msedge.net', 'msecnd.net', 'sharepointonline.com', 'svc.ms', 'onedrive.com',
+            '1drv.com', 'mzstatic.com', 'cdn-apple.com', 'icloud.com' | ForEach-Object { @{ S = $_ } }
+        ) {
+            { ConvertFrom-IocCsv (Row3 'DomainName' $S) } | Should -Throw 'IOC:*'
+            { ConvertFrom-IocCsv (Row3 'DomainName' "rmmtest.$S") } | Should -Throw '*first-party*'
+        }
+        It 'pins the first-party suffixes and the exact allow-list' {
+            @($script:IocFirstPartySuffixes).Count | Should -Be 38
+            $script:IocFirstPartyAllowed | Should -Be @('agentreportingstore.blob.core.windows.net', 'atera-agent-heartbeat.servicebus.windows.net', 'gerwconline.blob.core.windows.net',
+                'packagesstore.blob.core.windows.net', 'support.services.microsoft.com')
+        }
+        It 'matches the allow-list exactly: <V> is refused' -ForEach @(@{ V = 'services.microsoft.com' }, @{ V = 'x.support.services.microsoft.com' }, @{ V = 'blob.core.windows.net' }) {
+            { ConvertFrom-IocCsv (Row3 'DomainName' $V) } | Should -Throw 'IOC:*'
+        }
+        It 'rejects the Microsoft 365 address <V>' -ForEach @(@{ V = '52.112.0.1' }, @{ V = '150.171.40.1' }, @{ V = '104.47.0.1' }) {
+            { ConvertFrom-IocCsv (Row3 'IpAddress' $V) } | Should -Throw '*is inside*'
+        }
+        It 'refuses an empty indicator CSV before deleting anything' {
+            $script:IocText = "$script:H3`r`n"
+            Mock Invoke-Defender { [pscustomobject]@{ value = @(ConvertFrom-IocCsv (Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv")) } }
+            { Sync-Ioc } | Should -Throw 'IOC: the indicator CSV is empty.'
+            Should -Invoke Invoke-Defender -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+    }
+
+    Context 'release age' {
+        BeforeEach { $MinimumReleaseAgeDays = 7; $script:Changelog = $script:Young; Confirm $false }
+        It 'holds a new WDAC policy until the release is old enough' {
+            Mock Invoke-Graph { [pscustomobject]@{ value = @() } }
+            Sync-Wdac | Should -BeLike 'skipped*'
+        }
+        It 'holds a new macOS policy until the release is old enough' {
+            Mock Invoke-Graph { [pscustomobject]@{ value = @() } }
+            Sync-Macos | Should -BeLike 'skipped*'
+        }
+        It 'holds a changed (not new) indicator until the release is old enough' {
+            $script:Present = @(ConvertFrom-IocCsv $script:IocText)
+            $script:Present[0] = $script:Present[0].PSObject.Copy(); $script:Present[0].severity = 'High'
+            Mock Invoke-Defender { [pscustomobject]@{ value = $script:Present } }
+            Sync-Ioc | Should -BeLike 'skipped*'
+        }
+        It 'upserts an expiry that moved within the same day' {
+            $new = [pscustomobject]@{ indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block'; expirationTime = '2035-07-23T00:00:00Z'; generateAlert = $true }
+            $old = $new.PSObject.Copy(); $old.expirationTime = '2035-07-23T12:00:00Z'
+            @((Compare-IocSet @($new) @($old)).Upsert).Count | Should -Be 1
+        }
+        It 'does not download wdac.xml for the indicators without a release age' {
+            $MinimumReleaseAgeDays = 0
+            Mock Invoke-Defender { [pscustomobject]@{ value = @() } }
+            Sync-Ioc | Should -BeLike 'would be updated:*'
+            Should -Invoke Get-RMMGuardFile -Times 0 -Exactly -ParameterFilter { $File -eq 'wdac.xml' }
+        }
+    }
+
+    Context 'rings' {
+        BeforeEach {
+            # p1 is this policy, r1 the other policy with the same PolicyID (its name does not matter any more).
+            $script:Exists = $true; $script:Own = @(); $script:Other = @(); $script:OtherExists = $true; $script:Settings = $script:PolicyXml
+            Mock Invoke-Graph {
+                if ($Method -ne 'GET') { $script:Posts += "$Method $Path"; if ($Method -eq 'POST' -and $Path -eq '/deviceManagement/configurationPolicies') { [pscustomobject]@{ id = 'new' } } }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @(if ($script:Exists) { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' } }) } }
+                elseif ($Path -like '*templateFamily*') { [pscustomobject]@{ value = @(if ($script:Exists) { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC' } }; if ($script:OtherExists) { [pscustomobject]@{ id = 'r1'; name = 'Pilot WDAC' } }) } }
+                elseif ($Path -like '*/r1/settings' -or $Path -like '*/p1/settings') { WdacSettings $script:Settings }
+                elseif ($Path -like '*/r1/assignments') { [pscustomobject]@{ value = @($script:Other) } }
+                elseif ($Path -like '*/p1/assignments') { [pscustomobject]@{ value = @($script:Own) } }
+                elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:WdacTemplateId }; settingCount = 1 } }
+            }
+        }
+        It 'allows the main policy on all devices when the pilot group is excluded with -ExcludeGroupId' {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = 'AllDevices'; $ExcludeGroupId = $script:P
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+        }
+        It 'allows the main policy when the pilot exclusion was set in Intune (P2)' {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
+            $script:Own = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P))
+            $Assignment = 'AllDevices'
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+        }
+        It 'allows the pilot when the main policy excludes the pilot group' {
+            $script:Other = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = $script:P
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+        }
+        It 'refuses the main policy on all devices without excluding the pilot, even with a miscased or mistyped ring name' -ForEach @(@{ R = 'pilot wdac' }, @{ R = 'Pilot WDCA' }) {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @($R)
+            $Assignment = 'AllDevices'
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*Refusing*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'refuses the pilot when its own policy is already assigned to all devices (P11)' {
+            $script:Other = @((Target 'allDevicesAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
+            $script:Own = @(Target 'allDevicesAssignmentTarget')
+            $Assignment = $script:P
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+        }
+        It 'refuses the pilot when the other policy targets all users, even with the pilot group excluded (P8)' {
+            $script:Other = @((Target 'allLicensedUsersAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P)); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = $script:P
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+        }
+        It 'refuses this policy on all users even when it excludes the pilot group (an exclusion does not separate All users)' {
+            $script:Other = @(Target 'groupAssignmentTarget' $script:P); $RingPolicyName = @('Pilot WDAC')
+            $script:Own = @((Target 'allLicensedUsersAssignmentTarget'), (Target 'exclusionGroupAssignmentTarget' $script:P))
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+        }
+        It 'refuses on the create path before anything is written' {
+            $script:Exists = $false; $script:Other = @(Target 'allDevicesAssignmentTarget'); $RingPolicyName = @('Pilot WDAC')
+            $Assignment = $script:P
+            { Sync-Wdac } | Should -Throw 'WDAC:*could get both*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+        It 'assigns when no other policy carries the PolicyID' {
+            $script:OtherExists = $false
+            $Assignment = $script:P
+            Sync-Wdac | Should -Be "unchanged v$script:Version"
+            $script:Posts | Should -Be @('POST /deviceManagement/configurationPolicies/p1/assign')
+        }
+        It 'checks the rule options before posting an assignment' {
+            $script:OtherExists = $false; $Assignment = $script:P
+            $script:Settings = $script:X3.Replace('<Rule><Option>Enabled:UMCI</Option></Rule>', '<Rule><Option>Enabled:UMCI</Option></Rule><Rule><Option>Enabled:Audit Mode</Option></Rule>')
+            { Sync-Wdac } | Should -Throw '*Audit Mode*'
+            $script:Posts | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Invoke-Sync' {
+        BeforeEach {
+            Mock Get-Module { 'present' }
             Mock Import-Module {}
             Mock Connect-RMMGuardGraph {}
             Mock Write-Host {}
+            Mock Write-Warning {}
             Mock Sync-Wdac { 'unchanged' }
-            Invoke-Sync
-            Should -Invoke Install-Module -Times 1 -Exactly -ParameterFilter { $RequiredVersion -eq '2.39.0' }
+            Mock Sync-Macos { 'unchanged' }
+            Mock Sync-Ioc { 'unchanged' }
+        }
+        It 'still fails an explicit Ioc next to All with -Interactive' {
+            $Target = @('All', 'Ioc'); $Interactive = [switch]$true
+            Mock Resolve-Auth { @{ Mode = 'Interactive' } }
+            Mock Sync-Ioc { throw 'IOC: Defender indicators need an app identity' }
+            { Invoke-Sync } | Should -Throw '1 of 3 target(s) failed.'
+            Should -Invoke Sync-Ioc -Times 1 -Exactly
+        }
+        It 'fails only the indicators when the Defender sign-in fails' {
+            $Target = @('All')
+            Mock Resolve-Auth { @{ Mode = 'Secret' } }
+            Mock Get-AccessToken { throw 'AADSTS500011: resource not found' }
+            { Invoke-Sync } | Should -Throw '1 of 3 target(s) failed.'
+            Should -Invoke Sync-Wdac -Times 1 -Exactly
+            Should -Invoke Sync-Macos -Times 1 -Exactly
+            Should -Invoke Sync-Ioc -Times 0 -Exactly
+            Should -Invoke Write-Host -ParameterFilter { "$Object" -like 'Ioc: FAILED*AADSTS500011*' }
+        }
+    }
+
+    Context 'exclusions and cleanups' {
+        It 'splits comma-separated exclusions, as a runbook passes them' {
+            Get-ApiUrl 'wdac.xml' @('TeamViewer, O&O Syspectr') | Should -Be 'https://rmmguard.com/api/wdac.xml?exclude=O%26O%20Syspectr&exclude=TeamViewer'
+        }
+        It 'refuses an empty -WdacPolicyName at binding' {
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PSScriptRoot/Sync-RMMGuard.ps1", [ref]$null, [ref]$null)
+            $param = $ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'WdacPolicyName' }
+            $param.Attributes.TypeName.Name | Should -Contain 'ValidateNotNullOrEmpty'
+        }
+        It 'has no ConvertFrom-Changelog wrapper and no module pin' {
+            Get-Command ConvertFrom-Changelog -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+            Get-Content -Raw "$PSScriptRoot/Sync-RMMGuard.ps1" | Should -Not -Match 'RequiredVersion'
         }
     }
 }
