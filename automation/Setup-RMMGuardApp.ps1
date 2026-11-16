@@ -18,6 +18,11 @@
     including its service principal and permission grants, purges it from the deleted-items recycle bin, and deletes
     the .pfx at -CertificatePath. Policies and indicators the app created are left in place.
 
+    -FederatedSubject: also adds a federated credential (OIDC) for that subject, so GitHub Actions or Azure DevOps sign in
+    without any secret or certificate. Combine with -CredentialType None.
+    -ManagedIdentityObjectId: grants the same permissions to an existing managed identity (an Azure Automation account)
+    instead of creating an app. With -Remove, takes those grants away again.
+
     You sign in interactively as an admin who can create apps and grant consent (Cloud Application Administrator
     plus Privileged Role Administrator, or Global Administrator).
 
@@ -35,6 +40,9 @@ param(
     [ValidateSet('Certificate', 'Secret', 'None')][string]$CredentialType = 'Certificate',
     [ValidateRange(1, 730)][int]$CredentialDays = 30,
     [string]$CertificatePath = (Join-Path $HOME 'RMMGuardSync.pfx'),
+    [string]$FederatedSubject,                                        # e.g. repo:contoso/rmm-guard:ref:refs/heads/main
+    [string]$FederatedIssuer = 'https://token.actions.githubusercontent.com',
+    [ValidatePattern('^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$')][string]$ManagedIdentityObjectId,
     [switch]$Remove
 )
 
@@ -78,6 +86,39 @@ $quoted = $DisplayName.Replace("'", "''")
 $existing = @((Invoke-Graph GET "/applications?`$filter=displayName eq '$quoted'&`$select=id,appId,displayName,tags").value |
     Where-Object { $_.displayName -ceq $DisplayName -and $_.tags -contains $tag })
 
+
+
+# Resolve each permission to its app role id on the resource's service principal instead of hard-coding GUIDs.
+$grants = foreach ($permission in $wanted) {
+    $resource = (Invoke-Graph GET "/servicePrincipals?`$filter=appId eq '$($permission.ResourceAppId)'&`$select=id,displayName,appRoles").value | Select-Object -First 1
+    if (-not $resource) {
+        if ($permission.Required) { throw "Service principal for $($permission.ResourceAppId) not found in this tenant." }
+        Write-Warning "WindowsDefenderATP is not in this tenant (no Defender for Endpoint?). Skipping $($permission.Role); the Ioc target will not work."
+        continue
+    }
+    $role = $resource.appRoles | Where-Object { $_.value -eq $permission.Role -and $_.allowedMemberTypes -contains 'Application' }
+    if (-not $role) { throw "App role $($permission.Role) not found on $($resource.displayName)." }
+    [pscustomobject]@{ ResourceAppId = $permission.ResourceAppId; ResourceId = $resource.id; ResourceName = $resource.displayName; RoleId = $role.id; Role = $permission.Role }
+}
+
+if ($ManagedIdentityObjectId) {
+    $principal = Invoke-Graph GET "/servicePrincipals/$ManagedIdentityObjectId`?`$select=id,displayName"
+    $assigned = @((Invoke-Graph GET "/servicePrincipals/$ManagedIdentityObjectId/appRoleAssignments").value)
+    foreach ($grant in $grants) {
+        $existingGrant = $assigned | Where-Object { $_.resourceId -eq $grant.ResourceId -and $_.appRoleId -eq $grant.RoleId }
+        if ($Remove) {
+            if ($existingGrant -and $PSCmdlet.ShouldProcess($principal.displayName, "Remove $($grant.ResourceName) / $($grant.Role)")) {
+                Invoke-Graph DELETE "/servicePrincipals/$ManagedIdentityObjectId/appRoleAssignments/$($existingGrant.id)" | Out-Null
+                Write-Host "Removed $($grant.ResourceName) / $($grant.Role) from $($principal.displayName)."
+            }
+        } elseif (-not $existingGrant -and $PSCmdlet.ShouldProcess($principal.displayName, "Grant $($grant.ResourceName) / $($grant.Role)")) {
+            Invoke-Graph POST "/servicePrincipals/$($grant.ResourceId)/appRoleAssignedTo" @{ principalId = $ManagedIdentityObjectId; resourceId = $grant.ResourceId; appRoleId = $grant.RoleId } | Out-Null
+            Write-Host "Granted $($grant.ResourceName) / $($grant.Role) to $($principal.displayName)."
+        }
+    }
+    return
+}
+
 if ($Remove) {
     if (-not $existing) { Write-Host "No app registration '$DisplayName' tagged $tag found." }
     foreach ($app in $existing) {
@@ -98,19 +139,6 @@ if ($existing) {
 }
 if ($CredentialType -eq 'Certificate' -and (Test-Path -LiteralPath $CertificatePath)) {
     throw "$CertificatePath already exists. Run with -Remove first, or pass another -CertificatePath."
-}
-
-# Resolve each permission to its app role id on the resource's service principal instead of hard-coding GUIDs.
-$grants = foreach ($permission in $wanted) {
-    $resource = (Invoke-Graph GET "/servicePrincipals?`$filter=appId eq '$($permission.ResourceAppId)'&`$select=id,displayName,appRoles").value | Select-Object -First 1
-    if (-not $resource) {
-        if ($permission.Required) { throw "Service principal for $($permission.ResourceAppId) not found in this tenant." }
-        Write-Warning "WindowsDefenderATP is not in this tenant (no Defender for Endpoint?). Skipping $($permission.Role); the Ioc target will not work."
-        continue
-    }
-    $role = $resource.appRoles | Where-Object { $_.value -eq $permission.Role -and $_.allowedMemberTypes -contains 'Application' }
-    if (-not $role) { throw "App role $($permission.Role) not found on $($resource.displayName)." }
-    [pscustomobject]@{ ResourceAppId = $permission.ResourceAppId; ResourceId = $resource.id; ResourceName = $resource.displayName; RoleId = $role.id; Role = $permission.Role }
 }
 
 if (-not $PSCmdlet.ShouldProcess($DisplayName, "Create app registration with $(($grants.Role) -join ', ') and credential type $CredentialType")) { return }
@@ -169,6 +197,15 @@ try {
                 passwordCredential = @{ displayName = 'Sync-RMMGuard'; endDateTime = $expires.ToString('o') }
             }
         }
+    }
+    if ($FederatedSubject) {
+        Invoke-Graph POST "/applications/$($app.id)/federatedIdentityCredentials" @{
+            name      = ('rmmguard-' + ($FederatedSubject -replace '[^A-Za-z0-9-]', '-')).Substring(0, [math]::Min(120, 9 + $FederatedSubject.Length))
+            issuer    = $FederatedIssuer
+            subject   = $FederatedSubject
+            audiences = @('api://AzureADTokenExchange')
+        } | Out-Null
+        Write-Host "Added federated credential for $FederatedSubject."
     }
 } catch {
     Write-Warning "Setup failed, deleting the half-created app '$DisplayName' again: $($_.Exception.Message)"
