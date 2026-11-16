@@ -107,6 +107,15 @@ test("changelogEntry lists what a manual edit added and counts removed deny path
   });
 });
 
+test("changelogEntry lists added IPs and counts removed domains and IPs, so an indicator-only bump is not empty", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { domains: ["acme.com", "old.acme.com"], ips: ["203.0.113.1"] } } };
+  const after = { version: "1.0.0.10", products: { Acme: { domains: ["acme.com"], ips: ["203.0.113.1", "203.0.113.7"] } } };
+  assert.deepEqual(changelogEntry(before, after, "1.0.0.10", "2026-01-01"), {
+    version: "1.0.0.10", date: "2026-01-01", source: "Manual edit", note: "1 indicator removed.",
+    products: [{ name: "Acme", new: false, paths: [], domains: ["203.0.113.7"] }],
+  });
+});
+
 test("a tool named after one part of a combined product joins that product", () => {
   const data = { version: "1.0.0.9", products: { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"] } } };
   const { products, changes } = sync(data, [tool("NinjaRMM", [], ["ninja-backup.com"])], none);

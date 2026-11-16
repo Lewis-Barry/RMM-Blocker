@@ -1,4 +1,4 @@
-// Bumps the policy version when deny paths changed since <base> but the version did not: node scripts/bump-version.mjs <base commit>
+// Bumps the policy version when deny paths, macOS rules, domains or IPs changed since <base> but the version did not: node scripts/bump-version.mjs <base commit>
 // Runs on every push to main, so merged PRs that add paths always ship under a new version.
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -23,17 +23,27 @@ export function bump(before, after) {
   return { ...after, version: bumpVersion(after.version) };
 }
 
-// The changelog.json entry for a bump: what each product gained, plus a count of deny paths that went away.
+// Domains and IPs as one lowercased list per product: they all end up as Defender indicators.
+const indicators = product => [...(product?.domains || []), ...(product?.vendorDomains || []), ...(product?.ips || [])].map(value => value.toLowerCase());
+
+// The changelog.json entry for a bump: what each product gained, plus a count of deny paths and indicators that went away.
 export function changelogEntry(before, after, version, date) {
   const lowered = (product, field) => new Set((product?.[field] || []).map(value => value.toLowerCase()));
   const products = Object.entries(after.products).map(([name, product]) => {
     const old = before.products[name];
     const added = field => (product[field] || []).filter(value => !lowered(old, field).has(value.toLowerCase()));
-    return { name, new: !old, paths: added("paths"), domains: [...added("domains"), ...added("vendorDomains")] };
+    const oldIndicators = new Set(indicators(old));
+    return { name, new: !old, paths: added("paths"), domains: [...product.domains || [], ...product.vendorDomains || [], ...product.ips || []].filter(value => !oldIndicators.has(value.toLowerCase())) };
   }).filter(change => change.paths.length || change.domains.length);
   const afterPaths = new Set(JSON.parse(pathSet(after)));
   const removed = JSON.parse(pathSet(before)).filter(path => !afterPaths.has(path)).length;
-  return { version, date, source: "Manual edit", ...(removed && { note: `${removed} deny path${removed === 1 ? "" : "s"} removed.` }), products };
+  const afterIndicators = new Set(Object.values(after.products).flatMap(indicators));
+  const removedIndicators = new Set(Object.values(before.products).flatMap(indicators).filter(value => !afterIndicators.has(value))).size;
+  const note = [
+    removed && `${removed} deny path${removed === 1 ? "" : "s"} removed.`,
+    removedIndicators && `${removedIndicators} indicator${removedIndicators === 1 ? "" : "s"} removed.`,
+  ].filter(Boolean).join(" ");
+  return { version, date, source: "Manual edit", ...(note && { note }), products };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
