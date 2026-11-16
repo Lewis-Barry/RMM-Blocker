@@ -689,7 +689,8 @@ function Sync-Wdac {
     # Removing rules cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $desired.Version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     $summary = "v$($deployed.Version) -> v$($desired.Version), +$($change.Added)/-$($change.Removed) deny rules"
-    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { Set-Assignment $policy.id; return "would be updated: $summary" }
+    # Declined at a -Confirm prompt, the old rules stay, so no inclusion may follow; -WhatIf only previews it.
+    if (-not $script:Cmdlet.ShouldProcess($WdacPolicyName, "Update $summary")) { if ($WhatIfPreference) { Set-Assignment $policy.id }; return "would be updated: $summary" }
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" (New-WdacBody $current.name $current.description $xml $current.roleScopeTagIds) | Out-Null
     Set-Assignment $policy.id
     "updated $summary"
@@ -727,7 +728,8 @@ function Sync-Macos {
     # Removing entries cannot block anything new, so only an addition waits for the release age.
     if ($change.Added -and ($reason = Test-ReleaseAge $script:Changelog $version $MinimumReleaseAgeDays (Get-Date))) { return "skipped, $reason" }
     $summary = "v$deployedVersion -> v$version, +$($change.Added)/-$($change.Removed) entries"
-    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { Set-Assignment $policy.id; return "would be updated: $summary" }
+    # Declined at a -Confirm prompt, the old rules stay, so no inclusion may follow; -WhatIf only previews it.
+    if (-not $script:Cmdlet.ShouldProcess($MacosPolicyName, "Update $summary")) { if ($WhatIfPreference) { Set-Assignment $policy.id }; return "would be updated: $summary" }
     $current = Invoke-Graph GET "/deviceManagement/configurationPolicies/$($policy.id)?`$select=roleScopeTagIds"
     Invoke-Graph PUT "/deviceManagement/configurationPolicies/$($policy.id)" @{
         name = $policy.name; description = $body.description; platforms = $body.platforms; technologies = $body.technologies

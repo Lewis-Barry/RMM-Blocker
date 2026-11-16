@@ -898,6 +898,18 @@ Describe 'Second review' {
                 Sync-Wdac | Should -BeLike 'unchanged*'
                 $script:Order | Should -Be @('exclusion', 'all')
             }
+            It 'adds no inclusion when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
+                $script:Order = [System.Collections.Generic.List[string]]::new()
+                Mock Test-RingOverlap {}
+                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                $script:Deployed = ([regex]'<Deny [^>]*/>').Replace($script:X2, '', 1)
+                $MinimumReleaseAgeDays = 0; Confirm $false
+                Sync-Wdac | Should -BeLike 'would be updated*'
+                $script:Order | Should -Be @('exclusion')
+                $script:Order.Clear(); $WhatIfPreference = $true
+                Sync-Wdac | Should -BeLike 'would be updated*'
+                $script:Order | Should -Be @('exclusion', 'all')
+            }
         }
         Context 'macOS' {
             BeforeEach {
@@ -935,6 +947,18 @@ Describe 'Second review' {
                 $script:Order | Should -Be @('exclusion', 'PUT', 'all')
                 $script:Order.Clear(); $script:DeployedMac = DeployedMac { param($items) $items }
                 Sync-Macos | Should -BeLike 'unchanged*'
+                $script:Order | Should -Be @('exclusion', 'all')
+            }
+            It 'adds no inclusion when the update is declined at a -Confirm prompt, and only previews it under -WhatIf' {
+                $script:Order = [System.Collections.Generic.List[string]]::new()
+                
+                Mock Set-Assignment { $script:Order.Add($ExclusionOnly ? 'exclusion' : 'all') }
+                $script:DeployedMac = DeployedMac { param($items) $items | Select-Object -Skip 1 }
+                $MinimumReleaseAgeDays = 0; Confirm $false
+                Sync-Macos | Should -BeLike 'would be updated*'
+                $script:Order | Should -Be @('exclusion')
+                $script:Order.Clear(); $WhatIfPreference = $true
+                Sync-Macos | Should -BeLike 'would be updated*'
                 $script:Order | Should -Be @('exclusion', 'all')
             }
         }
