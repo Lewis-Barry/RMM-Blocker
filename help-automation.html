@@ -54,103 +54,238 @@
       <nav class="help-nav help-sections" aria-labelledby="sections-title">
         <h2 id="sections-title">On this page</h2>
         <a href="#how">1. How it works</a>
-        <a href="#safety">2. Safety rules</a>
+        <a href="#downloads">2. Downloads</a>
         <a href="#app">3. App registration</a>
-        <a href="#github">4. GitHub Actions</a>
-        <a href="#azure-devops">5. Azure DevOps</a>
-        <a href="#runbook">6. Azure Automation</a>
-        <a href="#local">7. Run it yourself</a>
+        <a href="#local">4. Try it locally</a>
+        <a href="#parameters">5. Parameters</a>
+        <a href="#deployment">6. Deployment</a>
+        <a href="#github" class="help-subsection">Option 1: GitHub Actions</a>
+        <a href="#azure-devops" class="help-subsection">Option 2: Azure DevOps</a>
+        <a href="#runbook" class="help-subsection">Option 3: Azure Automation Runbooks</a>
+        <a href="#safety">7. Safety checks</a>
         <a href="#troubleshooting">8. Troubleshooting</a>
       </nav>
     </aside>
     <article id="guide" class="help-guide" tabindex="-1">
-      <div class="page-heading"><div><h1>Automate</h1><p>One PowerShell script keeps the WDAC policy, the macOS deny list and the Defender indicators in your tenant up to date with this site. Run it on a schedule and new tools are blocked without anyone downloading a file.</p><p><a href="./automation/Sync-RMMGuard.ps1" download>Download Sync-RMMGuard.ps1</a> · <a href="./automation/Setup-RMMGuardApp.ps1" download>Download Setup-RMMGuardApp.ps1</a></p></div></div>
+      <div class="page-heading"><div><h1>Automate</h1><p>One PowerShell script keeps the WDAC policy, the macOS deny list and the Defender indicators in your tenant up to date with this site. Run it on a schedule and new tools are blocked without anyone downloading a file.</p></div></div>
       <aside class="help-warning" role="note">The policies are enforced. Every run can change what your devices block. Keep a pilot group, and let production follow a week later.</aside>
       <section id="how" class="help-step" aria-labelledby="how-title">
         <h2 id="how-title">1. How it works</h2>
         <ol>
           <li>The script downloads the <a href="./index.html">retrieval links</a> with your exclusions: <code>/api/wdac.xml</code>, <code>/api/macos.json</code> and <code>/api/iocs.csv</code>.</li>
-          <li>It checks every file against fixed safety rules (step 2) before anything is sent to your tenant.</li>
+          <li>It checks every file against fixed safety checks (step 7) before anything is sent to your tenant.</li>
           <li>It finds your policy by name. Missing: it creates it and assigns it. Present: it compares and only writes when something changed.</li>
-          <li>Defender indicators are compared one by one: new ones are imported, changed ones updated, removed ones deleted. Indicators you created yourself are never touched.</li>
+          <li>Defender indicators are compared one by one: new ones are imported, changed ones updated, removed ones deleted.</li>
         </ol>
-        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -WdacPolicyName 'RMM Guard - WDAC' -Exclude 'AnyDesk','TeamViewer' `
-    -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ./RMMGuardSync.pfx -WhatIf</code></pre>
-        <p>Needs PowerShell 7.4 or later. <code>-WhatIf</code> shows what would change without changing it. Every run ends with one line per target: created, updated, unchanged or skipped.</p>
-        <p>Exclusions are tool names exactly as the RMM page shows them. Copy them from <strong>Copy custom retrieval links</strong> on the RMM page, which shows the command with your current exclusions.</p>
+        <p>Every run ends with one line per target: created, updated, unchanged or skipped. Needs PowerShell 7.4 or later.</p>
       </section>
-      <section id="safety" class="help-step" aria-labelledby="safety-title">
-        <h2 id="safety-title">2. Safety rules</h2>
-        <ul>
-          <li><strong>Structure:</strong> the WDAC file must be the RMM Guard base policy (same PolicyID, same rule options, two allow-all rules). Indicators must be Block rules titled <code>LOLRMM - …</code>. macOS entries need a Team ID, and Google, Adobe, 1Password and Cloudflare need a Signing ID too. A rule for Microsoft's Team ID stops the run: Company Portal, the Intune agent and Defender are Microsoft-signed.</li>
-          <li><strong>Canaries:</strong> a deny rule that would match Explorer, svchost, lsass, PowerShell, Defender or the Intune agent, or an indicator for Microsoft sign-in, Intune, Windows Update or Defender, stops the run.</li>
-          <li><strong>Size:</strong> when more than 25 percent of the deployed rules or indicators would be added or removed, the run stops. Review the change, then run once with <code>-Force</code>.</li>
-          <li><strong>Ownership:</strong> the script only updates a WDAC policy that carries the RMM Guard PolicyID and a macOS policy whose description starts with <code>RMM Guard macOS deny list</code>. Your other policies are never overwritten.</li>
-          <li><strong>Release age:</strong> with <code>-MinimumReleaseAgeDays 7</code> a new version is applied only once it has been published for seven days. Exclusion changes on the version you already run apply at once to the WDAC and macOS policies; Defender indicators carry no version of their own, so indicator changes always wait for the release age.</li>
-          <li><strong>Pilot ring:</strong> the pilot and production WDAC policies share one PolicyID, so a device must never get both. Assign the pilot policy to the pilot group, and the production policy to all devices with <code>-ExcludeGroupId</code> set to the pilot group. Pass the other ring's WDAC policy name with <code>-RingPolicyName</code> so the script does not mistake it for a duplicate. The templates below do this. Defender indicators are tenant-wide and are only synced by the production run.</li>
-          <li><strong>Rolling back:</strong> disable the workflow, pipeline or schedule first, otherwise the next run puts the policy back. Then unassign or change the policy in Intune.</li>
-          <li>A failure or a stop makes the run exit with an error, so the pipeline turns red and production does not run after a failed pilot.</li>
+      <section id="downloads" class="help-step" aria-labelledby="downloads-title">
+        <h2 id="downloads-title">2. Downloads</h2>
+        <ul class="download-list">
+          <li><a class="primary download-link" href="./automation/Sync-RMMGuard.ps1" download>Sync-RMMGuard.ps1</a><span><strong>The sync script.</strong> Runs on every schedule: downloads, checks and writes the policies and indicators. Put it next to your pipeline file, or paste it into a runbook.</span></li>
+          <li><a class="primary download-link" href="./automation/Setup-RMMGuardApp.ps1" download>Setup-RMMGuardApp.ps1</a><span><strong>One-time setup.</strong> Creates the app registration with its two permissions and a credential, or grants the permissions to a managed identity. With <code>-Remove</code> it takes everything away again.</span></li>
+          <li><a class="primary download-link" href="./automation/github-workflow.yml" download>github-workflow.yml</a><span><strong>GitHub Actions template</strong> with a pilot and a production job (option 1).</span></li>
+          <li><a class="primary download-link" href="./automation/azure-pipelines.yml" download>azure-pipelines.yml</a><span><strong>Azure DevOps template</strong> with a pilot and a production stage (option 2).</span></li>
         </ul>
+        <p>Download the sync script again now and then: fixes to its checks only reach you that way.</p>
       </section>
       <section id="app" class="help-step" aria-labelledby="app-title">
         <h2 id="app-title">3. App registration</h2>
-        <p>The script signs in as an app with two permissions: Microsoft Graph <code>DeviceManagementConfiguration.ReadWrite.All</code> and WindowsDefenderATP <code>Ti.ReadWrite</code>. <code>Ti.ReadWrite</code> only lets the app see and change the indicators it created itself. Indicators you imported earlier by hand stay in place; delete them in Defender once the sync runs.</p>
-        <p><code>Setup-RMMGuardApp.ps1</code> creates the app, grants admin consent and adds a credential. Sign in as Global Administrator, or as Cloud Application Administrator plus Privileged Role Administrator.</p>
-        <pre class="kql-code"><code># Certificate (default; works in tenants that block client secrets)
+        <p>The script signs in as an app with two permissions: Microsoft Graph <code>DeviceManagementConfiguration.ReadWrite.All</code> (WDAC and macOS policies) and WindowsDefenderATP <code>Ti.ReadWrite</code> (Defender indicators). Sign in to the setup script as Global Administrator, or as Cloud Application Administrator plus Privileged Role Administrator.</p>
+        <pre class="kql-code"><code># Certificate (default; works in tenants that block client secrets).
+# The private key is saved as ~/RMMGuardSync-&lt;TenantId&gt;.pfx, protected with a password you choose.
 ./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com
 
 # OIDC for GitHub Actions: no secret and no certificate
 ./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -CredentialType None -FederatedSubject 'repo:contoso/rmm-guard:ref:refs/heads/main'
 
-# Remove the app, its permissions and the .pfx again
+# Managed identity of an Azure Automation account: grants the permissions, creates no app
+./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -ManagedIdentityObjectId &lt;object id&gt;
+
+# Remove the app, its permissions and its .pfx again
 ./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -Remove</code></pre>
-        <p>The script prints the <strong>ClientId</strong> you need below. A client secret is possible with <code>-CredentialType Secret</code>, but many tenants block secrets and they expire; prefer OIDC or a certificate.</p>
+        <p>The script prints the <strong>ClientId</strong> you need later. A client secret is possible with <code>-CredentialType Secret</code>, but many tenants block secrets and they expire; prefer OIDC or a certificate.</p>
+        <p><strong>Indicators you imported by hand.</strong> <code>Ti.ReadWrite</code> only lets the app see the indicators it created itself. If you imported the CSVs from this site by hand before, delete those <code>LOLRMM - …</code> indicators in Defender first; otherwise both sets stay. An indicator of your own for the same domain or IP, for example an Allow for a tool you use, is turned into a Block by the import: exclude that tool with <code>-Exclude</code> instead.</p>
       </section>
-      <section id="github" class="help-step" aria-labelledby="github-title">
-        <h2 id="github-title">4. GitHub Actions</h2>
+      <section id="local" class="help-step" aria-labelledby="local-title">
+        <h2 id="local-title">4. Try it locally</h2>
+        <p>Start with a dry run under your own Intune admin account. <code>-WhatIf</code> shows what would change without changing anything:</p>
+        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf</code></pre>
+        <p>Defender indicators need the app, because the Defender API does not accept a personal sign-in:</p>
+        <pre class="kql-code"><code>$env:RMMGUARD_CERT_PASSWORD = Read-Host 'Certificate password' -MaskInput
+./Sync-RMMGuard.ps1 -Target Ioc -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ~/RMMGuardSync-contoso.onmicrosoft.com.pfx -WhatIf</code></pre>
+        <p>Already deployed the policies by hand from this site? Pass their names: the macOS export is called <code>Block RMM tools (macOS)</code>, and for WDAC use the name you gave it. The script recognises them and updates them in place. If it finds the RMM Guard WDAC policy under another name, it stops and tells you which name to pass.</p>
+      </section>
+      <section id="parameters" class="help-step" aria-labelledby="parameters-title">
+        <h2 id="parameters-title">5. Parameters</h2>
+        <table class="facts">
+          <tbody>
+            <tr><th scope="row"><code>-Target</code></th><td>What to sync: <code>Wdac</code>, <code>Macos</code>, <code>Ioc</code>, or any combination such as <code>Wdac,Macos</code>. Required.</td></tr>
+            <tr><th scope="row"><code>-WdacPolicyName</code></th><td>Name of the WDAC (App Control for Business) policy in Intune. Required with <code>Wdac</code>. Created when it does not exist.</td></tr>
+            <tr><th scope="row"><code>-MacosPolicyName</code></th><td>Name of the macOS settings catalog policy. Default <code>Block RMM tools (macOS)</code>, the name of this site's macOS export.</td></tr>
+            <tr><th scope="row"><code>-Exclude</code></th><td>Tools to leave out, exactly as the RMM page names them, e.g. <code>'AnyDesk','TeamViewer'</code>. Applies to all three targets.</td></tr>
+            <tr><th scope="row"><code>-Assignment</code></th><td><code>AllDevices</code>, <code>AllUsers</code> or the object ID of an Entra group. Added to the policy's assignments; existing assignments are never removed. Leave it out to create the policy unassigned. Defender indicators always apply to the whole tenant.</td></tr>
+            <tr><th scope="row"><code>-ExcludeGroupId</code></th><td>Object ID of a group to exclude from the assignment, normally your pilot group on the production policy. Not with <code>-Assignment AllUsers</code> for WDAC: Intune does not reliably exclude device groups from a user assignment.</td></tr>
+            <tr><th scope="row"><code>-RingPolicyName</code></th><td>Name of the other ring's WDAC policy (pilot and production share one PolicyID). The script then does not treat it as a duplicate, and refuses to assign when a device could get both.</td></tr>
+            <tr><th scope="row"><code>-MinimumReleaseAgeDays</code></th><td>0 to 365, default 0. A change that adds rules or indicators waits until the published version is this many days old. Changes that only remove rules always apply at once.</td></tr>
+            <tr><th scope="row"><code>-Force</code></th><td>Apply a change that adds or removes more than 25 percent of the deployed rules or indicators, or that resets rule options someone changed by hand. Check the change with <code>-WhatIf</code> first.</td></tr>
+            <tr><th scope="row"><code>-WhatIf</code></th><td>Show what would change, change nothing.</td></tr>
+            <tr><th scope="row">Sign-in, pick one</th><td><code>-Interactive</code> (your own account; WDAC and macOS only), <code>-Identity</code> (managed identity in Azure Automation), <code>-FederatedToken</code> (OIDC from a pipeline), <code>-CertificatePath</code> with the password in <code>$env:RMMGUARD_CERT_PASSWORD</code> or <code>-CertificatePassword</code>, <code>-CertificateThumbprint</code> (Windows certificate store), or <code>-ClientSecret</code> / <code>$env:RMMGUARD_CLIENT_SECRET</code>. All app sign-ins also need <code>-TenantId</code> and <code>-ClientId</code>.</td></tr>
+          </tbody>
+        </table>
+        <p>Examples:</p>
+        <pre class="kql-code"><code># macOS only, assigned to one group
+./Sync-RMMGuard.ps1 -Target Macos -Assignment &lt;group object id&gt; -Interactive
+
+# WDAC only, without AnyDesk and TeamViewer, for all devices
+./Sync-RMMGuard.ps1 -Target Wdac -WdacPolicyName 'RMM Guard - WDAC' -Exclude 'AnyDesk','TeamViewer' -Assignment AllDevices -Interactive
+
+# Defender indicators only
+./Sync-RMMGuard.ps1 -Target Ioc -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ./RMMGuardSync.pfx
+
+# Everything, production ring after a week
+./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -WdacPolicyName 'RMM Guard - WDAC' -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+    -Assignment AllDevices -ExcludeGroupId &lt;pilot group id&gt; -MinimumReleaseAgeDays 7 `
+    -TenantId contoso.onmicrosoft.com -ClientId &lt;app id&gt; -CertificatePath ./RMMGuardSync.pfx</code></pre>
+        <p>The <strong>Copy custom retrieval links</strong> window on the RMM page shows the command with your current exclusions.</p>
+      </section>
+      <section id="deployment" class="help-step" aria-labelledby="deployment-title">
+        <h2 id="deployment-title">6. Deployment</h2>
+        <p>Pick one place to run the script on a schedule. All three run a pilot ring first and production later:</p>
+        <ul>
+          <li><a href="#github">Option 1: GitHub Actions</a>. A private repository and OIDC: no secret to store or rotate.</li>
+          <li><a href="#azure-devops">Option 2: Azure DevOps</a>. A pipeline with a workload identity federation service connection.</li>
+          <li><a href="#runbook">Option 3: Azure Automation Runbooks</a>. A managed identity in your own Azure subscription.</li>
+        </ul>
+        <h3 id="github">Option 1: GitHub Actions</h3>
         <ol>
-          <li>Create a <strong>private</strong> repository. Add <code>Sync-RMMGuard.ps1</code> to its root and <a href="./automation/github-workflow.yml" download>github-workflow.yml</a> as <code>.github/workflows/rmm-guard-sync.yml</code>.</li>
-          <li>Run <code>Setup-RMMGuardApp.ps1</code> with <code>-CredentialType None -FederatedSubject 'repo:&lt;owner&gt;/&lt;repo&gt;:ref:refs/heads/main'</code>.</li>
-          <li>In the repository, <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong> → <strong>Variables</strong>, add <code>RMMGUARD_TENANT_ID</code>, <code>RMMGUARD_CLIENT_ID</code> and <code>RMMGUARD_PILOT_GROUP_ID</code> (the object ID of your pilot device group). These are not secrets: OIDC needs none.</li>
-          <li>Put your exclusions in <code>EXCLUDE</code> at the top of the workflow.</li>
-          <li><strong>Actions</strong> → <strong>RMM Guard sync</strong> → <strong>Run workflow</strong>. Check both jobs, then the policies in Intune. After that it runs every Monday.</li>
+          <li>Create a <strong>private</strong> repository and add <a href="./automation/Sync-RMMGuard.ps1" download>Sync-RMMGuard.ps1</a> to its root.</li>
+          <li>Create the app with a federated credential for that repository. The subject must name the branch the workflow runs on; scheduled runs use the default branch:
+            <pre class="kql-code"><code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -CredentialType None -FederatedSubject 'repo:&lt;owner&gt;/&lt;repo&gt;:ref:refs/heads/main'</code></pre></li>
+          <li>Create <code>.github/workflows/rmm-guard-sync.yml</code> with the workflow below and fill in the four values under <code>env</code>. With OIDC none of them is a secret.</li>
+          <li><strong>Actions</strong> → <strong>RMM Guard sync</strong> → <strong>Run workflow</strong>. Check both jobs, then the policies in Intune. After that it runs every Monday at 06:00 UTC.</li>
         </ol>
-        <p>Certificate instead of OIDC: the end of the workflow file shows the two secrets and the lines to change.</p>
-      </section>
-      <section id="azure-devops" class="help-step" aria-labelledby="azure-devops-title">
-        <h2 id="azure-devops-title">5. Azure DevOps</h2>
+        <table class="facts">
+          <tbody>
+            <tr><th scope="row"><code>TENANT_ID</code></th><td>The <strong>TenantId</strong> the setup script printed, or Entra admin center → <strong>Overview</strong> → <strong>Tenant ID</strong>.</td></tr>
+            <tr><th scope="row"><code>CLIENT_ID</code></th><td>The <strong>ClientId</strong> the setup script printed.</td></tr>
+            <tr><th scope="row"><code>PILOT_GROUP_ID</code></th><td>Entra admin center → <strong>Groups</strong> → your pilot device group → <strong>Object ID</strong>. Production excludes this group.</td></tr>
+            <tr><th scope="row"><code>EXCLUDE</code></th><td>Tools to leave out, comma-separated, e.g. <code>AnyDesk,TeamViewer</code>. Empty to block everything.</td></tr>
+          </tbody>
+        </table>
+        <pre class="kql-code workflow-code"><code># RMM Guard sync for GitHub Actions.
+# Copy to .github/workflows/rmm-guard-sync.yml in a private repository, with Sync-RMMGuard.ps1 in the repository root,
+# and fill in the four values under env. With OIDC none of them is a secret.
+# Guide: https://rmmguard.com/help-automation.html#github
+name: RMM Guard sync
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Apply a change larger than 25 percent (after checking it with a normal run)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  id-token: write          # lets the job request an OIDC token for the app's federated credential
+env:
+  TENANT_ID: ''            # Directory (tenant) ID, e.g. 00000000-0000-0000-0000-000000000000
+  CLIENT_ID: ''            # ClientId printed by Setup-RMMGuardApp.ps1
+  PILOT_GROUP_ID: ''       # object ID of the Entra device group that gets new versions first
+  EXCLUDE: ''              # tool names to leave out, comma-separated, exactly as on rmmguard.com, e.g. AnyDesk,TeamViewer
+  FORCE: ${{ inputs.force }}
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync the pilot policies
+        shell: pwsh
+        run: |
+          $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&amp;audience=api://AzureADTokenExchange" `
+            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          ./Sync-RMMGuard.ps1 -Target Wdac,Macos `
+            -WdacPolicyName 'RMM Guard - WDAC (pilot)' -MacosPolicyName 'RMM Guard - macOS (pilot)' `
+            -RingPolicyName 'RMM Guard - WDAC' `
+            -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+            -Assignment $env:PILOT_GROUP_ID -Force:($env:FORCE -eq 'true') `
+            -TenantId $env:TENANT_ID -ClientId $env:CLIENT_ID -FederatedToken $token
+  production:
+    needs: pilot           # a pilot run stopped by a safety rule also stops production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync the production policies and Defender indicators
+        shell: pwsh
+        run: |
+          $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&amp;audience=api://AzureADTokenExchange" `
+            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -MinimumReleaseAgeDays 7 `
+            -WdacPolicyName 'RMM Guard - WDAC' -MacosPolicyName 'RMM Guard - macOS' `
+            -RingPolicyName 'RMM Guard - WDAC (pilot)' `
+            -Exclude ($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ }) `
+            -Assignment AllDevices -ExcludeGroupId $env:PILOT_GROUP_ID -Force:($env:FORCE -eq 'true') `
+            -TenantId $env:TENANT_ID -ClientId $env:CLIENT_ID -FederatedToken $token
+# Certificate instead of OIDC: store the .pfx as base64 in secret RMMGUARD_CERT_BASE64 and its password in
+# RMMGUARD_CERT_PASSWORD, then in both jobs replace the two token lines and -FederatedToken $token with:
+#   env:
+#     RMMGUARD_CERT_BASE64: ${{ secrets.RMMGUARD_CERT_BASE64 }}
+#     RMMGUARD_CERT_PASSWORD: ${{ secrets.RMMGUARD_CERT_PASSWORD }}
+#   run: |
+#     [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/rmmguard.pfx", [Convert]::FromBase64String($env:RMMGUARD_CERT_BASE64))
+#     ./Sync-RMMGuard.ps1 ... -CertificatePath "$env:RUNNER_TEMP/rmmguard.pfx"
+# Client secret (only if your tenant allows secrets): store it in secret RMMGUARD_CLIENT_SECRET, add
+#   env:
+#     RMMGUARD_CLIENT_SECRET: ${{ secrets.RMMGUARD_CLIENT_SECRET }}
+# and drop the token lines and -FederatedToken $token; the script reads the variable itself.</code></pre>
+        <p>Rename the policies in the workflow if you like; keep each <code>-RingPolicyName</code> pointing at the other job's WDAC policy. When a run stops on the 25 percent check, run the workflow by hand with <strong>force</strong> ticked after checking the numbers. Certificate instead of OIDC: the end of the workflow shows the two secrets and the lines to change.</p>
+        <h3 id="azure-devops">Option 2: Azure DevOps</h3>
         <ol>
-          <li>Add <code>Sync-RMMGuard.ps1</code> and <a href="./automation/azure-pipelines.yml" download>azure-pipelines.yml</a> to the root of an Azure Repos repository.</li>
+          <li>Add <a href="./automation/Sync-RMMGuard.ps1" download>Sync-RMMGuard.ps1</a> and <a href="./automation/azure-pipelines.yml" download>azure-pipelines.yml</a> to the root of an Azure Repos repository.</li>
           <li>Run <code>Setup-RMMGuardApp.ps1 -CredentialType None</code> and note the ClientId.</li>
           <li><strong>Project settings</strong> → <strong>Service connections</strong> → <strong>New</strong> → <strong>Azure Resource Manager</strong> → <strong>Workload identity federation (manual)</strong>. Name it <code>rmm-guard</code>, enter the tenant, the ClientId and any subscription the app can read (the task requires one; give the app the Reader role on it). Copy the <strong>Issuer</strong> and <strong>Subject identifier</strong> it shows.</li>
           <li>In Entra, open the app → <strong>Certificates &amp; secrets</strong> → <strong>Federated credentials</strong> → <strong>Add</strong> → <strong>Other issuer</strong>, and paste both values. Then finish the service connection.</li>
-          <li><strong>Pipelines</strong> → <strong>Library</strong> → variable group <code>rmm-guard</code> with <code>RMMGUARD_PILOT_GROUP_ID</code> and <code>EXCLUDE</code>.</li>
-          <li>Create the pipeline from the YAML file and run it once by hand.</li>
+          <li><strong>Pipelines</strong> → <strong>Library</strong> → variable group <code>rmm-guard</code> with <code>RMMGUARD_PILOT_GROUP_ID</code> (object ID of the pilot device group) and <code>EXCLUDE</code> (comma-separated tool names, may be empty).</li>
+          <li>Create the pipeline from the YAML file and run it once by hand. The <strong>force</strong> parameter on a manual run applies a change above 25 percent.</li>
         </ol>
-      </section>
-      <section id="runbook" class="help-step" aria-labelledby="runbook-title">
-        <h2 id="runbook-title">6. Azure Automation</h2>
+        <h3 id="runbook">Option 3: Azure Automation Runbooks</h3>
         <ol>
           <li>In your Automation account, <strong>Identity</strong> → <strong>System assigned</strong> → <strong>On</strong>. Copy the <strong>Object (principal) ID</strong>.</li>
           <li>Grant the permissions to it: <code>./Setup-RMMGuardApp.ps1 -TenantId contoso.onmicrosoft.com -ManagedIdentityObjectId &lt;object id&gt;</code>.</li>
           <li><strong>Runtime Environments</strong>: use PowerShell 7.4 and add the module <code>Microsoft.Graph.Authentication</code> from the gallery.</li>
           <li><strong>Runbooks</strong> → <strong>Create</strong>, type PowerShell, runtime 7.4. Paste the contents of <code>Sync-RMMGuard.ps1</code> and <strong>Publish</strong>.</li>
-          <li>Add two weekly <strong>Schedules</strong> with parameters. Pilot: <code>TARGET</code> <code>["Wdac","Macos"]</code>, the pilot policy names, <code>ASSIGNMENT</code> your pilot group ID, <code>IDENTITY</code> <code>true</code>. Production: <code>["Wdac","Macos","Ioc"]</code>, the production names, <code>ASSIGNMENT</code> <code>AllDevices</code>, <code>EXCLUDEGROUPID</code> the pilot group, <code>MINIMUMRELEASEAGEDAYS</code> <code>7</code>, <code>IDENTITY</code> <code>true</code>.</li>
+          <li>Add two weekly <strong>Schedules</strong> to the runbook, the pilot one first in the week, each with these parameters:</li>
         </ol>
+        <table class="facts">
+          <tbody>
+            <tr><th scope="row">Pilot</th><td><code>TARGET</code> <code>["Wdac","Macos"]</code>, <code>WDACPOLICYNAME</code> <code>RMM Guard - WDAC (pilot)</code>, <code>MACOSPOLICYNAME</code> <code>RMM Guard - macOS (pilot)</code>, <code>RINGPOLICYNAME</code> <code>["RMM Guard - WDAC"]</code>, <code>ASSIGNMENT</code> your pilot group ID, <code>EXCLUDE</code> your tool names, <code>IDENTITY</code> <code>true</code>.</td></tr>
+            <tr><th scope="row">Production</th><td><code>TARGET</code> <code>["Wdac","Macos","Ioc"]</code>, <code>WDACPOLICYNAME</code> <code>RMM Guard - WDAC</code>, <code>MACOSPOLICYNAME</code> <code>RMM Guard - macOS</code>, <code>RINGPOLICYNAME</code> <code>["RMM Guard - WDAC (pilot)"]</code>, <code>ASSIGNMENT</code> <code>AllDevices</code>, <code>EXCLUDEGROUPID</code> the pilot group, <code>MINIMUMRELEASEAGEDAYS</code> <code>7</code>, <code>EXCLUDE</code> your tool names, <code>IDENTITY</code> <code>true</code>.</td></tr>
+          </tbody>
+        </table>
+        <p>The two schedules run independently: a failed pilot does not stop production. <code>MINIMUMRELEASEAGEDAYS</code> gives the pilot a week, so check the pilot's job history after each run.</p>
       </section>
-      <section id="local" class="help-step" aria-labelledby="local-title">
-        <h2 id="local-title">7. Run it yourself</h2>
-        <p>With your own Intune admin account. Defender indicators need the app, so this covers WDAC and macOS:</p>
-        <pre class="kql-code"><code>./Sync-RMMGuard.ps1 -Target Wdac,Macos -WdacPolicyName 'RMM Guard - WDAC' -Interactive -WhatIf</code></pre>
-        <p>Already deployed the policies by hand from this site? Pass their names: the macOS export is called <code>Block RMM tools (macOS)</code>, and for WDAC use the name you gave it. The script recognises them and updates them in place. If it finds the RMM Guard WDAC policy under another name, it stops and tells you which name to pass.</p>
+      <section id="safety" class="help-step" aria-labelledby="safety-title">
+        <h2 id="safety-title">7. Safety checks</h2>
+        <p>The script refuses a file or a change instead of applying it when:</p>
+        <ul>
+          <li>a WDAC deny rule would match a Windows, .NET, Office, Defender or Intune file, or an indicator would block a Microsoft or Apple sign-in, management or update domain;</li>
+          <li>the WDAC file is not the RMM Guard base policy, or a macOS rule would deny Microsoft-signed apps;</li>
+          <li>more than 25 percent of the deployed rules or indicators would change (override with <code>-Force</code>);</li>
+          <li>the policy with that name is not an RMM Guard policy: your other policies are never overwritten;</li>
+          <li>a device could get both the pilot and the production WDAC policy.</li>
+        </ul>
+        <p>A refusal or failure makes the run exit with an error, so the pipeline turns red. <strong>Rolling back:</strong> disable the workflow, pipeline or schedule first, otherwise the next run puts the policy back. Then unassign or change the policy in Intune.</p>
       </section>
       <section id="troubleshooting" class="help-step" aria-labelledby="troubleshooting-title">
         <h2 id="troubleshooting-title">8. Troubleshooting</h2>
         <ul>
           <li><strong>HTTP 400, unknown tool in exclude:</strong> a tool was renamed or removed. Copy the names again from the RMM page.</li>
-          <li><strong>More than 25 percent:</strong> a large release or a big exclusion change. Run with <code>-WhatIf</code>, check the numbers, then once with <code>-Force</code>.</li>
-          <li><strong>would block …:</strong> the published file contains a rule that would break Windows or Intune. Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</li>
+          <li><strong>More than 25 percent:</strong> a large release or a big exclusion change. Check the numbers with <code>-WhatIf</code>, then run once with <code>-Force</code> (in a pipeline: the <strong>force</strong> option on a manual run).</li>
+          <li><strong>would block …:</strong> the published file contains a rule that would break Windows, Intune or sign-in. Nothing was changed. <a href="https://github.com/Lewis-Barry/RMM-Blocker/issues/new" target="_blank" rel="noopener noreferrer">Report it <span aria-hidden="true">↗</span></a>.</li>
           <li><strong>Refusing to overwrite:</strong> the policy with that name is not an RMM Guard policy. Pick another name.</li>
+          <li><strong>Refusing … both rings:</strong> the other ring's WDAC policy reaches devices this one targets. Exclude the pilot group from the production policy (<code>-ExcludeGroupId</code>) and run again.</li>
           <li><strong>Skipped, version … days old:</strong> expected with <code>-MinimumReleaseAgeDays</code>. The next run applies it.</li>
           <li><strong>CredentialTypeNotAllowedAsPerAppPolicy:</strong> your tenant blocks client secrets. Use the certificate or OIDC.</li>
         </ul>
