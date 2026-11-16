@@ -140,7 +140,7 @@ The pilot and production WDAC policies carry the same PolicyID, so a device must
 - `tests.js`: `buildSyncCommand` with zero, one and several exclusions, including a name with a quote.
 - Live in a test tenant before delivery: create, update, unchanged, `-WhatIf` and the IOC sync end to end.
 
-## Live verification (test tenant, 2026-11-15)
+## Live verification (test tenant, 2026-11-15 and 2026-11-16)
 
 Confirmed with an unassigned test policy that was deleted afterwards:
 
@@ -150,11 +150,17 @@ Confirmed with an unassigned test policy that was deleted afterwards:
 4. **`$expand=assignments` is unreliable.** It returned an empty list while `GET …/{id}/assignments` returned the assignment. The script must read assignments only through `/assignments`; a union built from the `$expand` result would wipe the customer's assignments on the next `/assign`.
 5. **The `name eq` filter** returned `@odata.count` 78 alongside the single match, so the script also checks the name client-side.
 
-Still open (needs an app with WindowsDefenderATP `Ti.ReadWrite`; verified while building):
+End-to-end run on 2026-11-16 with the test app (certificate, Graph `DeviceManagementConfiguration.ReadWrite.All`, WindowsDefenderATP `Ti.ReadWrite`), all three targets against the live rmmguard.com API:
 
-6. Importing an indicator value that already exists (created by a user) under `Ti.ReadWrite`.
-7. Whether a domain indicator also blocks subdomains (decides whether the IOC canary rule is complete).
-8. Whether the Intune portal's XML upload stores the XML as plain text too (adoption of portal-created policies). The script decodes base64 when the value does not start with `<`.
+6. **Create, idempotency and exclusions.** The first run created the WDAC policy (923 deny rules, unassigned, `settingCount` 1, found by the `templateFamily` filter) and imported 665 indicators. The second run reported three times `unchanged`, so Defender returns action and severity in the casing the script compares. `-Exclude 'AnyDesk'` removed 2 deny rules, 1 macOS entry (19 -> 18, the macOS `PUT` without `templateReference` works) and 2 indicators; the run without it put them back. `-MinimumReleaseAgeDays 365` still updated WDAC and macOS (same version) and skipped IOC with a warning. An unknown exclude gave HTTP 400 on all three targets; an existing non-RMM Guard policy name was refused for WDAC and macOS.
+7. **Defender API.** A token for `https://api.securitycenter.microsoft.com` is accepted at `api.security.microsoft.com`, `$top=10000` is accepted, and `BatchDelete` works with `Ti.ReadWrite` (not only `Ti.ReadWrite.All`, which the docs list). Importing a value that already exists updates that indicator in place (same id, no duplicate). With `Ti.ReadWrite` the app saw only its own 665 indicators; the tenant had no others, so whether it would see indicators created by users stays unproven.
+8. **Graph alias collision (bug found and fixed).** `Microsoft.Graph.Authentication` exports the alias `Connect-Graph`, and an alias wins over a function. The script's own `Connect-Graph` was therefore replaced by a bare `Connect-MgGraph`, which silently reused the admin's cached delegated sign-in from the setup script; in a pipeline it would have tried an interactive sign-in. Renamed to `Connect-RMMGuardGraph`, with a test that fails when any script function shares a name with a command or alias of the module. The create, update and delete cycle was then repeated as the app (`AuthType` `UserProvidedAccessToken`).
+
+Still open:
+
+9. Whether a domain indicator also blocks subdomains (decides whether the IOC canary rule is complete). Needs an onboarded device.
+10. Whether the Intune portal's XML upload stores the XML as plain text too (adoption of portal-created policies). The script decodes base64 when the value does not start with `<`.
+11. Whether a federated (OIDC) assertion can be reused for both token requests; to be checked with the first GitHub Actions run.
 
 ## Test setup for the build
 
