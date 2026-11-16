@@ -264,3 +264,80 @@ Describe 'Shared' {
         Get-ApiUrl 'wdac.xml' @('TeamViewer', 'O&O Syspectr') | Should -Be 'https://rmmguard.com/api/wdac.xml?exclude=O%26O%20Syspectr&exclude=TeamViewer'
     }
 }
+
+Describe 'IOC hardening' {
+    BeforeAll {
+        $script:H = (Get-Content "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv" -TotalCount 1)
+        function IocRow($Type, $Value, $Exp = '2035-07-23T00:00:00Z', $Sev = 'Medium', $Alert = 'true') {
+            "$script:H`r`n$Type,$Value,$Exp,Block,$Sev,LOLRMM - Test,d,r,,,,$Alert`r`n"
+        }
+    }
+    It 'rejects IP indicator <V>' -ForEach @(
+        @{ V = '20.190.151.68' }, @{ V = '13.107.246.40' }, @{ V = '127.0.0.1' }, @{ V = '10.1.2.3' }, @{ V = '::1' }, @{ V = 'example.org' }
+    ) { { ConvertFrom-IocCsv (IocRow 'IpAddress' $V) } | Should -Throw 'IOC:*' }
+    It 'accepts a real public IP from the bundled CSV' {
+        $line = Get-Content "$script:Root/IOC/Defender_IOC_LOLRMM_IPs.csv" | Select-Object -Skip 1 -First 1
+        @(ConvertFrom-IocCsv "$script:H`r`n$line`r`n").Count | Should -Be 1
+    }
+    It 'rejects domain indicator <V>' -ForEach @(
+        @{ V = 'microsoft.com.' }, @{ V = '" microsoft.com"' }, @{ V = '*.microsoft.com' }, @{ V = 'https://login.microsoftonline.com/' },
+        @{ V = 'LOGIN.MICROSOFTONLINE.COM' }, @{ V = 'office.com' }, @{ V = 'apple.com' }, @{ V = 'windows.net' }
+    ) { { ConvertFrom-IocCsv (IocRow 'DomainName' $V) } | Should -Throw 'IOC:*' }
+    It 'accepts <V>' -ForEach @(@{ V = 'ndowsupdate.com' }, @{ V = 'support.services.microsoft.com' }) {
+        @(ConvertFrom-IocCsv (IocRow 'DomainName' $V)).Count | Should -Be 1
+    }
+    It 'rejects <Name>' -ForEach @(
+        @{ Name = 'a past expiration'; Exp = '2000-01-01T00:00:00Z'; Sev = 'Medium'; Alert = 'true' }
+        @{ Name = 'an expiration 10 days ahead'; Exp = ([datetime]::UtcNow.AddDays(10).ToString('o')); Sev = 'Medium'; Alert = 'true' }
+        @{ Name = 'severity Critical'; Exp = '2035-07-23T00:00:00Z'; Sev = 'Critical'; Alert = 'true' }
+        @{ Name = 'GenerateAlert yes'; Exp = '2035-07-23T00:00:00Z'; Sev = 'Medium'; Alert = 'yes' }
+    ) { { ConvertFrom-IocCsv (IocRow 'DomainName' 'example.org' $Exp $Sev $Alert) } | Should -Throw 'IOC:*' }
+    It 'rejects duplicate rows' {
+        $row = 'DomainName,example.org,2035-07-23T00:00:00Z,Block,Medium,LOLRMM - T,d,r,,,,true'
+        { ConvertFrom-IocCsv "$script:H`r`n$row`r`n$($row.ToUpper().Replace('LOLRMM - T','LOLRMM - T'))`r`n" } | Should -Throw '*duplicate*'
+    }
+    It 'upserts on a <Field> change' -ForEach @(@{ Field = 'description' }, @{ Field = 'severity' }, @{ Field = 'action' }) {
+        $new = [pscustomobject]@{ indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $old = [pscustomobject]@{ id = '1'; indicatorType = 'DomainName'; indicatorValue = 'a.org'; title = 'LOLRMM - A'; description = 'd'; severity = 'Medium'; action = 'Block' }
+        $old.$Field = 'changed'
+        @((Compare-IocSet @($new) @($old)).Upsert).Count | Should -Be 1
+    }
+}
+
+Describe 'macOS hardening' {
+    BeforeAll {
+        $script:MacBody = node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$($script:Root.Replace('\', '/'))/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$($script:Root.Replace('\', '/'))/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" 2>$null | ConvertFrom-Json -AsHashtable
+        function Fresh { $script:MacBody | ConvertTo-Json -Depth 100 | ConvertFrom-Json -AsHashtable }
+    }
+    It 'rule count equals the number in the description' {
+        $n = [regex]::Match($script:MacBody.description, 'Denies (\d+) binary identifiers').Groups[1].Value
+        $n | Should -Not -BeNullOrEmpty
+        @(Get-MacRules $script:MacBody.settings).Count | Should -Be ([int]$n)
+    }
+    It 'rejects Team ID <V>' -ForEach @(@{ V = 'abcdefghij' }, @{ V = 'ABCDEFGHI' }) {
+        { Test-MacRules @([pscustomobject]@{ TeamId = $V; SigningId = $null }) } | Should -Throw '*Team ID*'
+    }
+    It 'rejects Microsoft Team ID even with a Signing ID' {
+        { Test-MacRules @([pscustomobject]@{ TeamId = 'UBF8T346G9'; SigningId = 'com.microsoft.x' }) } | Should -Throw '*Microsoft*'
+    }
+    It 'returns no version without the prefix' { Get-MacVersion 'Something v1.0.0.1' | Should -BeNullOrEmpty }
+    It 'accepts the real body' { { Test-MacBody (Fresh) } | Should -Not -Throw }
+    It 'rejects an extra top-level key' { $b = Fresh; $b.extra = 1; { Test-MacBody $b } | Should -Throw 'macOS:*' }
+    It 'rejects platforms windows10' { $b = Fresh; $b.platforms = 'windows10'; { Test-MacBody $b } | Should -Throw 'macOS:*' }
+    It 'rejects a second setting' { $b = Fresh; $b.settings += $b.settings[0]; { Test-MacBody $b } | Should -Throw 'macOS:*' }
+    It 'rejects a foreign settingDefinitionId deep in the tree' {
+        $b = Fresh
+        $deny = $b.settings[0].settingInstance.groupSettingCollectionValue[0].children[0].groupSettingCollectionValue[0].children[0]
+        $deny.groupSettingCollectionValue[0].children[0].settingDefinitionId = 'evil_setting'
+        { Test-MacBody $b } | Should -Throw '*unexpected setting*'
+    }
+}
+
+Describe 'Shared hardening' {
+    It 'stops 26 removals of 100' { { Test-ChangeSize 100 0 26 -Label T } | Should -Throw '*-Force*' }
+    It 'stops 5 additions on 19 deployed' { { Test-ChangeSize 19 5 0 -Label T } | Should -Throw '*-Force*' }
+    It 'merges g1 and g2' {
+        $e = @([pscustomobject]@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g1' })
+        @(Merge-AssignmentTargets $e @(@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g2' })).Count | Should -Be 2
+    }
+}

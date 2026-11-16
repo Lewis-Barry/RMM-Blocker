@@ -15,7 +15,7 @@
     ./Sync-RMMGuard.ps1 -Target Wdac,Macos,Ioc -WdacPolicyName 'RMM Guard - WDAC' -Exclude 'AnyDesk' `
         -Assignment AllDevices -TenantId contoso.onmicrosoft.com -ClientId <app id> -CertificatePath ./RMMGuardSync.pfx
 #>
-#Requires -Version 7.2
+#Requires -Version 7.4
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][ValidateSet('Wdac', 'Macos', 'Ioc')][string[]]$Target,
@@ -69,8 +69,15 @@ $script:WdacShape = 'FE8E5A67C78533BA256D928244F99DD689592A150614C4CA9A9AF6763C8
 # Hosts a domain indicator must never equal or be a parent of: sign-in, Graph, Intune, Windows Update and Defender itself.
 $script:IocCanaries = @(
     'login.microsoftonline.com', 'graph.microsoft.com', 'enrollment.manage.microsoft.com', 'fef.msua06.manage.microsoft.com',
-    'windowsupdate.com', 'update.microsoft.com', 'security.microsoft.com', 'api.security.microsoft.com', 'events.data.microsoft.com'
+    'windowsupdate.com', 'update.microsoft.com', 'security.microsoft.com', 'api.security.microsoft.com', 'events.data.microsoft.com',
+    'device.login.microsoftonline.com', 'enterpriseregistration.windows.net', 'aadcdn.msftauth.net', 'login.live.com', 'ctldl.windowsupdate.com',
+    'crl.microsoft.com', 'oneocsp.microsoft.com', 'www.msftconnecttest.com', 'outlook.office365.com', 'www.office.com', 'portal.azure.com',
+    'contoso.sharepoint.com', 'contoso.azurewebsites.net', 'contoso.blob.core.windows.net', 'naprodimedatapri.azureedge.net',
+    'api.push.apple.com', 'mdmenrollment.apple.com', 'deviceenrollment.apple.com'
 )
+# IPv4 ranges an IP indicator must not fall in: non-public space, Entra ID sign-in and the Microsoft 365 front doors.
+$script:IocIpCanaries = @('0.0.0.0/8', '10.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/4', '240.0.0.0/4', '100.64.0.0/10',
+    '20.20.32.0/19', '20.190.128.0/18', '20.231.128.0/19', '40.126.0.0/18', '13.107.0.0/16', '52.96.0.0/14', '40.96.0.0/13')
 # Mirrors broadTeamIds in macos.js; Sync-RMMGuard.Tests.ps1 fails when the two differ.
 $script:BroadTeamIds = @{ UBF8T346G9 = 'Microsoft'; EQHXZ8M8AV = 'Google'; JQ525L2MZD = 'Adobe'; '2BUA8C4S2C' = '1Password'; '68WVV388M8' = 'Cloudflare' }
 $script:MacDescriptionPrefix = 'RMM Guard macOS deny list'
@@ -178,16 +185,31 @@ $script:IocHeader = 'IndicatorType,IndicatorValue,ExpirationTime,Action,Severity
 function ConvertFrom-IocCsv([string]$Text) {
     $text = $Text -replace '^\uFEFF', ''
     if (($text -split '\r?\n', 2)[0] -ne $script:IocHeader) { throw 'IOC: the content is not the RMM Guard indicator CSV.' }
+    $seen = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($row in ($text | ConvertFrom-Csv)) {
+        if (-not $seen.Add("$($row.IndicatorType):$($row.IndicatorValue)".ToLowerInvariant())) { throw "IOC: duplicate indicator '$($row.IndicatorValue)'." }
         if ($row.IndicatorType -notin 'DomainName', 'IpAddress' -or $row.Action -ne 'Block' -or
             -not "$($row.Title)".StartsWith('LOLRMM - ') -or -not $row.IndicatorValue) {
             throw "IOC: invalid row for '$($row.IndicatorValue)' ($($row.IndicatorType), $($row.Action), $($row.Title))."
         }
-        if ($row.IndicatorType -eq 'DomainName') {
-            $value = $row.IndicatorValue.ToLowerInvariant()
+        $value = $row.IndicatorValue.ToLowerInvariant()
+        if ($row.IndicatorType -ceq 'DomainName') {
+            # A plain host name only: a trailing dot, space, wildcard or URL would slip past the canary comparison.
+            if ($value -cnotmatch '^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$') { throw "IOC: '$value' is not a plain host name." }
             foreach ($canary in $script:IocCanaries) {
                 if ($canary -eq $value -or $canary.EndsWith(".$value")) { throw "IOC: indicator '$value' would block $canary." }
             }
+        } else {
+            $ip = $null
+            if ($row.IndicatorType -cne 'IpAddress' -or -not [ipaddress]::TryParse($value, [ref]$ip) -or $ip.AddressFamily -ne 'InterNetwork' -or $ip.ToString() -ne $value) { throw "IOC: '$value' is not a plain IPv4 address." }
+            foreach ($range in $script:IocIpCanaries) {
+                if ([Net.IPNetwork]::Parse($range).Contains($ip)) { throw "IOC: indicator '$value' is inside $range." }
+            }
+        }
+        $expires = [datetime]::MinValue
+        if (-not [datetime]::TryParse($row.ExpirationTime, [cultureinfo]::InvariantCulture, 'AdjustToUniversal', [ref]$expires) -or $expires -lt [datetime]::UtcNow.AddDays(30) -or
+            $row.Severity -cnotin 'Informational', 'Low', 'Medium', 'High' -or $row.GenerateAlert -notin 'true', 'false') {
+            throw "IOC: '$value' has an invalid expiration, severity or alert flag ($($row.ExpirationTime), $($row.Severity), $($row.GenerateAlert))."
         }
         [pscustomobject]@{
             indicatorType      = $row.IndicatorType
@@ -237,6 +259,21 @@ function Get-MacRules($Settings) {
     @()
 }
 
+# The body is posted as is, so nothing but the deny list may be in it.
+function Test-MacBody($Body) {
+    $allowed = 'app_app', 'app_allowed', 'app_allowed_deniedbinaries', 'app_allowed_deniedbinaries_item_teamid', 'app_allowed_deniedbinaries_item_signingid'
+    if ((@($Body.Keys) | Sort-Object) -join ',' -ne 'description,name,platforms,roleScopeTagIds,settings,technologies' -or
+        $Body.platforms -cne 'macOS' -or $Body.technologies -cne 'appleRemoteManagement' -or @($Body.settings).Count -ne 1) { throw 'macOS: the policy body is not the RMM Guard deny list.' }
+    $stack = [System.Collections.Generic.Stack[object]]::new(); $stack.Push($Body.settings[0].settingInstance); $lists = 0
+    while ($stack.Count) {
+        $node = $stack.Pop()
+        if ($node.settingDefinitionId -cnotin $allowed) { throw "macOS: unexpected setting '$($node.settingDefinitionId)'." }
+        if ($node.settingDefinitionId -ceq 'app_allowed_deniedbinaries') { $lists++ }
+        foreach ($group in $node.groupSettingCollectionValue) { foreach ($child in $group.children) { $stack.Push($child) } }
+    }
+    if ($lists -ne 1) { throw "macOS: expected one denied-binaries list, found $lists." }
+}
+
 function Test-MacRules($Rules) {
     # An empty function result arrives as $null, and @($null).Count is 1, so drop nulls before counting.
     $Rules = @($Rules | Where-Object { $_ })
@@ -246,6 +283,8 @@ function Test-MacRules($Rules) {
         if ($script:BroadTeamIds.ContainsKey($rule.TeamId) -and -not $rule.SigningId) {
             throw "macOS: Team ID $($rule.TeamId) belongs to $($script:BroadTeamIds[$rule.TeamId]) and needs a Signing ID."
         }
+        # Company Portal, the Intune agent and Defender are Microsoft-signed; RMM Guard denies nothing of Microsoft's on macOS.
+        if ($rule.TeamId -ceq 'UBF8T346G9') { throw 'macOS: a rule denies Microsoft-signed binaries (Company Portal, Intune agent, Defender).' }
     }
 }
 
