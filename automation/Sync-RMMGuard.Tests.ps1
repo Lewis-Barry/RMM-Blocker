@@ -429,3 +429,164 @@ Describe 'Authentication' {
         }
     }
 }
+
+Describe 'Download' {
+    BeforeEach { $script:Files = @{}; $Exclude = @('AnyDesk') }
+    It 'returns the body on the first and the cached call, and downloads once' {
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = 200; Content = '<SiPolicy />'; Headers = @{ 'Content-Type' = @('application/xml;charset=utf-8') } } }
+        Get-RMMGuardFile 'wdac.xml' 'xml' | Should -Be '<SiPolicy />'
+        Get-RMMGuardFile 'wdac.xml' 'xml' | Should -Be '<SiPolicy />'
+        Should -Invoke Invoke-WebRequest -Times 1 -Exactly -ParameterFilter { $Uri -eq 'https://rmmguard.com/api/wdac.xml?exclude=AnyDesk' }
+    }
+    It 'stops on <Name>' -ForEach @(
+        @{ Name = 'HTTP 400'; Status = 400; Served = 'text/plain'; Text = 'Unknown tool in exclude: X'; Expected = '*HTTP 400*Unknown tool*' }
+        @{ Name = 'an HTML page'; Status = 200; Served = 'text/html'; Text = '<html></html>'; Expected = '*content type*' }
+    ) {
+        # Not $Body or $Type: inside the mock those resolve to Invoke-WebRequest's -Body and Get-RMMGuardFile's -Type.
+        Mock Invoke-WebRequest { [pscustomobject]@{ StatusCode = $Status; Content = $Text; Headers = @{ 'Content-Type' = @($Served) } } }
+        { Get-RMMGuardFile 'wdac.xml' 'xml' } | Should -Throw $Expected
+    }
+}
+
+# The sync functions with Graph, Defender and the download mocked: what is written, and what is not.
+Describe 'Sync decisions' {
+    BeforeAll {
+        $root = $script:Root.Replace('\', '/')
+        $script:MacJson = (node --input-type=module -e "import { parseMacProducts, buildIntunePolicy } from '$root/macos.js'; import { readFileSync } from 'node:fs'; const d = parseMacProducts(JSON.parse(readFileSync('$root/products.json', 'utf8'))); process.stdout.write(buildIntunePolicy(d.rules, d.version));" 2>$null) -join "`n"
+        $script:IocText = Get-Content -Raw "$script:Root/IOC/Defender_IOC_LOLRMM_Domains_Part2.csv"
+        $script:Version = (Get-WdacFacts $script:PolicyXml).Version
+        # GET .../settings of an App Control policy as Graph returns it: the body's settings, as objects.
+        function WdacSettings([string]$Xml) { [pscustomobject]@{ value = @((New-WdacBody 'n' 'd' $Xml).settings | ConvertTo-Json -Depth 32 | ConvertFrom-Json) } }
+        function Confirm([bool]$Answer) { $script:Cmdlet = [pscustomobject]@{ Answer = $Answer } | Add-Member ScriptMethod ShouldProcess { $this.Answer } -PassThru }
+    }
+    BeforeEach {
+        $WdacPolicyName = 'RMM Guard - WDAC'; $MacosPolicyName = 'Block RMM tools (macOS)'; $RingPolicyName = @(); $Exclude = @()
+        $Assignment = $null; $ExcludeGroupId = $null; $MinimumReleaseAgeDays = 0; $Force = [switch]$false
+        $script:Changelog = @(); $script:Files = @{}; $script:Auth = @{ Mode = 'Secret' }; $script:Written = $null
+        Confirm $true
+        Mock Get-RMMGuardFile { switch ($File) { 'wdac.xml' { $script:PolicyXml } 'macos.json' { $script:MacJson } 'iocs.csv' { $script:IocText } } }
+    }
+
+    Context 'WDAC' {
+        BeforeEach { $script:Deployed = $script:PolicyXml; $script:Template = $script:WdacTemplateId }
+        It 'stops when the RMM Guard PolicyID exists under another name' {
+            Mock Invoke-Graph {
+                if ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @() } }
+                elseif ($Path -like '*templateFamily*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p2'; name = 'RMM Guard - WDAC (pilot)' }) } }
+                elseif ($Path -like '*/p2/settings') { WdacSettings $script:PolicyXml }
+            }
+            { Sync-Wdac } | Should -Throw "*already exists as 'RMM Guard - WDAC (pilot)'*"
+            Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+        It 'creates the policy when the other name is the other ring' {
+            $RingPolicyName = @('RMM Guard - WDAC (pilot)')
+            Mock Invoke-Graph {
+                if ($Method -eq 'POST') { $script:Written = $Body; [pscustomobject]@{ id = 'new' } }
+                elseif ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @() } }
+                elseif ($Path -like '*templateFamily*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p2'; name = 'RMM Guard - WDAC (pilot)' }) } }
+                elseif ($Path -like '*/p2/settings') { WdacSettings $script:PolicyXml }
+            }
+            Sync-Wdac | Should -BeLike "created v$script:Version,*"
+            Should -Invoke Invoke-Graph -Times 1 -Exactly -ParameterFilter { $Method -eq 'POST' -and $Path -eq '/deviceManagement/configurationPolicies' }
+            $script:Written.name | Should -Be 'RMM Guard - WDAC'
+            $script:Written.settings[0].settingInstance.choiceSettingValue.children[0].simpleSettingValue.value | Should -Be $script:PolicyXml
+        }
+        Context 'existing policy' {
+            BeforeEach {
+                Mock Invoke-Graph {
+                    if ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd' }) } }
+                    elseif ($Path -like '*/p1/settings') { WdacSettings $script:Deployed }
+                    elseif ($Path -like '*/p1?*') { [pscustomobject]@{ id = 'p1'; name = 'RMM Guard - WDAC'; description = 'd'; roleScopeTagIds = @('0'); templateReference = [pscustomobject]@{ templateId = $script:Template }; settingCount = 1 } }
+                }
+            }
+            It 'reports unchanged for the same XML with other whitespace, and writes nothing' {
+                $script:Deployed = ConvertTo-NormalizedXml $script:PolicyXml
+                Sync-Wdac | Should -Be "unchanged v$script:Version"
+                Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+            }
+            It 'refuses a policy without the RMM Guard PolicyID' {
+                $script:Deployed = '<SiPolicy><PolicyID>{11111111-2222-3333-4444-555555555555}</PolicyID></SiPolicy>'
+                { Sync-Wdac } | Should -Throw '*Refusing*'
+                Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+            }
+            It 'refuses a policy from another template' {
+                $script:Template = 'd3849ba8-bf95-467c-9640-aa2334eae9e3_1'
+                { Sync-Wdac } | Should -Throw '*Refusing*'
+            }
+            It 'reports the update under -WhatIf and does not PUT' {
+                $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 1)
+                Confirm $false
+                Sync-Wdac | Should -Be "would be updated: v$script:Version -> v$script:Version, +1/-0 deny rules"
+                Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+            }
+            It 'PUTs the fetched XML when the change is confirmed' {
+                $script:Deployed = ([regex]'<Deny [^>]*/>').Replace((ConvertTo-NormalizedXml $script:PolicyXml), '', 1)
+                Mock Invoke-Graph -ParameterFilter { $Method -eq 'PUT' } { $script:Written = $Body }
+                Sync-Wdac | Should -BeLike 'updated *'
+                $script:Written.settings[0].settingInstance.choiceSettingValue.children[0].simpleSettingValue.value | Should -Be $script:PolicyXml
+            }
+        }
+    }
+
+    Context 'macOS' {
+        BeforeEach {
+            $script:MacDescription = ($script:MacJson | ConvertFrom-Json).description
+            Mock Invoke-Graph {
+                if ($Path -like '*name%20eq*') { [pscustomobject]@{ value = @([pscustomobject]@{ id = 'm1'; name = 'Block RMM tools (macOS)'; description = $script:MacDescription }) } }
+                elseif ($Path -like '*/m1/settings') { [pscustomobject]@{ value = @(($script:MacJson | ConvertFrom-Json).settings) } }
+            }
+        }
+        It 'refuses a policy whose description lacks the RMM Guard prefix' {
+            $script:MacDescription = 'My own macOS policy'
+            { Sync-Macos } | Should -Throw '*Refusing*'
+            Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+        It 'reports unchanged for the same rule set and writes nothing' {
+            Sync-Macos | Should -BeLike 'unchanged v*'
+            Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+    }
+
+    Context 'IOC' {
+        BeforeEach { $script:Present = @(ConvertFrom-IocCsv $script:IocText) }
+        It 'refuses -Interactive' {
+            $script:Auth = @{ Mode = 'Interactive' }
+            Mock Invoke-Defender {}
+            { Sync-Ioc } | Should -Throw '*app identity*'
+            Should -Invoke Invoke-Defender -Times 0 -Exactly
+        }
+        It 'reports unchanged and imports or deletes nothing' {
+            Mock Invoke-Defender { [pscustomobject]@{ value = $script:Present } }
+            Sync-Ioc | Should -Be "unchanged, $($script:Present.Count) indicators"
+            Should -Invoke Invoke-Defender -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+        It 'reports additions under -WhatIf and does not POST' {
+            Mock Invoke-Defender { [pscustomobject]@{ value = @($script:Present | Select-Object -Skip 5) } }
+            Confirm $false
+            Sync-Ioc | Should -Be "would be updated: 5 to import (5 new), 0 to delete, $($script:Present.Count) wanted"
+            Should -Invoke Invoke-Defender -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+    }
+
+    Context 'Assignment' {
+        BeforeEach {
+            $script:Existing = @([pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g1' } })
+            Mock Invoke-Graph { if ($Method -eq 'GET') { [pscustomobject]@{ value = $script:Existing } } else { $script:Written = $Body } }
+        }
+        It 'keeps the existing targets and posts the union' {
+            $Assignment = 'AllDevices'
+            Set-Assignment 'p1'
+            Should -Invoke Invoke-Graph -Times 1 -Exactly -ParameterFilter { $Method -eq 'POST' -and $Path -eq '/deviceManagement/configurationPolicies/p1/assign' }
+            $targets = @($script:Written.assignments.target)
+            $targets.Count | Should -Be 2
+            $targets[0].groupId | Should -Be 'g1'
+            $targets[1].'@odata.type' | Should -Be '#microsoft.graph.allDevicesAssignmentTarget'
+        }
+        It 'posts nothing when every wanted target exists' {
+            $script:Existing += [pscustomobject]@{ target = [pscustomobject]@{ '@odata.type' = '#microsoft.graph.allDevicesAssignmentTarget' } }
+            $Assignment = 'AllDevices'
+            Set-Assignment 'p1'
+            Should -Invoke Invoke-Graph -Times 0 -Exactly -ParameterFilter { $Method -ne 'GET' }
+        }
+    }
+}
