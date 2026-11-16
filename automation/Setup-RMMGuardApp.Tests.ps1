@@ -1,7 +1,7 @@
 # Invoke-Pester ./automation : runs Setup-RMMGuardApp.ps1 against a mocked Graph, so nothing reaches a tenant.
 Describe 'Setup-RMMGuardApp' {
     # Globals: the mocks run inside the setup script's own script scope, so $script: would point there.
-    AfterAll { Remove-Variable RMMSetupCalls, RMMSetupApps, RMMSetupFailOn, RMMSetupRole -Scope Global -ErrorAction SilentlyContinue }
+    AfterAll { Remove-Variable RMMSetupCalls, RMMSetupApps, RMMSetupFailOn, RMMSetupRole, RMMSetupOut -Scope Global -ErrorAction SilentlyContinue }
     BeforeAll {
         $script:Setup = "$PSScriptRoot/Setup-RMMGuardApp.ps1"
         $global:RMMSetupRole = { param($Value) [pscustomobject]@{ value = @([pscustomobject]@{ id = "sp-$Value"; displayName = $Value; appRoles = @([pscustomobject]@{ id = "role-$Value"; value = $Value; allowedMemberTypes = @('Application') }) }) } }
@@ -63,6 +63,14 @@ Describe 'Setup-RMMGuardApp' {
         $global:RMMSetupFailOn = 'POST /applications'
         { & $script:Setup -TenantId contoso.onmicrosoft.com -CredentialType None } | Should -Throw '*boom*'
         $global:RMMSetupCalls | Where-Object { $_ -like 'DELETE*' } | Should -BeNullOrEmpty
+    }
+    It 'prints a removal command that targets this app and its .pfx, quoted for PowerShell' {
+        $global:RMMSetupOut = [System.Collections.Generic.List[string]]::new()
+        Mock Write-Host { $global:RMMSetupOut.Add("$Object") }
+        & $script:Setup -TenantId contoso.onmicrosoft.com -DisplayName "Roy's Sync" -CredentialType None
+        $remove = @($global:RMMSetupOut | Where-Object { $_ -like '*Remove*:*' })
+        $remove.Count | Should -Be 1
+        $remove[0] | Should -BeLike "*-TenantId 'contoso.onmicrosoft.com' -DisplayName 'Roy''s Sync' -Remove"
     }
     It 'gives an app with another display name its own default .pfx' {
         # The default name must differ per app, so -Remove for one app can never take another app's key.

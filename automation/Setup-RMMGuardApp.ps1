@@ -242,4 +242,10 @@ if ($secret) {
     Write-Host '  Copy the secret now; it is not shown again and not saved anywhere.'
 }
 if ($CredentialType -eq 'None') { Write-Host '  Credential  : none. Add a federated credential (OIDC) or a certificate yourself.' }
-Write-Host "  Remove      : ./Setup-RMMGuardApp.ps1 -TenantId $TenantId -Remove"
+# The removal command names this app and its key file, so copying it can never remove another sync app.
+$quote = { "'" + ($args[0] -replace "'", "''") + "'" }
+$removeCommand = "./Setup-RMMGuardApp.ps1 -TenantId $(& $quote $TenantId)"
+if ($DisplayName -ne 'RMM Guard Sync') { $removeCommand += " -DisplayName $(& $quote $DisplayName)" }
+$removeCommand += ' -Remove'
+if ($certificate) { $removeCommand += " -CertificatePath $(& $quote $CertificatePath)" }
+Write-Host "  Remove      : $removeCommand"
