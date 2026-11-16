@@ -9,7 +9,7 @@
     and adds a credential that expires after -CredentialDays days:
       - Certificate (default): a self-signed certificate. Only its public key is uploaded to the app; the private key
         is saved as a password-protected .pfx at -CertificatePath, by default ~/RMMGuardSync-<TenantId>.pfx, or
-        ~/RMMGuardSync-<DisplayName>-<TenantId>.pfx for another -DisplayName (readable by you only on macOS/Linux). Works in
+        ~/RMMGuardSync-<DisplayName>-<hash>-<TenantId>.pfx for another -DisplayName (readable by you only on macOS/Linux). Works in
         tenants whose app management policy blocks client secrets.
       - Secret: a client secret, shown once and never written to disk.
       - None: no credential, for OIDC (federated credential) or when you add one yourself.
@@ -49,8 +49,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if (-not $CertificatePath) {
-    # Another -DisplayName gets its own file, so removing one app never deletes the key of another.
-    $name = $DisplayName -eq 'RMM Guard Sync' ? '' : "$DisplayName-"
+    # Another -DisplayName gets its own file, so removing one app never deletes the key of another. The hash keeps names apart that
+    # only differ in characters the file name cannot hold ('Second Sync' and 'Second-Sync').
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($DisplayName))).Substring(0, 8)
+    $name = $DisplayName -eq 'RMM Guard Sync' ? '' : "$DisplayName-$hash-"
     $CertificatePath = Join-Path $HOME ("RMMGuardSync-$name$TenantId.pfx" -replace '[^A-Za-z0-9.-]', '-')
 }
 $tag = 'RMMGuardSync'

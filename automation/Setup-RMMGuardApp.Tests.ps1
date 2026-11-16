@@ -72,6 +72,17 @@ Describe 'Setup-RMMGuardApp' {
         $remove.Count | Should -Be 1
         $remove[0] | Should -BeLike "*-TenantId 'contoso.onmicrosoft.com' -DisplayName 'Roy''s Sync' -Remove"
     }
+    It 'gives two names that only differ in punctuation their own default .pfx' {
+        $global:RMMSetupOut = [System.Collections.Generic.List[string]]::new()
+        Mock Test-Path { $true }
+        Mock Remove-Item { $global:RMMSetupOut.Add($LiteralPath) }
+        foreach ($name in 'Second Sync', 'Second-Sync') {
+            $global:RMMSetupApps = @([pscustomobject]@{ id = 'app0'; appId = 'appid0'; displayName = $name; tags = @('RMMGuardSync') })
+            & $script:Setup -TenantId contoso.onmicrosoft.com -DisplayName $name -Remove
+        }
+        $global:RMMSetupOut.Count | Should -Be 2
+        $global:RMMSetupOut[0] | Should -Not -Be $global:RMMSetupOut[1]
+    }
     It 'gives an app with another display name its own default .pfx' {
         # The default name must differ per app, so -Remove for one app can never take another app's key.
         $tenant = "pester-$([guid]::NewGuid().ToString('N').Substring(0, 8)).onmicrosoft.com"
