@@ -93,6 +93,7 @@ Describe 'WDAC' {
             @{ Path = '*\MsMpEng.exe' }
             @{ Path = '*\Microsoft.Management.Services.IntuneWindowsAgent.exe' }
             @{ Path = '*\ntdll.dll' }
+            @{ Path = '*\System32\ntdll.dll' }
             @{ Path = '*\SysWOW64\ntdll.dll' }
             @{ Path = '*\msiexec.exe' }
             @{ Path = '*\conhost.exe' }
@@ -109,9 +110,19 @@ Describe 'WDAC' {
             @{ Name = 'scenario 131 FileRuleRef repointed'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?<FileRuleRef RuleID=")[^"]+', '${1}ID_DENY_A_D91474AD759E53010A953C20F82F02DE') } }
             @{ Name = 'MinimumFileVersion on an Allow'; Mutate = { [regex]::Replace($script:X, '(<Allow [^>]*FileName="\*")', '$1 MinimumFileVersion="65535.65535.65535.65535"', 1) } }
             @{ Name = 'an extra SigningScenario'; Mutate = { $script:X.Replace('</SigningScenarios>', '<SigningScenario Value="12" ID="ID_X" FriendlyName="x"><ProductSigners /></SigningScenario></SigningScenarios>') } }
+            @{ Name = 'a deny ref added to scenario 131'; Mutate = { [regex]::Replace($script:X, '(Value="131".*?<FileRulesRef>)', '$1<FileRuleRef RuleID="ID_DENY_A_D91474AD759E53010A953C20F82F02DE" />') } }
             @{ Name = 'a FileAttrib element'; Mutate = { $script:X.Replace('</FileRules>', '<FileAttrib ID="ID_FILEATTRIB_X" FileName="explorer.exe" /></FileRules>') } }
         ) {
             { Test-WdacPolicy (& $Mutate) } | Should -Throw '*structure*'
+        }
+        It 'rejects a dangling UMCI reference' {
+            $bad = [regex]::Replace($script:X, '<Deny [^>]*ID="ID_DENY_A_D91474AD759E53010A953C20F82F02DE"[^>]*/>', '')
+            { Test-WdacPolicy $bad } | Should -Throw '*one to one*'
+        }
+        It 'rejects a Deny without a UMCI reference' {
+            $bad = $script:X.Replace('<FileRuleRef RuleID="ID_DENY_A_D91474AD759E53010A953C20F82F02DE" />', '')
+            $bad | Should -Not -Be $script:X
+            { Test-WdacPolicy $bad } | Should -Throw '*one to one*'
         }
         It 'accepts a BOM-prefixed policy' {
             { Test-WdacPolicy ("`u{FEFF}" + $script:PolicyXml) } | Should -Not -Throw
@@ -124,7 +135,7 @@ Describe 'WDAC' {
         }
         It 'accepts the worker-filtered policy and returns fewer rules' {
             $names = '["AnyDesk","TeamViewer","O&O Syspectr"]'
-            $js = "import { filterPolicy } from '$script:Root/worker/index.js'; import { readFileSync } from 'node:fs'; process.stdout.write(filterPolicy(readFileSync('$script:Root/Blocking_RMMsv5.xml', 'utf8'), new Set($names)))"
+            $js = "import { filterPolicy } from '$script:Root/worker/index.js'; import { readFileSync } from 'node:fs'; process.stdout.write(filterPolicy(readFileSync('$script:Root/Blocking_RMMsv5.xml', 'utf8'), new Set($names)).replace(/^\uFEFF/, ''))"
             $filtered = (& node --input-type=module -e $js) -join "`n"
             $LASTEXITCODE | Should -Be 0
             $full = Test-WdacPolicy $script:PolicyXml

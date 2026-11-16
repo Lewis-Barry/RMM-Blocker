@@ -102,7 +102,7 @@ function Get-WdacFacts([string]$Text) {
 # Hash of everything except the parts that legitimately change (version, settings, deny rules and their UMCI references).
 function Get-WdacShape([xml]$Xml) {
     $doc = $Xml.Clone()
-    $xpath = '/s:SiPolicy/s:VersionEx | /s:SiPolicy/s:Settings | /s:SiPolicy/s:FileRules/s:Deny | //s:FileRuleRef[starts-with(@RuleID, "ID_DENY_")]'
+    $xpath = '/s:SiPolicy/s:VersionEx | /s:SiPolicy/s:Settings | /s:SiPolicy/s:FileRules/s:Deny | //s:SigningScenario[@Value="12"]/s:ProductSigners/s:FileRulesRef/s:FileRuleRef[starts-with(@RuleID, "ID_DENY_")]'
     foreach ($node in @((Select-Xml -Xml $doc -Namespace @{ s = 'urn:schemas-microsoft-com:sipolicy' } -XPath $xpath).Node)) { [void]$node.ParentNode.RemoveChild($node) }
     $canonical = ConvertTo-NormalizedXml $doc.DocumentElement.OuterXml
     [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical)))
@@ -130,8 +130,11 @@ function Test-WdacPolicy([string]$Text) {
             if ($canary -match $regex) { throw "WDAC: Deny rule '$($deny.FilePath)' ($($deny.FriendlyName)) would block $canary." }
         }
     }
-    $shape = Get-WdacShape $facts.Policy.OwnerDocument
+    $doc = $facts.Policy.OwnerDocument
+    $shape = Get-WdacShape $doc
     if ($shape -ne $script:WdacShape) { throw "WDAC: the policy structure outside the deny rules changed (shape $shape). Download the latest Sync-RMMGuard.ps1 before syncing." }
+    $refs = @((Select-Xml -Xml $doc -Namespace @{ s = 'urn:schemas-microsoft-com:sipolicy' } -XPath ('//s:SigningScenario[@Value="12"]/s:ProductSigners/s:FileRulesRef/s:FileRuleRef[starts-with(@RuleID, "ID_DENY_")]')).Node.RuleID)
+    if (Compare-Object -ReferenceObject @($denies.ID) -DifferenceObject $refs) { throw 'WDAC: the Deny rules and their UMCI references do not match one to one.' }
     $facts
 }
 
