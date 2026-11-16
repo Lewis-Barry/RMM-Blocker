@@ -345,3 +345,88 @@ function Get-ApiUrl([string]$File, [string[]]$Exclude) {
 }
 
 # ---- I/O functions and Invoke-Sync follow (tasks 4-7). ----
+
+function ConvertTo-Base64Url([byte[]]$Bytes) {
+    [Convert]::ToBase64String($Bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+# RFC 7523 client assertion signed with the certificate's private key; Entra identifies the key by its SHA-1 thumbprint.
+function New-ClientAssertion([System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate, [string]$Tenant, [string]$Client) {
+    $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $header = @{ alg = 'RS256'; typ = 'JWT'; x5t = (ConvertTo-Base64Url $Certificate.GetCertHash()) } | ConvertTo-Json -Compress
+    $payload = @{
+        aud = "https://login.microsoftonline.com/$Tenant/oauth2/v2.0/token"; iss = $Client; sub = $Client
+        jti = [guid]::NewGuid().ToString(); nbf = $now - 60; exp = $now + 600
+    } | ConvertTo-Json -Compress
+    $unsigned = (ConvertTo-Base64Url ([Text.Encoding]::UTF8.GetBytes($header))) + '.' + (ConvertTo-Base64Url ([Text.Encoding]::UTF8.GetBytes($payload)))
+    $rsa = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($Certificate)
+    if (-not $rsa) { throw 'The certificate has no RSA private key.' }
+    $signature = $rsa.SignData([Text.Encoding]::UTF8.GetBytes($unsigned), [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+        [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+    "$unsigned.$(ConvertTo-Base64Url $signature)"
+}
+
+function Resolve-Auth {
+    $modes = @(
+        if ($Interactive) { 'Interactive' }
+        if ($Identity) { 'Identity' }
+        if ($CertificateThumbprint -or $CertificatePath) { 'Certificate' }
+        if ($FederatedToken) { 'Federated' }
+        if ($ClientSecret) { 'Secret' }
+    )
+    if (-not $modes.Count -and $env:RMMGUARD_CLIENT_SECRET) { $modes = @('Secret') }
+    if ($modes.Count -ne 1) {
+        throw 'Choose one sign-in: -Interactive, -Identity, -CertificatePath, -CertificateThumbprint, -FederatedToken or -ClientSecret ($env:RMMGUARD_CLIENT_SECRET).'
+    }
+    $auth = @{ Mode = $modes[0]; TenantId = $TenantId; ClientId = $ClientId }
+    if ($auth.Mode -in 'Secret', 'Certificate', 'Federated' -and (-not $TenantId -or -not $ClientId)) {
+        throw "-TenantId and -ClientId are required with $($auth.Mode) sign-in."
+    }
+    switch ($auth.Mode) {
+        'Secret' { $auth.Secret = $ClientSecret ? $ClientSecret : $env:RMMGUARD_CLIENT_SECRET }
+        'Federated' { $auth.FederatedToken = $FederatedToken }
+        'Certificate' {
+            if ($CertificatePath) {
+                $password = $CertificatePassword
+                if (-not $password -and $env:RMMGUARD_CERT_PASSWORD) { $password = ConvertTo-SecureString $env:RMMGUARD_CERT_PASSWORD -AsPlainText -Force }
+                $auth.Certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new((Resolve-Path $CertificatePath).Path, $password)
+            } else {
+                $auth.Certificate = @('CurrentUser', 'LocalMachine') | ForEach-Object { Get-Item "Cert:\$_\My\$CertificateThumbprint" -ErrorAction SilentlyContinue } | Select-Object -First 1
+                if (-not $auth.Certificate) { throw "Certificate $CertificateThumbprint is not in CurrentUser\My or LocalMachine\My. On macOS or Linux use -CertificatePath." }
+            }
+        }
+    }
+    $auth
+}
+
+# One token per resource for every non-interactive mode, so Graph and Defender share the same sign-in.
+function Get-AccessToken([string]$Resource) {
+    if ($script:Auth.Mode -eq 'Identity') {
+        if (-not $env:IDENTITY_ENDPOINT) { throw '-Identity works in an Azure Automation runbook with a managed identity (IDENTITY_ENDPOINT is not set).' }
+        $uri = "$($env:IDENTITY_ENDPOINT)?resource=$([uri]::EscapeDataString($Resource))&api-version=2019-08-01"
+        return (Invoke-RestMethod -Uri $uri -Headers @{ 'X-IDENTITY-HEADER' = $env:IDENTITY_HEADER; Metadata = 'true' }).access_token
+    }
+    $body = @{ client_id = $script:Auth.ClientId; scope = "$Resource/.default"; grant_type = 'client_credentials' }
+    switch ($script:Auth.Mode) {
+        'Secret' { $body.client_secret = $script:Auth.Secret }
+        'Federated' {
+            $body.client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+            $body.client_assertion = $script:Auth.FederatedToken
+        }
+        'Certificate' {
+            $body.client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+            $body.client_assertion = New-ClientAssertion $script:Auth.Certificate $script:Auth.TenantId $script:Auth.ClientId
+        }
+    }
+    (Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/$($script:Auth.TenantId)/oauth2/v2.0/token" -Body $body).access_token
+}
+
+function Connect-Graph {
+    if ($script:Auth.Mode -eq 'Interactive') {
+        $connect = @{ Scopes = 'DeviceManagementConfiguration.ReadWrite.All'; NoWelcome = $true }
+        if ($TenantId) { $connect.TenantId = $TenantId }
+        Connect-MgGraph @connect
+    } else {
+        Connect-MgGraph -AccessToken (ConvertTo-SecureString (Get-AccessToken 'https://graph.microsoft.com') -AsPlainText -Force) -NoWelcome
+    }
+}

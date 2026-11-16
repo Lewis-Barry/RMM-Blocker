@@ -341,3 +341,27 @@ Describe 'Shared hardening' {
         @(Merge-AssignmentTargets $e @(@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = 'g2' })).Count | Should -Be 2
     }
 }
+
+Describe 'Authentication' {
+    It 'signs a client assertion that Entra can verify with the certificate' {
+        $rsa = [System.Security.Cryptography.RSA]::Create(2048)
+        $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new('CN=Test', $rsa,
+            [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+        $certificate = $request.CreateSelfSigned([DateTimeOffset]::UtcNow.AddMinutes(-5), [DateTimeOffset]::UtcNow.AddDays(1))
+        $jwt = New-ClientAssertion $certificate 'tenant-id' 'client-id'
+        $parts = $jwt.Split('.')
+        $parts.Count | Should -Be 3
+        $decode = { param($s) $s = $s.Replace('-', '+').Replace('_', '/'); [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($s.PadRight($s.Length + (4 - $s.Length % 4) % 4, '='))) }
+        $header = & $decode $parts[0] | ConvertFrom-Json
+        $payload = & $decode $parts[1] | ConvertFrom-Json
+        $header.alg | Should -Be 'RS256'
+        $header.x5t | Should -Be ([Convert]::ToBase64String($certificate.GetCertHash()).TrimEnd('=').Replace('+', '-').Replace('/', '_'))
+        $payload.aud | Should -Be 'https://login.microsoftonline.com/tenant-id/oauth2/v2.0/token'
+        $payload.iss | Should -Be 'client-id'
+        $payload.sub | Should -Be 'client-id'
+        $signature = $parts[2].Replace('-', '+').Replace('_', '/')
+        $signature = [Convert]::FromBase64String($signature.PadRight($signature.Length + (4 - $signature.Length % 4) % 4, '='))
+        $rsa.VerifyData([Text.Encoding]::UTF8.GetBytes("$($parts[0]).$($parts[1])"), $signature,
+            [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1) | Should -BeTrue
+    }
+}
