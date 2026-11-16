@@ -48,7 +48,7 @@
   <main class="container page-main">
     <div class="builder-intro-row">
       <h1 class="builder-intro">Block unapproved RMM and remote access tools on Windows and macOS. Exclude the ones you trust.</h1>
-      <span class="chip updated-chip">Last updated Nov 14, 2026</span>
+      <span class="chip updated-chip">Last updated Nov 16, 2026</span>
     </div>
     <section class="how-to" aria-labelledby="how-to-title">
       <p id="how-to-title"><strong>How to use</strong></p>
@@ -161,10 +161,16 @@
       </div>
       <div id="links-modal-desc" class="modal-desc">
         <p>For automation. Each link returns the latest published list <span id="links-scope"></span>, so a scheduled job that fetches it picks up new tools and indicators without anyone visiting this page. Click a link to copy it.</p>
-        <p>The exclusions are written into the link and nothing is stored, so copy the links again after changing your exclusions. The links only return files: comparing them with what you have deployed, and importing them, is up to your automation.</p>
+        <p>The exclusions are written into the link and nothing is stored, so copy the links again after changing your exclusions. The links only return files. To compare them with what you have deployed and import them, use the script below.</p>
         <p>If an excluded tool is later renamed or removed, the link returns an HTTP 400 error instead of a file, so a tool you rely on is never blocked by surprise. Come back here and copy new links.</p>
       </div>
       <ul id="links-modal-list" class="rule-groups" role="list"></ul>
+      <section class="links-automation" aria-labelledby="links-automation-title">
+        <h3 id="links-automation-title">Automation</h3>
+        <p class="modal-desc">Want to automate this fully? One PowerShell script keeps Intune and Defender in sync on a schedule, from GitHub Actions, Azure DevOps or an Azure Automation runbook. This command previews it with your exclusions (click to copy):</p>
+        <div id="links-command" class="chip-row"></div>
+        <p class="modal-desc"><a href="./automation/Sync-RMMGuard.ps1" download>Download Sync-RMMGuard.ps1</a> · <a href="./help-automation.html">Read the automation guide</a></p>
+      </section>
     </div>
   </dialog>
   <dialog id="mac-modal" class="modal" aria-labelledby="mac-modal-title" aria-describedby="mac-modal-desc">

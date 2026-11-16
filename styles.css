@@ -335,3 +335,9 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .tool-index { list-style: none; margin: 0; padding: 0; columns: 3 240px; column-gap: 32px; font-size: 13px; }
 .tool-index li { padding: 4px 0; break-inside: avoid; }
 @media (max-width: 560px) { .facts th { width: 120px; } }
+/* The Automation section sits below the links: scroll the whole dialog rather than squeezing the list on small screens. */
+#links-modal .modal-dialog { overflow-y: auto; }
+#links-modal .rule-groups { flex: none; }
+.links-automation { border-top: 1px solid var(--line); margin-top: 12px; padding: 12px 14px 0; }
+.links-automation h3 { margin: 0 0 6px; font-size: 14px; }
+.links-automation .modal-desc { margin: 8px 0; }

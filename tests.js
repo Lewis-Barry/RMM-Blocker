@@ -252,6 +252,13 @@ async function testBuilder(policy, iocs) {
       assert(!byId("selection-details").hidden && byId("selection-list").textContent === "Datto RMM / Autotask",
         "Exclusion review missing");
     });
+    test("Retrieval-links modal shows the sync command with the current exclusions", () => {
+      byId("links-open").click();
+      const command = document.querySelector("#links-command .copy-chip span").textContent;
+      assert(command.includes("-Exclude 'Datto RMM / Autotask' "), command);
+      assert(document.querySelector('.links-automation a[href="./help-automation.html"]'), "Guide link missing");
+      byId("links-modal").close();
+    });
     test("Exclusion review lists one tool per line in alphabetical order", () => {
       try {
         sharedSelection.click();

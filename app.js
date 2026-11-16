@@ -2,6 +2,7 @@ import { parsePolicy, excludedRuleIds, exportPolicy } from "./policy.js";
 import { loadIocs, filterIocs, exportIocBatches, serializeCsv, iocHeaders } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
 import { loadMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
+import { buildSyncCommand } from "./automation.js";
 
 const byId = id => document.getElementById(id);
 const excluded = new Set();
@@ -481,6 +482,7 @@ byId("links-open")?.addEventListener("click", () => {
     item.append(heading, row);
     return item;
   }));
+  byId("links-command").replaceChildren(chip(buildSyncCommand(excluded)));
   byId("links-modal").showModal();
 });
 byId("links-close")?.addEventListener("click", () => byId("links-modal").close());
