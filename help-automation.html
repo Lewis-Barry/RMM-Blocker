@@ -24,6 +24,7 @@
   <script type="module" src="./theme.js"></script>
   <script type="module" src="./credits.js"></script>
   <script async src="./analytics.js"></script>
+  <script src="./nav.js"></script>
 </head>
 <body class="help-page">
   <a class="skip-link" href="#guide">Skip to guide</a>
@@ -34,7 +35,21 @@
         <span>RMM Guard</span>
       </a>
       <div class="header-actions">
-        <nav aria-label="Main navigation"><a href="./index.html">RMM</a><a href="./tools/index.html">Tools</a><a href="./browsers.html">Browsers</a><a href="./help.html" aria-current="page">Help</a><a href="./changelog.html">Changelog</a></nav>
+        <nav aria-label="Main navigation">
+          <a href="./index.html">RMM</a>
+          <a href="./tools/index.html">Tools</a>
+          <a href="./browsers.html">Browsers</a>
+          <a href="./changelog.html">Changelog</a>
+          <details class="nav-menu" aria-current="page">
+            <summary>Help</summary>
+            <div class="nav-dropdown">
+              <a href="./help.html">WDAC guide</a>
+              <a href="./help-ioc.html">Defender IOCs</a>
+              <a href="./help-macos.html">macOS</a>
+              <a href="./help-automation.html" aria-current="page">Automation</a>
+            </div>
+          </details>
+        </nav>
         <button id="credits-open" class="header-button" type="button" aria-haspopup="dialog">Credits &amp; licence</button>
         <span class="header-divider" aria-hidden="true"></span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light theme">Light theme</button>
