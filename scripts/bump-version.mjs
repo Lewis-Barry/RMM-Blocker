@@ -1,4 +1,4 @@
-// Bumps the policy version when deny paths changed since <base> but the version did not: node scripts/bump-version.mjs <base commit>
+// Bumps the policy version when deny paths, macOS rules, domains or IPs changed since <base> but the version did not: node scripts/bump-version.mjs <base commit>
 // Runs on every push to main, so merged PRs that add paths always ship under a new version.
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -6,28 +6,50 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { bumpVersion } from "./sync-lolrmm.mjs";
 
-// Deny paths and macOS rules both change what devices block, so either bumps the version.
+// Deny paths and macOS rules across all products, for the removed count in the changelog.
 const pathSet = data => JSON.stringify(Object.values(data.products).flatMap(product => [
   ...(product.paths || []).map(path => path.toLowerCase()),
   ...(product.macos?.rules || []).map(rule => JSON.stringify(rule)),
 ]).sort());
 
+// Everything that blocks, per product: the indicator CSV is built from domains and IPs, and -Exclude works per product,
+// so a value moving to another product changes what an excluding tenant blocks and needs its own version (and release date).
+const blockSet = data => JSON.stringify(Object.entries(data.products).flatMap(([name, product]) => [
+  ...(product.paths || []).map(path => `path:${path.toLowerCase()}`),
+  ...(product.macos?.rules || []).map(rule => `macos:${JSON.stringify(rule)}`),
+  ...[...(product.domains || []), ...(product.vendorDomains || [])].map(domain => `domain:${domain.toLowerCase()}`),
+  ...(product.ips || []).map(ip => `ip:${ip}`),
+].map(value => `${name}|${value}`)).sort());
+
 export function bump(before, after) {
-  if (after.version !== before.version || pathSet(after) === pathSet(before)) return null;
+  if (after.version !== before.version || blockSet(after) === blockSet(before)) return null;
   return { ...after, version: bumpVersion(after.version) };
 }
 
-// The changelog.json entry for a bump: what each product gained, plus a count of deny paths that went away.
+// Domains and IPs as one lowercased list per product: they all end up as Defender indicators.
+const indicators = product => [...(product?.domains || []), ...(product?.vendorDomains || []), ...(product?.ips || [])].map(value => value.toLowerCase());
+
+// The changelog.json entry for a bump: what each product gained, plus a count of deny paths and indicators that went away.
 export function changelogEntry(before, after, version, date) {
   const lowered = (product, field) => new Set((product?.[field] || []).map(value => value.toLowerCase()));
   const products = Object.entries(after.products).map(([name, product]) => {
     const old = before.products[name];
     const added = field => (product[field] || []).filter(value => !lowered(old, field).has(value.toLowerCase()));
-    return { name, new: !old, paths: added("paths"), domains: [...added("domains"), ...added("vendorDomains")] };
+    // Seen holds the old values plus every value listed so far, so a value in two fields or two cases shows once.
+    const seen = new Set(indicators(old));
+    const domains = [...product.domains || [], ...product.vendorDomains || [], ...product.ips || []]
+      .filter(value => !seen.has(value.toLowerCase()) && seen.add(value.toLowerCase()));
+    return { name, new: !old, paths: added("paths"), domains };
   }).filter(change => change.paths.length || change.domains.length);
   const afterPaths = new Set(JSON.parse(pathSet(after)));
   const removed = JSON.parse(pathSet(before)).filter(path => !afterPaths.has(path)).length;
-  return { version, date, source: "Manual edit", ...(removed && { note: `${removed} deny path${removed === 1 ? "" : "s"} removed.` }), products };
+  const afterIndicators = new Set(Object.values(after.products).flatMap(indicators));
+  const removedIndicators = new Set(Object.values(before.products).flatMap(indicators).filter(value => !afterIndicators.has(value))).size;
+  const note = [
+    removed && `${removed} deny path${removed === 1 ? "" : "s"} removed.`,
+    removedIndicators && `${removedIndicators} indicator${removedIndicators === 1 ? "" : "s"} removed.`,
+  ].filter(Boolean).join(" ");
+  return { version, date, source: "Manual edit", ...(note && { note }), products };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

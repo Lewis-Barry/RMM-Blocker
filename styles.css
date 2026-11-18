@@ -62,6 +62,17 @@ nav a, .source-link, .theme-toggle, .header-button { text-decoration: none; colo
 nav a:hover, .source-link:hover, .theme-toggle:hover:not(:disabled), .header-button:hover { color: #fff; background: #ffffff12; }
 .header-byline { color: #ffffffcc; font-size: 13px; padding: 8px; }
 .header-divider { height: 24px; width: 1px; background: #ffffff33; margin: 0 8px; }
+.nav-menu { position: relative; margin: 0; }
+.nav-menu summary { list-style: none; }
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: #ffffffcc; font-size: 13px; padding: 8px; border-radius: 4px; cursor: pointer; }
+.nav-menu summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+.nav-menu summary:hover, .nav-menu[open] summary { color: #fff; background: #ffffff12; }
+.nav-menu[aria-current="page"] summary { color: #fff; background: #ffffff12; }
+.nav-dropdown { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: 210px; padding: 6px; border: 1px solid #ffffff20; border-radius: 6px; background: #242426; box-shadow: 0 12px 32px #0008; }
+.nav-dropdown a { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; padding: 8px 10px; border-radius: 4px; color: #f2f2f7; }
+.nav-dropdown a[aria-current="page"] { color: #60cdff; background: #0d2d3f; }
+.nav-dropdown a + a { border-top: 1px solid #ffffff0d; }
 .page-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 12px 0 4px; flex-shrink: 0; }
 h1 { font-size: 24px; line-height: 1.25; margin: 0; font-weight: 600; }
@@ -240,6 +251,8 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 }
 @media (max-width: 560px) {
   nav { flex-wrap: wrap; }
+  .nav-menu { position: static; }
+  .nav-dropdown { top: 44px; right: 16px; left: auto; width: min(210px, calc(100vw - 32px)); }
   .brand { font-size: 13px; gap: 4px; }
   .brand-mark { width: 20px; height: 20px; }
   .toolbar { flex-wrap: wrap; gap: 8px; }
@@ -335,3 +348,18 @@ nav a[aria-current="page"] { color: #fff; background: #ffffff12; }
 .tool-index { list-style: none; margin: 0; padding: 0; columns: 3 240px; column-gap: 32px; font-size: 13px; }
 .tool-index li { padding: 4px 0; break-inside: avoid; }
 @media (max-width: 560px) { .facts th { width: 120px; } }
+/* The Automation section sits below the links: scroll the whole dialog rather than squeezing the list on small screens. */
+#links-modal .modal-dialog { overflow-y: auto; }
+#links-modal .rule-groups { flex: none; }
+.links-automation { border-top: 1px solid var(--line); margin-top: 12px; padding: 12px 14px 0; }
+.links-automation h3 { margin: 0 0 6px; font-size: 14px; }
+.links-automation .modal-desc { margin: 8px 0; }
+.help-nav .help-subsection { padding-left: 28px; }
+.help-step h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; scroll-margin-top: 24px; }
+.download-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.download-list li { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: center; margin: 0; }
+.download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 4px; font-family: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace; }
+@media (max-width: 640px) { .download-list li { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+.param-list { margin: 6px 0; padding-left: 18px; }
+.param-list li { margin: 4px 0; }
+.facts thead th { width: auto; color: var(--ink); font-weight: 600; }

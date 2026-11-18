@@ -2,6 +2,7 @@ import { parsePolicy, exportPolicy, excludedRuleIds } from "./policy.js";
 import { filterPolicy, policyTools } from "./worker/index.js";
 import { loadIocs, combineIocs, parseCsv, serializeCsv, iocHeaders, filterIocs, exportIocBatches } from "./ioc.js";
 import { buildNetworkDiscoveryKql, highlightKql } from "./kql.js";
+import { buildSyncCommand } from "./automation.js";
 import { parseMacProducts, filterMacRules, buildIntunePolicy, buildPowerShellScript, reportMissingUrl } from "./macos.js";
 
 const ns = "urn:schemas-microsoft-com:sipolicy";
@@ -250,6 +251,13 @@ async function testBuilder(policy, iocs) {
       assert(byId("wdac-status").textContent.includes(`${expectedRemoved} removed`), "XML summary stale");
       assert(!byId("selection-details").hidden && byId("selection-list").textContent === "Datto RMM / Autotask",
         "Exclusion review missing");
+    });
+    test("Retrieval-links modal shows the sync command with the current exclusions", () => {
+      byId("links-open").click();
+      const command = document.querySelector("#links-command .copy-chip span").textContent;
+      assert(command.includes("-Exclude 'Datto RMM / Autotask' "), command);
+      assert(document.querySelector('.links-automation a[href="./help-automation.html"]'), "Guide link missing");
+      byId("links-modal").close();
     });
     test("Exclusion review lists one tool per line in alphabetical order", () => {
       try {
@@ -712,6 +720,7 @@ async function run() {
       shared[6] = shared[6].replace("Kabuto; Syncro", "Kabuto");
       expectError(() => combineIocs(source([iocHeaders, shared]), toolNames), "incomplete shared-tool attribution");
     });
+    testAutomation();
     await testBuilder(policy, iocs);
     await testBrowserBuilder();
     await testMacBuilder(policy);
@@ -727,6 +736,21 @@ async function run() {
 }
 
 run();
+
+function testAutomation() {
+  test("Sync command without exclusions has no -Exclude", () => {
+    const command = buildSyncCommand(new Set());
+    assert(command === "./Sync-RMMGuard.ps1 -Interactive -WhatIf", command);
+  });
+  test("Sync command lists exclusions sorted and quoted", () => {
+    const command = buildSyncCommand(new Set(["TeamViewer", "AnyDesk", "Splashtop"]));
+    assert(command.includes("-Exclude 'AnyDesk','Splashtop','TeamViewer' "), command);
+  });
+  test("Sync command doubles single quotes in tool names", () => {
+    const command = buildSyncCommand(new Set(["O'Tool", "O&O Syspectr"]));
+    assert(command.includes("-Exclude 'O&O Syspectr','O''Tool' "), command);
+  });
+}
 
 // macOS app control: pure generator checks, then the RMM page with the macOS platform on, in a frame.
 async function testMacBuilder(policy) {

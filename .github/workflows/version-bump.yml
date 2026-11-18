@@ -1,5 +1,5 @@
 name: Version bump
-# On merge to main: bumps the policy version when deny paths changed but the version did not, then regenerates the XML.
+# On merge to main: bumps the policy version when deny paths, macOS rules, domains or IPs changed but the version did not, then regenerates the XML.
 # The lolRMM sync already bumps its own PR, so this only acts on manual edits.
 on:
   push:

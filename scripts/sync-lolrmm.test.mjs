@@ -107,6 +107,21 @@ test("changelogEntry lists what a manual edit added and counts removed deny path
   });
 });
 
+test("changelogEntry lists added IPs and counts removed domains and IPs, so an indicator-only bump is not empty", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { domains: ["acme.com", "old.acme.com"], ips: ["203.0.113.1"] } } };
+  const after = { version: "1.0.0.10", products: { Acme: { domains: ["acme.com"], ips: ["203.0.113.1", "203.0.113.7"] } } };
+  assert.deepEqual(changelogEntry(before, after, "1.0.0.10", "2026-01-01"), {
+    version: "1.0.0.10", date: "2026-01-01", source: "Manual edit", note: "1 indicator removed.",
+    products: [{ name: "Acme", new: false, paths: [], domains: ["203.0.113.7"] }],
+  });
+});
+
+test("changelogEntry lists an indicator once, whatever its case or field", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { domains: ["acme.com"] } } };
+  const after = { version: "1.0.0.10", products: { Acme: { domains: ["acme.com", "New.com"], vendorDomains: ["new.com"] } } };
+  assert.deepEqual(changelogEntry(before, after, "1.0.0.10", "2026-01-01").products[0].domains, ["New.com"]);
+});
+
 test("a tool named after one part of a combined product joins that product", () => {
   const data = { version: "1.0.0.9", products: { "NinjaOne / NinjaRMM": { paths: ["*\\ninjaone\\*"] } } };
   const { products, changes } = sync(data, [tool("NinjaRMM", [], ["ninja-backup.com"])], none);
@@ -145,10 +160,28 @@ test("a tool decided as a separate product gets no suggestions", () => {
 test("bump raises the version only when paths changed and the version did not", () => {
   const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\acme.exe"] } } };
   assert.equal(bump(before, before), null);
-  assert.equal(bump(before, { ...before, products: { Acme: { paths: ["*\ACME.exe"], domains: ["acme.com"] } } }), null);
+  assert.equal(bump(before, { ...before, products: { Acme: { paths: ["*\ACME.exe"] } } }), null);
   const added = { ...before, products: { Acme: { paths: ["*\acme.exe", "*\acme2.exe"] } } };
   assert.equal(bump(before, added).version, "1.0.0.10");
   assert.equal(bump(before, { ...added, version: "1.0.0.10" }), null);
+});
+
+test("bump raises the version when only domains or IPs change, but not for a case change", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"], domains: ["acme.com"] } } };
+  const withDomains = (domains, extra = {}) => ({ ...before, products: { Acme: { paths: ["*\\acme.exe"], domains, ...extra } } });
+  assert.equal(bump(before, withDomains(["acme.com", "relay.acme.com"])).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains([])).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["acme.com"], { vendorDomains: ["acme-cdn.net"] })).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["acme.com"], { ips: ["203.0.113.7"] })).version, "1.0.0.10");
+  assert.equal(bump(before, withDomains(["ACME.com"])), null);
+});
+
+test("bump raises the version when a path or indicator moves to another product, because -Exclude works per product", () => {
+  const before = { version: "1.0.0.9", products: { Acme: { paths: ["*\\acme.exe"], domains: ["relay.example.com"] }, Beta: { paths: ["*\\beta.exe"] } } };
+  const domainMoved = { ...before, products: { Acme: { paths: ["*\\acme.exe"] }, Beta: { paths: ["*\\beta.exe"], domains: ["relay.example.com"] } } };
+  assert.equal(bump(before, domainMoved).version, "1.0.0.10");
+  const pathMoved = { ...before, products: { Acme: { paths: [], domains: ["relay.example.com"] }, Beta: { paths: ["*\\beta.exe", "*\\acme.exe"] } } };
+  assert.equal(bump(before, pathMoved).version, "1.0.0.10");
 });
 
 test("bump also raises the version when a macOS rule is added or refined without a version change", () => {

@@ -1,0 +1,32 @@
+# RMM Guard sync. Guide: https://rmmguard.com/help-automation.html#github
+name: RMM Guard sync
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+env:
+  TENANT_ID: ''
+  CLIENT_ID: ''
+  ASSIGNMENT: ''          # AllDevices, AllUsers or a group object ID; empty creates the policies unassigned
+  EXCLUDE: ''             # tools to leave out, e.g. AnyDesk,TeamViewer
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync RMM Guard
+        shell: pwsh
+        run: |
+          $token = (Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
+            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }).value
+          $sync = @{
+            Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
+            TenantId       = $env:TENANT_ID
+            ClientId       = $env:CLIENT_ID
+            FederatedToken = $token
+          }
+          if ($env:ASSIGNMENT) { $sync.Assignment = $env:ASSIGNMENT }
+          ./Sync-RMMGuard.ps1 @sync

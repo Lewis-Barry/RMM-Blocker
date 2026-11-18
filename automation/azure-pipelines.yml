@@ -1,0 +1,29 @@
+# RMM Guard sync. Guide: https://rmmguard.com/help-automation.html#azure-devops
+trigger: none
+schedules:
+  - cron: '0 6 * * 1'     # Mondays 06:00 UTC
+    displayName: Weekly RMM Guard sync
+    branches:
+      include: [main]
+    always: true
+pool:
+  vmImage: ubuntu-latest
+variables:
+  - group: rmm-guard      # ASSIGNMENT and EXCLUDE
+steps:
+  - task: AzureCLI@2
+    displayName: Sync RMM Guard
+    inputs:
+      azureSubscription: rmm-guard
+      scriptType: pscore
+      scriptLocation: inlineScript
+      addSpnToEnvironment: true
+      inlineScript: |
+        $sync = @{
+          Exclude        = @($env:EXCLUDE -split ',' | ForEach-Object Trim | Where-Object { $_ })
+          TenantId       = $env:tenantId
+          ClientId       = $env:servicePrincipalId
+          FederatedToken = $env:idToken
+        }
+        if ($env:ASSIGNMENT) { $sync.Assignment = $env:ASSIGNMENT }
+        ./Sync-RMMGuard.ps1 @sync

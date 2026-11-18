@@ -151,6 +151,7 @@ Blocking unwanted RMM and remote access tools is part of good endpoint security 
 - [Deploy App Control for Business (WDAC) with Intune](https://rmmguard.com/help.html): step-by-step upload and pilot guide
 - [Import Defender indicators](https://rmmguard.com/help-ioc.html): prepare protection, import the CSVs, verify
 - [macOS app control with Intune](https://rmmguard.com/help-macos.html): Graph Explorer, portal and PowerShell routes
+- [Automate with PowerShell](https://rmmguard.com/help-automation.html): keep Intune and Defender in sync from GitHub Actions, Azure DevOps or an Azure Automation runbook
 - [Tools](https://rmmguard.com/tools/): one page per tool with its file paths, network indicators and macOS signature
 - [Changelog](https://rmmguard.com/changelog.html): tools, executables and domains added each month
 

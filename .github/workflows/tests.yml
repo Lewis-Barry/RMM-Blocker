@@ -10,4 +10,10 @@ jobs:
           node-version: 22
       - run: node build.mjs --check
       - run: node --test scripts/*.test.mjs worker/*.test.mjs
+      - name: Pester (automation)
+        shell: pwsh
+        run: |
+          # The module is needed for the test that catches a script function shadowed by one of its aliases.
+          Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force
+          Invoke-Pester -Path automation -CI
       - run: node run-tests.mjs google-chrome
