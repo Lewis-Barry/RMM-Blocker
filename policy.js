@@ -78,7 +78,7 @@ export function exportPolicy(policy, excludedTools) {
   }
   const declaration = policy.source.match(/^\uFEFF?(<\?xml[^?]*\?>)/)?.[1] ||
     '<?xml version="1.0" encoding="utf-8"?>';
-  const result = `${declaration}\n${new XMLSerializer().serializeToString(document)}`;
+  const result = `${declaration}\n${new XMLSerializer().serializeToString(document.documentElement)}`;
   parsePolicy(result);
   return result;
 }
